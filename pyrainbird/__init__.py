@@ -8,7 +8,6 @@ from Crypto.Hash import SHA256
 from Crypto.Cipher import AES
 from Crypto import Random
 
-_LOGGER = ''
 
 class RainbirdController:
     # COMMAND FILE RAINBIRD API
@@ -53,59 +52,59 @@ class RainbirdController:
     }"""
 
     
-    def __init__ (self):
+    def __init__ (self,logger):
         # Load JSON with commands
-        self.rainbirdCommands = self.jsoncommands
+        self.rainbirdCommands = json.loads(self.jsoncommands)
         self.rainbirdEncryption = self.RainbirdEncryption()
         self.rainbirdPassword = None
         self.rainbirdserver = None
-    
+        self.logger = logger
     
         
     def stopIrrigation(self):
-        _LOGGER.info("Irrigation stop requested")
+        self.logger.info("Irrigation stop requested")
         resp=self.request("StopIrrigation")
         if (resp != ""):
           jsonresult=json.loads(resp)
           if (jsonresult["result"]["data"][:2] == "01"):
-           _LOGGER.info("Irrigation stop request acknowledged")
+           self.logger.info("Irrigation stop request acknowledged")
            return 1
           else:
-            _LOGGER.warning("Irrigation stop request NOT acknowledged")
+            self.logger.warning("Irrigation stop request NOT acknowledged")
             return -1
-        _LOGGER.warning("Request resulted in no response")
+        self.logger.warning("Request resulted in no response")
         return 0
         
     def startIrrigation(self,zone,minutes):
-            _LOGGER.info("Irrigation start requested for zone "+str(zone)+" for duration " + str(minutes))
+            self.logger.info("Irrigation start requested for zone "+str(zone)+" for duration " + str(minutes))
             resp=self.request("ManuallyRunStation",zone,minutes)
             if (resp != ""):
                 jsonresult=json.loads(resp)
                 if (jsonresult["result"]["data"][:2] == "01"):
-                    _LOGGER.info("Irrigation request acknowledged")
+                    self.logger.info("Irrigation request acknowledged")
                     return 1
                 else:
-                    _LOGGER.warning("Irrigation request NOT acknowledged")
+                    self.logger.warning("Irrigation request NOT acknowledged")
                     return -1
-            _LOGGER.warning("Request resulted in no response")
+            self.logger.warning("Request resulted in no response")
             return 0
 
     def currentIrrigation(self):
             resp=self.request ("CurrentStationsActive")
-            _LOGGER.info("Requesting current Irrigation station")
+            self.logger.info("Requesting current Irrigation station")
             if (resp != ""):
                 jsonresult=json.loads(resp)
                 if (jsonresult["result"]["data"][:2] == "BF"):
                     val=jsonresult["result"]["data"][4:8]
                     if (int(val[:2]) != 0):
-                      _LOGGER.info("Status request acknowledged")
+                      self.logger.info("Status request acknowledged")
                       return round(math.log(int(val[:2]),2)+1)
                     else:
-                      _LOGGER.warning("Status request NOT acknowledged")
+                      self.logger.warning("Status request NOT acknowledged")
                       return 0
                 else:
                     return -1
-            _LOGGER.warning("Request resulted in no response")
+            self.logger.warning("Request resulted in no response")
             return 0
             
     def setConfig(self,server,password):
@@ -138,7 +137,7 @@ class RainbirdController:
                 else:
                     resultdata=resp.read()
                     decrypteddata=(self.rainbirdEncryption.decrypt(resultdata,self.rainbirdPassword)).decode("UTF-8")
-                    _LOGGER.debug("Response from line: " + str(decrypteddata))
+                    self.logger.debug("Response from line: " + str(decrypteddata))
                     return decrypteddata
                     break
             return ""
@@ -153,7 +152,7 @@ class RainbirdController:
                 request = '{"id":9,"jsonrpc":"2.0","method":"tunnelSip","params":{"data":"'+cmd_code+"00"+'{0:02x}'.format(cmd_param1)+'{0:02x}'.format(cmd_param2)+'","length":'+str(cmd_len)+'}}'
             else:
                 request = '{"id":9,"jsonrpc":"2.0","method":"tunnelSip","params":{"data":"'+cmd_code+'","length":'+str(cmd_len)+'}}'
-            _LOGGER.debug("Request to line: " + str(request))
+            self.logger.debug("Request to line: " + str(request))
             response = self.send_rainbird_command(request)
             return response.rstrip('\x00')
 
@@ -199,22 +198,20 @@ class RainbirdController:
            eas_encryptor = AES.new(b,AES.MODE_CBC, iv)
            encrypteddata = eas_encryptor.encrypt(c)
            return b2+iv+encrypteddata;
-            
-
 
 """"
 logging.basicConfig(filename='pypython.log',level=logging.DEBUG)
 
 
-_LOGGER = logging.getLogger(__name__)
-_LOGGER .setLevel(logging.DEBUG)
+logger = logging.getLogger(__name__)
+logger .setLevel(logging.DEBUG)
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 ch.setFormatter(formatter)
-_LOGGER.addHandler(ch)
+logger.addHandler(ch)
 
-controller = RainbirdController()
+controller = RainbirdController(logger)
 controller.setConfig("####IP#####","####PASS#####")
 controller.startIrrigation(4,5)
 time.sleep(4)
