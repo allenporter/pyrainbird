@@ -1,4 +1,4 @@
-# arlo ![](https://img.shields.io/badge/python-3+-blue.svg)
+# pyrainbird ![](https://img.shields.io/badge/python-3+-blue.svg)
 > Python module for interacting with WiFi LNK module of the Rainbird Irrigation system
 
 This project has no affiliation with Rainbird. This module works with the Rainbird LNK WiFi Module.
