@@ -12,7 +12,7 @@ This module communicates directly towards the IP Address of the WiFi module it d
 I'm not a Python developer, so sorry for the bad code. I've developed it to control it from my domtica systems.
 
 
-**Please, feel free to contribute to this repo or chip in some cents for the effort and donate [![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=TFXBL7W9VEQZC)
+**Please, feel free to contribute to this repo or chip in some cents for the effort and [![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=TFXBL7W9VEQZC)
 
 On the bottom of the module is some test code. Feel free te test it with your own
 
