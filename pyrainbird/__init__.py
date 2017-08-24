@@ -90,8 +90,8 @@ class RainbirdController:
             return 0
 
     def currentIrrigation(self):
-            resp=self.request ("CurrentStationsActive")
             self.logger.info("Requesting current Irrigation station")
+            resp=self.request ("CurrentStationsActive")
             if (resp != ""):
                 jsonresult=json.loads(resp)
                 if (jsonresult["result"]["data"][:2] == "BF"):
@@ -100,11 +100,13 @@ class RainbirdController:
                       self.logger.info("Status request acknowledged")
                       return round(math.log(int(val[:2]),2)+1)
                     else:
-                      self.logger.warning("Status request NOT acknowledged")
                       return 0
                 else:
-                    return -1
-            self.logger.warning("Request resulted in no response")
+                   self.logger.warning("Status request NOT acknowledged")
+                   return -1
+            else:
+               self.logger.warning("Request resulted in no response")
+               return -1
             return 0
             
     def setConfig(self,server,password):
