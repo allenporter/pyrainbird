@@ -1,7 +1,7 @@
 Rainbird Controller
 =======================
 
-This project is intended for Domotica or Development project towards automating
+This project is intended for Domotica or Development projects towards automating
 your Rainbird Sprinklers. The project has no affiliation with Rainbird. This
 module works with the Rainbird LNK WiFi Module. For more information see 
 `reRainbird LNK WiFi Module
