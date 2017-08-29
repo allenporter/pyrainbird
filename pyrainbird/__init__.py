@@ -75,10 +75,8 @@ class RainbirdController:
         self.logger.warning("Request resulted in no response")
         return 0
         
-    def startIrrigation(self,zone,minutes,retry=3,retry_sleep=10):
+    def startIrrigation(self,zone,minutes):
             self.logger.info("Irrigation start requested for zone "+str(zone)+" for duration " + str(minutes))
-            self.retry=retry
-            self.retry_sleep=retry_sleep
             resp=self.request("ManuallyRunStation",zone,minutes)
             if (resp != ""):
                 jsonresult=json.loads(resp)
@@ -111,9 +109,11 @@ class RainbirdController:
                return -1
             return 0
             
-    def setConfig(self,server,password):
+    def setConfig(self,server,password,retry=3,retry_sleep=10):
         self.rainbirdPassword = password
         self.rainbirdServer = server
+        self.retry=retry
+        self.retry_sleep=retry_sleep
 
     def send_rainbird_command (self,rbdata):
             senddata = self.rainbirdEncryption.encrypt(rbdata ,self.rainbirdPassword)
