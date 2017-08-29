@@ -75,8 +75,10 @@ class RainbirdController:
         self.logger.warning("Request resulted in no response")
         return 0
         
-    def startIrrigation(self,zone,minutes):
+    def startIrrigation(self,zone,minutes,retry=3,retry_sleep=10):
             self.logger.info("Irrigation start requested for zone "+str(zone)+" for duration " + str(minutes))
+            self.retry=retry
+            self.retry_sleep=retry_sleep
             resp=self.request("ManuallyRunStation",zone,minutes)
             if (resp != ""):
                 jsonresult=json.loads(resp)
@@ -126,7 +128,7 @@ class RainbirdController:
 
             resp = None
             
-            for x in range(0,2):
+            for x in range(0,self.retry):
                 try:
                     h = http.client.HTTPConnection(self.rainbirdServer,80,timeout=20)
                     h.request("POST","/stick",senddata,head)
@@ -134,7 +136,7 @@ class RainbirdController:
                 except:
                     pass
                 if (resp is None or resp.status != 200):
-                    time.sleep(2)
+                    time.sleep(self.retry_sleep)
                     h.close()
                 else:
                     resultdata=resp.read()
