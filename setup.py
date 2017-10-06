@@ -11,7 +11,7 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 setup(
    
     name='pyrainbird',
-    version='0.0.9',
+    version='0.1.0',
     description='Rainbird Controller',
     long_description=long_description,
 

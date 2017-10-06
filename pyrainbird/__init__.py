@@ -59,15 +59,15 @@ class RainbirdController:
         self.rainbirdPassword = None
         self.rainbirdserver = None
         self.logger = logger
-    
-        
+
+
     def stopIrrigation(self):
-        self.logger.info("Irrigation stop requested")
+        self.logger.debug("Irrigation stop requested")
         resp=self.request("StopIrrigation")
         if (resp != ""):
           jsonresult=json.loads(resp)
           if (jsonresult["result"]["data"][:2] == "01"):
-           self.logger.info("Irrigation stop request acknowledged")
+           self.logger.debug("Irrigation stop request acknowledged")
            return 1
           else:
             self.logger.warning("Irrigation stop request NOT acknowledged")
@@ -76,12 +76,12 @@ class RainbirdController:
         return 0
         
     def startIrrigation(self,zone,minutes):
-            self.logger.info("Irrigation start requested for zone "+str(zone)+" for duration " + str(minutes))
+            self.logger.debug("Irrigation start requested for zone "+str(zone)+" for duration " + str(minutes))
             resp=self.request("ManuallyRunStation",zone,minutes)
             if (resp != ""):
                 jsonresult=json.loads(resp)
                 if (jsonresult["result"]["data"][:2] == "01"):
-                    self.logger.info("Irrigation request acknowledged")
+                    self.logger.debug("Irrigation request acknowledged")
                     return 1
                 else:
                     self.logger.warning("Irrigation request NOT acknowledged")
@@ -90,14 +90,14 @@ class RainbirdController:
             return 0
 
     def currentIrrigation(self):
-            self.logger.info("Requesting current Irrigation station")
+            self.logger.debug("Requesting current Irrigation station")
             resp=self.request ("CurrentStationsActive")
             if (resp != ""):
                 jsonresult=json.loads(resp)
                 if (jsonresult["result"]["data"][:2] == "BF"):
                     val=jsonresult["result"]["data"][4:8]
                     if (int(val[:2]) != 0):
-                      self.logger.info("Status request acknowledged")
+                      self.logger.debug("Status request acknowledged")
                       return round(math.log(int(val[:2]),2)+1)
                     else:
                       return 0
