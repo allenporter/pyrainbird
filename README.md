@@ -1,7 +1,7 @@
-# pyrainbird ![](https://img.shields.io/badge/python-3+-blue.svg)
-> Python module for interacting with WiFi LNK module of the Rainbird Irrigation system
+# pyrainbird ![](https://img.shields.io/badge/python-3+-blue.svg)![](https://www.rainbird.com/images/RainBirdLogo.gif)
+> Python module for interacting with WiFi LNK module of the Rain Bird Irrigation system
 
-This project has no affiliation with Rainbird. This module works with the Rainbird LNK WiFi Module.
+This project has no affiliation with Rain Bird. This module works with the Rain Bird LNK WiFi Module.
  For more information see http://www.rainbird.com/landscape/products/controllers/LNK-WiFi.htm
 
 ----
