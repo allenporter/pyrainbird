@@ -11,8 +11,8 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 setup(
    
     name='pyrainbird',
-    version='0.1.0',
-    description='Rainbird Controller',
+    version='0.1.1',
+    description='Rain Bird Controller',
     long_description=long_description,
 
     packages=find_packages(exclude=('tests', 'docs')),
@@ -26,7 +26,7 @@ setup(
 
     license='MIT',
 
-    keywords = ['Rainbird'],
+    keywords = ['Rain Bird'],
     classifiers=[],
 
 
