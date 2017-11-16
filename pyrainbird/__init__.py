@@ -91,7 +91,7 @@ class RainbirdController:
 
     def currentIrrigation(self):
             self.logger.debug("Requesting current Irrigation station")
-            resp=self.request ("CurrentStationsActive")
+            resp=self.request("CurrentStationsActive")
             if (resp != ""):
                 jsonresult=json.loads(resp)
                 if (jsonresult["result"]["data"][:2] == "BF"):
@@ -107,8 +107,23 @@ class RainbirdController:
             else:
                self.logger.warning("Request resulted in no response")
                return -1
-            return 0
-            
+
+    def currentRainSensorState(self):
+            self.logger.debug("Requesting current Rain Sensor State")
+            resp=self.request("CurrentRainSensorState")
+            if (resp != ""):
+                jsonresult=json.loads(resp)
+                if (jsonresult["result"]["data"][:2] == "BE"):
+                    val=jsonresult["result"]["data"][3:4]
+                    self.logger.debug("Current rainsensor state: "+str(val))
+                    return str(val)
+                else:
+                   self.logger.warning("Status request failed with wrong respone")
+                   return -1
+            else:
+               self.logger.warning("Request resulted in no response")
+               return -1
+
     def setConfig(self,server,password,retry=3,retry_sleep=10):
         self.rainbirdPassword = password
         self.rainbirdServer = server
@@ -203,7 +218,7 @@ class RainbirdController:
            encrypteddata = eas_encryptor.encrypt(c)
            return b2+iv+encrypteddata;
 
-""""
+"""
 logging.basicConfig(filename='pypython.log',level=logging.DEBUG)
 
 
@@ -216,8 +231,10 @@ ch.setFormatter(formatter)
 logger.addHandler(ch)
 
 controller = RainbirdController(logger)
-controller.setConfig("####IP#####","####PASS#####")
+controller.setConfig("####IP####","####PASS####")
 controller.startIrrigation(4,5)
 time.sleep(4)
 controller.stopIrrigation()
+
+controller.currentRainSensorState()
 """
