@@ -52,14 +52,13 @@ class RainbirdController:
     }"""
 
     
-    def __init__ (self,logger):
+    def __init__ (self, logger = logging.getLogger(__name__)):
         # Load JSON with commands
         self.rainbirdCommands = json.loads(self.jsoncommands)
         self.rainbirdEncryption = self.RainbirdEncryption()
         self.rainbirdPassword = None
         self.rainbirdserver = None
         self.logger = logger
-
 
     def stopIrrigation(self):
         self.logger.debug("Irrigation stop requested")
@@ -221,16 +220,16 @@ class RainbirdController:
 """
 logging.basicConfig(filename='pypython.log',level=logging.DEBUG)
 
-
 logger = logging.getLogger(__name__)
-logger .setLevel(logging.DEBUG)
+
+logger.setLevel(logging.DEBUG)
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 
-controller = RainbirdController(logger)
+controller = RainbirdController()
 controller.setConfig("####IP####","####PASS####")
 controller.startIrrigation(4,5)
 time.sleep(4)
