@@ -24,6 +24,6 @@ setup(
 
     keywords = ['Rain Bird'],
     classifiers=[],
-
+    zip_safe=True
 
 )
