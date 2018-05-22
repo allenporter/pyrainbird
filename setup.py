@@ -9,14 +9,16 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(
-   
+
     name='pyrainbird',
     version='0.1.3',
     description='Rain Bird Controller',
     long_description=long_description,
 
+    install_requires=['pycrypto'],
+
     packages=find_packages(exclude=('tests', 'docs')),
-    
+
     #The project's main homepage.
     url='https://github.com/jbarrancos/pyrainbird/',
 
