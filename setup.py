@@ -6,10 +6,10 @@ except ImportError:
 setup(
 
     name='pyrainbird',
-    version='0.1.5',
+    version='0.1.6',
     description='Rain Bird Controller',
 
-    install_requires=['pycrypto'],
+    install_requires=['pycryptodome'],
 
     packages=['pyrainbird'],
 
