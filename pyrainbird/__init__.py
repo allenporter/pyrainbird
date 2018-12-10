@@ -1,5 +1,4 @@
 import json
-import math
 import http.client
 import time
 import logging
@@ -94,12 +93,9 @@ class RainbirdController:
             if (resp != ""):
                 jsonresult=json.loads(resp)
                 if (jsonresult["result"]["data"][:2] == "BF"):
-                    val=jsonresult["result"]["data"][4:8]
-                    if (int(val[:2]) != 0):
-                      self.logger.debug("Status request acknowledged")
-                      return round(math.log(int(val[:2]),2)+1)
-                    else:
-                      return 0
+                    self.logger.debug("Status request acknowledged")
+                    val=jsonresult["result"]["data"][4:6]
+                    return int(val, 16).bit_length()
                 else:
                    self.logger.warning("Status request NOT acknowledged")
                    return -1
