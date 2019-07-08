@@ -97,7 +97,7 @@ class RainbirdController:
                     val=jsonresult["result"]["data"][4:8]
                     if (int(val[:2]) != 0):
                       self.logger.debug("Status request acknowledged")
-                      return round(math.log(int(val[:2]),2)+1)
+                      return round(math.log(int("0x" + val[:2], 0),2)+1)
                     else:
                       return 0
                 else:
