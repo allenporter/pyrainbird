@@ -6,14 +6,14 @@ except ImportError:
 setup(
 
     name='pyrainbird',
-    version='0.1.6',
+    version='0.2.0',
     description='Rain Bird Controller',
 
     install_requires=['pycryptodome'],
 
     packages=['pyrainbird'],
 
-    #The project's main homepage.
+    # The project's main homepage.
     url='https://github.com/jbarrancos/pyrainbird/',
 
     # Author details
@@ -22,7 +22,7 @@ setup(
 
     license='MIT',
 
-    keywords = ['Rain Bird'],
+    keywords=['Rain Bird'],
     classifiers=[],
     zip_safe=True
 
