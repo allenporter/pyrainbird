@@ -114,7 +114,7 @@ class RainbirdController:
         self.logger.debug("Requesting current Rain Sensor State")
         resp = self.command("RainDelayGet")
         if resp:
-            if resp['type'] == "RainDelayGetResponse":
+            if resp['type'] == "RainDelaySettingResponse":
                 self.logger.debug(
                     "Current rain delay state: %s" % (resp['delaySetting']))
             else:

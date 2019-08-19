@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
-import sys
 
-from pyrainbird import encryption
+from pyrainbird import encryption, RainbirdController
 import logging
 import os
 
@@ -25,3 +24,7 @@ print("%s\n" % encrypt)
 decrypt = encryption.decrypt(encrypt, password)
 
 print("%s\n" % decrypt)
+
+controller = RainbirdController(os.environ['RAINBIRD_SERVER'], os.environ['RAINBIRD_PASSWORD'])
+
+print('%s\n' % controller.get_rain_delay())
