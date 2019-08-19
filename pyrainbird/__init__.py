@@ -12,7 +12,7 @@ class RainbirdController:
     def __init__(self, server, password, update_delay=20, retry=3, retry_sleep=10, logger=logging.getLogger(__name__)):
         self.rainbird_client = RainbirdClient(server, password, retry, retry_sleep, logger)
         self.logger = logger
-        self.zones = []
+        self.zones = dict()
         self.rain_sensor = None
         self.update_delay = update_delay
         self.zone_update_time = None
@@ -22,7 +22,7 @@ class RainbirdController:
         if self.zone_update_time is None or time.time() > self.zone_update_time + self.update_delay:
             resp = self._update_irrigation_state()
             if not (resp and resp["type"] == 'CurrentStationsActiveResponse'):
-                self.zones = []
+                self.zones.clear()
                 return None
         return self.zones[zone]
 
