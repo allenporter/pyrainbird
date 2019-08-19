@@ -9,7 +9,7 @@ setup(
     version='0.2.1',
     description='Rain Bird Controller',
 
-    install_requires=['pycryptodome'],
+    install_requires=['pycryptodome', 'requests'],
 
     packages=['pyrainbird'],
 
