@@ -1,8 +1,9 @@
-import http.client
 import json
-import time
 import logging
+import time
+
 import requests
+
 from . import encryption
 
 HEAD = {
@@ -20,30 +21,30 @@ class RainbirdClient:
         self.retry = retry
         self.retry_sleep = retry_sleep
         self.logger = logger
-        self.rainbirdServer = host
-        self.rainbirdPassword = password
+        self.rainbird_server = host
+        self.rainbird_password = password
 
     def request(self, data, length):
         request_id = time.time()
-        senddata = '{"id":%d,"jsonrpc":"2.0","method":"tunnelSip","params":{"data":"%s","length":%d}}' % (
+        send_data = '{"id":%d,"jsonrpc":"2.0","method":"tunnelSip","params":{"data":"%s","length":%d}}' % (
             request_id, data, length)
         for i in range(0, self.retry):
             self.logger.debug('Sending %s to %s, %d. try.' %
-                              (senddata, self.rainbirdServer, i + 1))
+                              (send_data, self.rainbird_server, i + 1))
             try:
-                resp = requests.post("http://%s/stick" % self.rainbirdServer,
-                                     encryption.encrypt(senddata, self.rainbirdPassword), headers=HEAD, timeout=20)
+                resp = requests.post("http://%s/stick" % self.rainbird_server,
+                                     encryption.encrypt(send_data, self.rainbird_password), headers=HEAD, timeout=20)
             except Exception as e:
-                self.logger.warn('Unable to connect: %s' % e)
+                self.logger.warning('Unable to connect: %s' % e)
                 resp = None
 
             if resp is None:
-                self.logger.warn("Response not returned.")
+                self.logger.warning("Response not returned.")
             elif resp.status_code != 200:
-                self.logger.warn("Response: %d, %s" % (resp.status, resp.reason))
+                self.logger.warning("Response: %d, %s" % (resp.status, resp.reason))
             else:
-                decrypteddata = encryption.decrypt(resp.content, self.rainbirdPassword).decode("UTF-8").rstrip('\x00')
-                self.logger.debug('Response: %s' % decrypteddata)
-                return json.loads(decrypteddata)["result"]["data"]
+                decrypted_data = encryption.decrypt(resp.content, self.rainbird_password).decode("UTF-8").rstrip('\x00')
+                self.logger.debug('Response: %s' % decrypted_data)
+                return json.loads(decrypted_data)["result"]["data"]
             time.sleep(self.retry_sleep)
             continue
