@@ -19,7 +19,7 @@ class RainbirdController:
         self.sensor_update_time = None
 
     def zone_state(self, zone):
-        if time.time() > self.zone_update_time + self.update_delay:
+        if self.zone_update_time is None or time.time() > self.zone_update_time + self.update_delay:
             resp = self._update_irrigation_state()
             if not (resp and resp["type"] == 'CurrentStationsActiveResponse'):
                 self.zones = []
@@ -38,7 +38,7 @@ class RainbirdController:
                                                                                                  self.zones, False)
 
     def get_rain_sensor_state(self):
-        if time.time() > self.sensor_update_time + self.update_delay:
+        if self.sensor_update_time is None or time.time() > self.sensor_update_time + self.update_delay:
             response = self._update_rain_sensor_state()
             self.rain_sensor = response['sensorState'] if response is not None and response[
                 'type'] == "CurrentRainSensorStateResponse" else None
