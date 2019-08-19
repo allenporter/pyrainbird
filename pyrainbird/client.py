@@ -2,6 +2,7 @@ import http.client
 import json
 import time
 import logging
+import requests
 from . import encryption
 
 HEAD = {
@@ -9,7 +10,8 @@ HEAD = {
     "Accept-Encoding": "gzip, deflate",
     "User-Agent": "RainBird/2.0 CFNetwork/811.5.4 Darwin/16.7.0",
     "Accept": "*/*",
-    "Connection": "keep-alive"}
+    "Connection": "keep-alive",
+    "Content-Type": "application/octet-stream"}
 
 
 class RainbirdClient:
@@ -28,23 +30,20 @@ class RainbirdClient:
         for i in range(0, self.retry):
             self.logger.debug('Sending %s to %s, %d. try.' %
                               (senddata, self.rainbirdServer, i + 1))
-            resp = self._send_rainbird_command(senddata)
-            if resp is None or resp.status != 200:
-                time.sleep(self.retry_sleep)
-                continue
+            try:
+                resp = requests.post("http://%s/stick" % self.rainbirdServer,
+                                     encryption.encrypt(senddata, self.rainbirdPassword), headers=HEAD, timeout=20)
+            except Exception as e:
+                self.logger.warn('Unable to connect: %s' % e)
+                resp = None
+
+            if resp is None:
+                self.logger.warn("Response not returned.")
+            elif resp.status_code != 200:
+                self.logger.warn("Response: %d, %s" % (resp.status, resp.reason))
             else:
-                decrypteddata = encryption.decrypt(resp.read(), self.rainbirdPassword).decode("UTF-8").rstrip('\x00')
+                decrypteddata = encryption.decrypt(resp.content, self.rainbirdPassword).decode("UTF-8").rstrip('\x00')
                 self.logger.debug('Response: %s' % decrypteddata)
                 return json.loads(decrypteddata)["result"]["data"]
-
-    def _send_rainbird_command(self, senddata):
-        try:
-            h = http.client.HTTPConnection(self.rainbirdServer, 80, timeout=20)
-            h.request("POST", "/stick", encryption.encrypt(senddata,
-                                                           self.rainbirdPassword), HEAD)
-            return h.getresponse()
-        except Exception as e:
-            self.logger.warn('Unable to connect: %s' % e)
-            return None
-        finally:
-            h.close()
+            time.sleep(self.retry_sleep)
+            continue
