@@ -8,7 +8,7 @@ This project has no affiliation with Rain Bird. This module works with the Rain 
 ----
 
 This module communicates directly towards the IP Address of the WiFi module it does not support the cloud.
- You can start/stop the irrigation and get the currenltly active zone.
+ You can start/stop the irrigation and get the currently active zone.
 
 I'm not a Python developer, so sorry for the bad code. I've developed it to control it from my domtica systems.
 
@@ -19,8 +19,11 @@ On the bottom of the module is some test code. Feel free te test it with your ow
 
 ```python
 
-
 # Test for controller
+from pyrainbird import RainbirdController
+import time
+import logging
+
 logging.basicConfig(filename='pypython.log',level=logging.DEBUG)
 
 
@@ -32,9 +35,9 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 ch.setFormatter(formatter)
 _LOGGER.addHandler(ch)
 
-controller = RainbirdController(jsoncommands)
-controller.setConfig("####IP#####","####PASS#####")
-controller.startIrrigation(4,5)
+controller = RainbirdController("####IP#####","####PASS#####")
+controller.irrigate_zone(4,5)
 time.sleep(4)
-controller.stopIrrigation()
+controller.stop_irrigation()
+
 ```

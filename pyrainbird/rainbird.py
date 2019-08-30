@@ -1,4 +1,3 @@
-
 # COMMAND FILE RAINBIRD API
 RAIBIRD_COMMANDS = {
     "ControllerCommands":
@@ -54,12 +53,15 @@ RAIBIRD_COMMANDS = {
 
 
 def decode(data):
-    cmd_template = RAIBIRD_COMMANDS['ControllerResponses'][data[:2]]
-    result = {'type': cmd_template['type']}
-    for k, v in cmd_template.items():
-        if isinstance(v, dict) and 'position' in v and 'length' in v:
-            result[k] = int(data[v['position']:v['position'] + v['length']], 16)
-    return result
+    if data[:2] in RAIBIRD_COMMANDS['ControllerResponses']:
+        cmd_template = RAIBIRD_COMMANDS['ControllerResponses'][data[:2]]
+        result = {'type': cmd_template['type']}
+        for k, v in cmd_template.items():
+            if isinstance(v, dict) and 'position' in v and 'length' in v:
+                result[k] = int(data[v['position']:v['position'] + v['length']], 16)
+        return result
+    else:
+        return {"data": data}
 
 
 def encode(command, *args):
@@ -69,7 +71,7 @@ def encode(command, *args):
         cmd_code = command_set["command"]
     else:
         raise Exception('Command %s not available. Existing commands: %s' % (
-        request_command, RAIBIRD_COMMANDS["ControllerCommands"]))
+            request_command, RAIBIRD_COMMANDS["ControllerCommands"]))
     if len(*args) > command_set['length'] - 1:
         raise Exception('Too much parameters. %d expected:\n%s' % (command_set['length'] - 1, command_set))
     params = (cmd_code, *tuple(map(lambda x: int(x), *args)))
