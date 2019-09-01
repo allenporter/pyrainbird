@@ -41,7 +41,7 @@ class RainbirdClient:
             if resp is None:
                 self.logger.warning("Response not returned.")
             elif resp.status_code != 200:
-                self.logger.warning("Response: %d, %s" % (resp.status, resp.reason))
+                self.logger.warning("Response: %d, %s" % (resp.status_code, resp.reason))
             else:
                 decrypted_data = encryption.decrypt(resp.content, self.rainbird_password).decode("UTF-8").rstrip('\x00')
                 self.logger.debug('Response: %s' % decrypted_data)
