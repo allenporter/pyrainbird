@@ -46,8 +46,12 @@ class RainbirdController:
 
     def get_rain_delay(self):
         response = self._update_current_rain_delay_state()
-        return response['delaySetting'] if response is not None and 'delaySetting' and response[
-            'type'] == "RainDelayGetResponse" in response else None
+        return response['delaySetting'] if response is not None and 'delaySetting' in response and response[
+            'type'] == "RainDelayGetResponse" else None
+
+    def set_rain_delay(self, days):
+        response = self._set_rain_delay_state(days)
+        return response is not None and response['type'] == "AcknowledgeResponse"
 
     def _stop_irrigation(self):
         self.logger.debug("Irrigation stop requested")
@@ -111,10 +115,23 @@ class RainbirdController:
         return resp
 
     def _update_current_rain_delay_state(self):
-        self.logger.debug("Requesting current Rain Sensor State")
+        self.logger.debug("Requesting current Rain Dealy State")
         resp = self.command("RainDelayGet")
         if resp:
             if resp['type'] == "RainDelaySettingResponse":
+                self.logger.debug(
+                    "Current rain delay state: %s" % (resp['delaySetting']))
+            else:
+                self.logger.warning("Status request failed with wrong response")
+        else:
+            self.logger.warning("Request resulted in no response")
+        return resp
+
+    def _set_rain_delay_state(self, days):
+        self.logger.debug("SettingRain DealyState")
+        resp = self.command("RainDelaySet", days)
+        if resp:
+            if resp['type'] == "AcknowledgeResponse":
                 self.logger.debug(
                     "Current rain delay state: %s" % (resp['delaySetting']))
             else:
