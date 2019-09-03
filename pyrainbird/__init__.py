@@ -47,7 +47,7 @@ class RainbirdController:
     def get_rain_delay(self):
         response = self._update_current_rain_delay_state()
         return response['delaySetting'] if response is not None and 'delaySetting' in response and response[
-            'type'] == "RainDelayGetResponse" else None
+            'type'] == "RainDelaySettingResponse" else None
 
     def set_rain_delay(self, days):
         response = self._set_rain_delay_state(days)
