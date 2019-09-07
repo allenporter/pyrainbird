@@ -3,8 +3,8 @@ import time
 from functools import reduce
 
 from . import rainbird
-from .rainbird import RAIBIRD_COMMANDS
 from .client import RainbirdClient
+from .rainbird import RAIBIRD_COMMANDS
 
 
 class RainbirdController:
@@ -29,13 +29,13 @@ class RainbirdController:
     def irrigate_zone(self, zone, time):
         response = self._start_irrigation(zone, time)
         self._update_irrigation_state()
-        return response is not None and response["type"] == 'CurrentStationsActiveResponse' and self.zones[zone]
+        return response is not None and response["type"] == 'AcknowledgeResponse' and self.zones[zone]
 
     def stop_irrigation(self):
         response = self._stop_irrigation()
         self._update_irrigation_state()
-        return response is not None and response["type"] == 'AcknowledgeResponse' and not reduce(lambda x, y: x or y,
-                                                                                                 self.zones, False)
+        return response is not None and response["type"] == 'AcknowledgeResponse' and not reduce((lambda x, y: x or y),
+                                                                                                 self.zones.values())
 
     def get_rain_sensor_state(self):
         if self.sensor_update_time is None or time.time() > self.sensor_update_time + self.update_delay:
@@ -133,7 +133,7 @@ class RainbirdController:
         if resp:
             if resp['type'] == "AcknowledgeResponse":
                 self.logger.debug(
-                    "Current rain delay state: %s" % (resp['delaySetting']))
+                    "Current rain delay state set to %d days" % (days))
             else:
                 self.logger.warning("Status request failed with wrong response")
         else:

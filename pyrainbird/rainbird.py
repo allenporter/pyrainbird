@@ -58,7 +58,9 @@ def decode(data):
         result = {'type': cmd_template['type']}
         for k, v in cmd_template.items():
             if isinstance(v, dict) and 'position' in v and 'length' in v:
-                result[k] = int(data[v['position']:v['position'] + v['length']], 16)
+                position_ = (v['position']-1)*2
+                length_ = v['length']*2
+                result[k] = int(data[position_:position_ + length_], 16)
         return result
     else:
         return {"data": data}
