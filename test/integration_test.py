@@ -11,7 +11,6 @@ from pyrainbird import (
     CommandSupport,
     WaterBudget,
 )
-from pyrainbird.data import Echo
 from pyrainbird.encryption import encrypt
 
 MOCKED_RAINBIRD_URL = "rainbird.local"
