@@ -31,12 +31,12 @@ class Echo(object):
 
 class CommandSupport(Echo):
     def __init__(self, support, echo=0):
-        Echo.__init__(echo)
+        super(CommandSupport, self).__init__(echo)
         self.support = support
 
     def __eq__(self, o):
         return (
-            Echo.__eq__(o)
+            super(CommandSupport, self).__eq__(self, o)
             and isinstance(o, CommandSupport)
             and o.support == self.support
         )
@@ -45,7 +45,7 @@ class CommandSupport(Echo):
         return not __eq__(o)
 
     def __hash__(self):
-        return hash((Echo.__hash__(), self.support))
+        return hash((super(CommandSupport, self).__hash__(), self.support))
 
 
 class ModelAndVersion(object):
@@ -97,15 +97,15 @@ class States(object):
 
 class AvailableStations(Pageable):
     def __init__(self, mask, page=_DEFAULT_PAGE):
-        Pageable.__init__(page)
+        super(AvailableStations, self).__init__(page)
         self.stations = States(mask)
 
     def __hash__(self):
-        return hash((Pageable.__hash__(), self.stations))
+        return hash((super(AvailableStations, self).__hash__(), self.stations))
 
     def __eq__(self, o):
         return (
-            Pageable.__eq__(o)
+            super(AvailableStations, self).__eq__(o)
             and isinstance(o, AvailableStations)
             and self.stations == o.stations
         )
