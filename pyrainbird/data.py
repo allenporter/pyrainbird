@@ -14,6 +14,9 @@ class Pageable(object):
     def __ne__(self, o):
         return not __eq__(o)
 
+    def __str__(self):
+        return "page: %d" % self.page
+
 
 class Echo(object):
     def __init__(self, echo):
@@ -28,6 +31,9 @@ class Echo(object):
     def __ne__(self, o):
         return not __eq__(o)
 
+    def __str__(self):
+        return "echo: %02X" % self.echo
+
 
 class CommandSupport(Echo):
     def __init__(self, support, echo=0):
@@ -36,9 +42,9 @@ class CommandSupport(Echo):
 
     def __eq__(self, o):
         return (
-            super(CommandSupport, self).__eq__(o)
-            and isinstance(o, CommandSupport)
-            and o.support == self.support
+                super(CommandSupport, self).__eq__(o)
+                and isinstance(o, CommandSupport)
+                and o.support == self.support
         )
 
     def __ne__(self, o):
@@ -46,6 +52,9 @@ class CommandSupport(Echo):
 
     def __hash__(self):
         return hash((super(CommandSupport, self).__hash__(), self.support))
+
+    def __str__(self):
+        return "command support: %02X, %s" % (self.support, super(CommandSupport, self).__str__())
 
 
 class ModelAndVersion(object):
@@ -59,14 +68,17 @@ class ModelAndVersion(object):
 
     def __eq__(self, o):
         return (
-            isinstance(o, ModelAndVersion)
-            and self.model == o.model
-            and self.major == o.major
-            and self.minor == o.minor
+                isinstance(o, ModelAndVersion)
+                and self.model == o.model
+                and self.major == o.major
+                and self.minor == o.minor
         )
 
     def __ne__(self, o):
         return not __eq__(o)
+
+    def __str__(self):
+        return "model: %04X, version: %d.%d" % (self.model, self.major, self.minor)
 
 
 class States(object):
@@ -85,14 +97,20 @@ class States(object):
 
     def __eq__(self, o):
         return (
-            isinstance(o, States)
-            and self.count == o.count
-            and self.mask == o.mask
-            and self.states == o.states
+                isinstance(o, States)
+                and self.count == o.count
+                and self.mask == o.mask
+                and self.states == o.states
         )
 
     def __ne__(self, o):
         return not __eq__(o)
+
+    def __str__(self):
+        result=()
+        for i in range(0,  self.count):
+            result+=("%d:%d" % (i+1, 1 if self.states[i] else 0),)
+        return "states: %s" % ", ".join(result)
 
 
 class AvailableStations(Pageable):
@@ -105,13 +123,16 @@ class AvailableStations(Pageable):
 
     def __eq__(self, o):
         return (
-            super(AvailableStations, self).__eq__(o)
-            and isinstance(o, AvailableStations)
-            and self.stations == o.stations
+                super(AvailableStations, self).__eq__(o)
+                and isinstance(o, AvailableStations)
+                and self.stations == o.stations
         )
 
     def __ne__(self, o):
         return not __eq__(o)
+
+    def __str__(self):
+        return "available stations: %X, %s"%(self.stations.mask,super(AvailableStations, self).__str__())
 
 
 class WaterBudget(object):
@@ -125,11 +146,15 @@ class WaterBudget(object):
 
     def __eq__(self, o):
         return (
-            isinstance(o, WaterBudget)
-            and self.program == o.program
-            and self.high_byte == o.high_byte
-            and self.low_byte == o.low_byte
+                isinstance(o, WaterBudget)
+                and self.program == o.program
+                and self.high_byte == o.high_byte
+                and self.low_byte == o.low_byte
         )
 
     def __ne__(self, o):
         return not __eq__(o)
+
+    def __str__(self):
+        return "water budget: program: %d, hi: %02X, lo: %02X" % (self.program, self.high_byte, self.low_byte)
+
