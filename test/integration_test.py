@@ -26,9 +26,7 @@ class TestCase(unittest.TestCase):
     def test_irrigate_zone(self):
         mock_response("01", pageNumber=0, commandEcho=6)
         mock_response(
-            "BF",
-            pageNumber=0,
-            activeStations=0b00010000000000000000000000000000,
+            "BF", pageNumber=0, activeStations=0b10000000000000000000000000000
         )
         rainbird = RainbirdController(MOCKED_RAINBIRD_URL, MOCKED_PASSWORD)
         self.assertEqual(True, rainbird.irrigate_zone(5, 30))
@@ -58,12 +56,16 @@ class TestCase(unittest.TestCase):
 
 def mock_response(command, **kvargs):
     resp = RAIBIRD_COMMANDS["ControllerResponses"][command]
-    data = command
+    data = command + ("00" * (resp["length"] - 1))
     for k in resp:
         if k in ["type", "length"]:
             continue
         param_template = "%%0%dX" % (resp[k]["length"])
-        data += param_template % kvargs[k]
+        data = "%s%s%s" % (
+            data[: resp[k]["position"]],
+            (param_template % kvargs[k]),
+            data[resp[k]["position"] + resp[k]["length"]:],
+        )
 
     responses.add(
         responses.POST,
