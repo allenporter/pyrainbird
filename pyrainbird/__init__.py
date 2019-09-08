@@ -69,7 +69,7 @@ class RainbirdController:
             lambda resp: resp["serialNumber"], "SerialNumber"
         )
 
-    def get_current_time(self) -> datetime.time:
+    def get_current_time(self):
         return self._process_command(
             lambda resp: datetime.time(
                 resp["hour"], resp["minute"], resp["second"]
@@ -77,7 +77,7 @@ class RainbirdController:
             "CurrentTime",
         )
 
-    def get_current_date(self) -> datetime.date:
+    def get_current_date(self):
         return self._process_command(
             lambda resp: datetime.date(
                 resp["year"], resp["month"], resp["day"]
