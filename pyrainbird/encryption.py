@@ -23,7 +23,7 @@ def decrypt(encrypted_data, decrypt_key):
     encrypted_data = bytes(encrypted_data[48: len(encrypted_data)])
 
     m = SHA256.new()
-    m.update(bytes(decrypt_key, "UTF-8"))
+    m.update(to_bytes(decrypt_key))
 
     symmetric_key = m.digest()
     symmetric_key = symmetric_key[:32]
