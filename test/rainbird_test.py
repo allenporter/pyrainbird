@@ -46,7 +46,7 @@ class TestSequence(unittest.TestCase):
         name_func=encode_name_func,
     )
     def test_encode(self, expected, command, *vargs):
-        self.assertEqual(expected, encode(command, vargs))
+        self.assertEqual(expected, encode(command, *vargs))
 
     @parameterized.expand(
         [

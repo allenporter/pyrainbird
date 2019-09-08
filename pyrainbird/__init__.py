@@ -1,7 +1,15 @@
+import datetime
 import logging
 import time
 from functools import reduce
 
+from pyrainbird.data import (
+    ModelAndVersion,
+    AvailableStations,
+    CommandSupport,
+    States,
+    WaterBudget,
+)
 from . import rainbird
 from .client import RainbirdClient
 from .rainbird import RAIBIRD_COMMANDS
@@ -21,157 +29,134 @@ class RainbirdController:
             server, password, retry, retry_sleep, logger
         )
         self.logger = logger
-        self.zones = dict()
+        self.zones = States("00000000")
         self.rain_sensor = None
         self.update_delay = update_delay
         self.zone_update_time = None
         self.sensor_update_time = None
 
-    def zone_state(self, zone):
-        if (
-            self.zone_update_time is None
-            or time.time() > self.zone_update_time + self.update_delay
-        ):
-            resp = self._update_irrigation_state()
-            if not (resp and resp["type"] == "CurrentStationsActiveResponse"):
-                self.zones.clear()
-                return None
-        return self.zones[zone]
-
-    def irrigate_zone(self, zone, minutes):
-        self.logger.debug(
-            "Irrigation start requested for zone "
-            + str(zone)
-            + " for duration "
-            + str(minutes)
-        )
-        response = self.command("ManuallyRunStation", zone, minutes)
-        if response:
-            if response["type"] == "AcknowledgeResponse":
-                self.logger.debug("Irrigation request acknowledged")
-            else:
-                self.logger.warning("Irrigation request NOT acknowledged")
-        else:
-            self.logger.warning("Request resulted in no response")
-        self._update_irrigation_state()
-        return (
-            response is not None
-            and response["type"] == "AcknowledgeResponse"
-            and self.zones[zone]
+    def get_model_and_version(self) -> ModelAndVersion:
+        return self._process_command(
+            lambda response: ModelAndVersion(
+                response["modelID"],
+                response["protocolRevisionMajor"],
+                response["protocolRevisionMinor"],
+            ),
+            "ModelAndVersion",
         )
 
-    def stop_irrigation(self):
-        self.logger.debug("Irrigation stop requested")
-        response = self.command("StopIrrigation")
-        if response:
-            if response["type"] == "AcknowledgeResponse":
-                self.logger.debug("Irrigation stop request acknowledged")
-            else:
-                self.logger.warning("Irrigation stop request NOT acknowledged")
-        else:
-            self.logger.warning("Request resulted in no response")
-
-        self._update_irrigation_state()
-        return (
-            response is not None
-            and response["type"] == "AcknowledgeResponse"
-            and not reduce((lambda x, y: x or y), self.zones.values())
+    def get_available_stations(self) -> AvailableStations:
+        return self._process_command(
+            lambda resp: AvailableStations(
+                resp["setStations"], page=resp["pageNumber"]
+            ),
+            "AvailableStations",
         )
 
-    def get_rain_sensor_state(self):
-        if (
-            self.sensor_update_time is None
-            or time.time() > self.sensor_update_time + self.update_delay
-        ):
+    def get_command_support(self, command) -> CommandSupport:
+        return self._process_command(
+            lambda resp: CommandSupport(
+                resp["support"], echo=resp["commandEcho"]
+            ),
+            "CommandSupport",
+            command,
+        )
+
+    def get_serial_version(self) -> int:
+        return self._process_command(
+            lambda resp: resp["serialNumber"], "SerialNumber"
+        )
+
+    def get_current_time(self) -> datetime.time:
+        return self._process_command(
+            lambda resp: datetime.time(
+                resp["hour"], resp["minute"], resp["second"]
+            ),
+            "CurrentTime",
+        )
+
+    def get_current_date(self) -> datetime.date:
+        return self._process_command(
+            lambda resp: datetime.date(
+                resp["year"], resp["month"], resp["day"]
+            ),
+            "CurrentDate",
+        )
+
+    def water_budget(self, budget: int) -> WaterBudget:
+        return self._process_command(
+            lambda resp: WaterBudget(
+                resp["programCode"], resp["highByte"], resp["lowByte"]
+            ),
+            "WaterBudget",
+            budget,
+        )
+
+    def get_rain_sensor_state(self) -> bool:
+        if _check_delay(self.sensor_update_time, self.update_delay):
             self.logger.debug("Requesting current Rain Sensor State")
-            response = self.command("CurrentRainSensorState")
-            if response:
-                if response["type"] == "CurrentRainSensorStateResponse":
-                    self.logger.debug(
-                        "Current rainsensor state: %s"
-                        % (response["sensorState"])
-                    )
-                else:
-                    self.logger.warning(
-                        "Status request failed with wrong response"
-                    )
-            else:
-                self.logger.warning("Request resulted in no response")
-            self.rain_sensor = (
-                response["sensorState"]
-                if response is not None
-                and response["type"] == "CurrentRainSensorStateResponse"
-                else None
+            response = self._process_command(
+                lambda resp: bool(resp["sensorState"]),
+                "CurrentRainSensorState",
             )
+            self.rain_sensor = response
         return self.rain_sensor
 
-    def get_rain_delay(self):
-        self.logger.debug("Requesting current Rain Dealy State")
-        response = self.command("RainDelayGet")
-        if response:
-            if response["type"] == "RainDelaySettingResponse":
-                self.logger.debug(
-                    "Current rain delay state: %s" % (response["delaySetting"])
-                )
-            else:
-                self.logger.warning(
-                    "Status request failed with wrong response"
-                )
-        else:
-            self.logger.warning("Request resulted in no response")
-        return (
-            response["delaySetting"]
-            if response is not None
-            and "delaySetting" in response
-            and response["type"] == "RainDelaySettingResponse"
-            else None
+    def get_zone_state(self, zone) -> bool:
+        if _check_delay(self.zone_update_time, self.update_delay):
+            response = self._update_irrigation_state()
+            if not isinstance(response, States):
+                self.zones = States("00000000")
+                return None
+        return self.zones.active(zone)
+
+    def set_program(self, program: int) -> bool:
+        return self._process_command(
+            lambda resp: True, "ManuallyRunProgram", program
         )
 
-    def set_rain_delay(self, days):
-        self.logger.debug("SettingRain DealyState")
-        response = self.command("RainDelaySet", days)
-        if response:
-            if response["type"] == "AcknowledgeResponse":
-                self.logger.debug(
-                    "Current rain delay state set to %d days" % days
-                )
-            else:
-                self.logger.warning(
-                    "Status request failed with wrong response"
-                )
-        else:
-            self.logger.warning("Request resulted in no response")
-        return (
-            response is not None and response["type"] == "AcknowledgeResponse"
+    def test_zone(self, zone: int) -> bool:
+        return self._process_command(lambda resp: True, "TestStations", zone)
+
+    def irrigate_zone(self, zone, minutes) -> bool:
+        response = self._process_command(
+            lambda resp: True, "ManuallyRunStation", zone, minutes
+        )
+        self._update_irrigation_state()
+        return response == True and self.zones.active(zone)
+
+    def stop_irrigation(self) -> bool:
+        response = self._process_command(lambda resp: True, "StopIrrigation")
+        self._update_irrigation_state()
+        return response == True and not reduce(
+            (lambda x, y: x or y), self.zones.states
         )
 
-    def _update_irrigation_state(self):
-        self.logger.debug("Requesting current Irrigation station")
-        resp = self.command("CurrentStationsActive", 0)
-        if resp:
-            if resp["type"] == "CurrentStationsActiveResponse":
-                resp["sprinklers"] = dict()
-                self.logger.debug("Status request acknowledged")
-                resp["active"] = list()
-                for i in range(0, 8):
-                    mask = 1 << ((6 * 4) + i)
-                    self.logger.debug(
-                        "%08x X %08x" % (resp["activeStations"], mask)
-                    )
-                    active = bool(resp["activeStations"] & mask)
-                    self.zones[i + 1] = active
-                    if active:
-                        resp["active"].append(i + 1)
-                resp["zones"] = self.zones
-                self.zone_update_time = time.time()
-            else:
-                self.logger.warning("Status request NOT acknowledged")
-        else:
-            self.logger.warning("Request resulted in no response")
-        return resp
+    def get_rain_delay(self) -> int:
+        return self._process_command(
+            lambda resp: resp["delaySetting"], "RainDelayGet"
+        )
+
+    def set_rain_delay(self, days) -> bool:
+        return self._process_command(lambda resp: True, "RainDelaySet", days)
+
+    def advance_zone(self, param) -> bool:
+        return self._process_command(
+            lambda resp: True, "AdvanceStation", param
+        )
+
+    def get_current_irrigation(self) -> int:
+        return self._process_command(
+            lambda resp: resp["irrigationState"], "CurrentIrrigationState"
+        )
+
+    def schedule(self, param1, param2):
+        return self._process_command(
+            lambda resp: resp, "CurrentSchedule", param1, param2
+        )
 
     def command(self, command, *args):
-        data = rainbird.encode(command, args)
+        data = rainbird.encode(command, *args)
         self.logger.debug("Request to line: " + str(data))
         decrypted_data = self.rainbird_client.request(
             data,
@@ -202,3 +187,31 @@ class RainbirdController:
             )
         self.logger.debug("Response: %s" % decoded)
         return decoded
+
+    def _process_command(self, funct, cmd, *args):
+        response = self.command(cmd, *args)
+        return (
+            funct(response)
+            if response is not None
+            and response["type"]
+            == RAIBIRD_COMMANDS["ControllerResponses"][
+                RAIBIRD_COMMANDS["ControllerCommands"][cmd + "Request"][
+                    "response"
+                ]
+            ]["type"]
+            else response
+        )
+
+    def _update_irrigation_state(self):
+        result = self._process_command(
+            lambda resp: States("%08X" % resp["activeStations"]),
+            "CurrentStationsActive",
+            0,
+        )
+        if isinstance(result, States):
+            self.zones = result
+        return result
+
+
+def _check_delay(update_time, update_delay):
+    return update_time is None or time.time() > (update_time + update_delay)

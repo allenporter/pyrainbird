@@ -64,7 +64,7 @@ def mock_response(command, **kvargs):
         data = "%s%s%s" % (
             data[: resp[k]["position"]],
             (param_template % kvargs[k]),
-            data[resp[k]["position"] + resp[k]["length"]:],
+            data[(resp[k]["position"] + resp[k]["length"]):],
         )
 
     responses.add(

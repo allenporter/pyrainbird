@@ -202,14 +202,14 @@ def encode(command, *args):
             "Command %s not available. Existing commands: %s"
             % (request_command, RAIBIRD_COMMANDS["ControllerCommands"])
         )
-    if len(*args) > command_set["length"] - 1:
+    if len(args) > command_set["length"] - 1:
         raise Exception(
             "Too much parameters. %d expected:\n%s"
             % (command_set["length"] - 1, command_set)
         )
-    params = (cmd_code,) + tuple(map(lambda x: int(x), *args))
-    arg_placeholders = ("%02X" * (len(*args) - 1)) + (
-        ("%%0%dX" % ((command_set["length"] - len(*args)) * 2))
+    params = (cmd_code,) + tuple(map(lambda x: int(x), args))
+    arg_placeholders = ("%02X" * (len(args) - 1)) + (
+        ("%%0%dX" % ((command_set["length"] - len(args)) * 2))
         if command_set["length"] > 1
         else ""
     )
