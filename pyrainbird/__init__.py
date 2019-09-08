@@ -8,9 +8,18 @@ from .rainbird import RAIBIRD_COMMANDS
 
 
 class RainbirdController:
-
-    def __init__(self, server, password, update_delay=20, retry=3, retry_sleep=10, logger=logging.getLogger(__name__)):
-        self.rainbird_client = RainbirdClient(server, password, retry, retry_sleep, logger)
+    def __init__(
+        self,
+        server,
+        password,
+        update_delay=20,
+        retry=3,
+        retry_sleep=10,
+        logger=logging.getLogger(__name__),
+    ):
+        self.rainbird_client = RainbirdClient(
+            server, password, retry, retry_sleep, logger
+        )
         self.logger = logger
         self.zones = dict()
         self.rain_sensor = None
@@ -19,9 +28,12 @@ class RainbirdController:
         self.sensor_update_time = None
 
     def zone_state(self, zone):
-        if self.zone_update_time is None or time.time() > self.zone_update_time + self.update_delay:
+        if (
+            self.zone_update_time is None
+            or time.time() > self.zone_update_time + self.update_delay
+        ):
             resp = self._update_irrigation_state()
-            if not (resp and resp["type"] == 'CurrentStationsActiveResponse'):
+            if not (resp and resp["type"] == "CurrentStationsActiveResponse"):
                 self.zones.clear()
                 return None
         return self.zones[zone]
@@ -29,35 +41,56 @@ class RainbirdController:
     def irrigate_zone(self, zone, time):
         response = self._start_irrigation(zone, time)
         self._update_irrigation_state()
-        return response is not None and response["type"] == 'AcknowledgeResponse' and self.zones[zone]
+        return (
+            response is not None
+            and response["type"] == "AcknowledgeResponse"
+            and self.zones[zone]
+        )
 
     def stop_irrigation(self):
         response = self._stop_irrigation()
         self._update_irrigation_state()
-        return response is not None and response["type"] == 'AcknowledgeResponse' and not reduce((lambda x, y: x or y),
-                                                                                                 self.zones.values())
+        return (
+            response is not None
+            and response["type"] == "AcknowledgeResponse"
+            and not reduce((lambda x, y: x or y), self.zones.values())
+        )
 
     def get_rain_sensor_state(self):
-        if self.sensor_update_time is None or time.time() > self.sensor_update_time + self.update_delay:
+        if (
+            self.sensor_update_time is None
+            or time.time() > self.sensor_update_time + self.update_delay
+        ):
             response = self._update_rain_sensor_state()
-            self.rain_sensor = response['sensorState'] if response is not None and response[
-                'type'] == "CurrentRainSensorStateResponse" else None
+            self.rain_sensor = (
+                response["sensorState"]
+                if response is not None
+                and response["type"] == "CurrentRainSensorStateResponse"
+                else None
+            )
         return self.rain_sensor
 
     def get_rain_delay(self):
         response = self._update_current_rain_delay_state()
-        return response['delaySetting'] if response is not None and 'delaySetting' in response and response[
-            'type'] == "RainDelaySettingResponse" else None
+        return (
+            response["delaySetting"]
+            if response is not None
+            and "delaySetting" in response
+            and response["type"] == "RainDelaySettingResponse"
+            else None
+        )
 
     def set_rain_delay(self, days):
         response = self._set_rain_delay_state(days)
-        return response is not None and response['type'] == "AcknowledgeResponse"
+        return (
+            response is not None and response["type"] == "AcknowledgeResponse"
+        )
 
     def _stop_irrigation(self):
         self.logger.debug("Irrigation stop requested")
         resp = self.command("StopIrrigation")
         if resp:
-            if resp["type"] == 'AcknowledgeResponse':
+            if resp["type"] == "AcknowledgeResponse":
                 self.logger.debug("Irrigation stop request acknowledged")
             else:
                 self.logger.warning("Irrigation stop request NOT acknowledged")
@@ -66,11 +99,15 @@ class RainbirdController:
         return resp
 
     def _start_irrigation(self, zone, minutes):
-        self.logger.debug("Irrigation start requested for zone " +
-                          str(zone) + " for duration " + str(minutes))
+        self.logger.debug(
+            "Irrigation start requested for zone "
+            + str(zone)
+            + " for duration "
+            + str(minutes)
+        )
         resp = self.command("ManuallyRunStation", zone, minutes)
         if resp:
-            if resp["type"] == 'AcknowledgeResponse':
+            if resp["type"] == "AcknowledgeResponse":
                 self.logger.debug("Irrigation request acknowledged")
             else:
                 self.logger.warning("Irrigation request NOT acknowledged")
@@ -82,18 +119,20 @@ class RainbirdController:
         self.logger.debug("Requesting current Irrigation station")
         resp = self.command("CurrentStationsActive", 0)
         if resp:
-            if resp["type"] == 'CurrentStationsActiveResponse':
-                resp['sprinklers'] = dict()
+            if resp["type"] == "CurrentStationsActiveResponse":
+                resp["sprinklers"] = dict()
                 self.logger.debug("Status request acknowledged")
-                resp['active'] = list()
+                resp["active"] = list()
                 for i in range(0, 8):
                     mask = 1 << ((6 * 4) + i)
-                    self.logger.debug('%08x X %08x' % (resp['activeStations'], mask))
-                    active = bool(resp['activeStations'] & mask)
+                    self.logger.debug(
+                        "%08x X %08x" % (resp["activeStations"], mask)
+                    )
+                    active = bool(resp["activeStations"] & mask)
                     self.zones[i + 1] = active
                     if active:
-                        resp['active'].append(i + 1)
-                resp['zones'] = self.zones
+                        resp["active"].append(i + 1)
+                resp["zones"] = self.zones
                 self.zone_update_time = time.time()
             else:
                 self.logger.warning("Status request NOT acknowledged")
@@ -105,11 +144,14 @@ class RainbirdController:
         self.logger.debug("Requesting current Rain Sensor State")
         resp = self.command("CurrentRainSensorState")
         if resp:
-            if resp['type'] == "CurrentRainSensorStateResponse":
+            if resp["type"] == "CurrentRainSensorStateResponse":
                 self.logger.debug(
-                    "Current rainsensor state: %s" % (resp['sensorState']))
+                    "Current rainsensor state: %s" % (resp["sensorState"])
+                )
             else:
-                self.logger.warning("Status request failed with wrong response")
+                self.logger.warning(
+                    "Status request failed with wrong response"
+                )
         else:
             self.logger.warning("Request resulted in no response")
         return resp
@@ -118,11 +160,14 @@ class RainbirdController:
         self.logger.debug("Requesting current Rain Dealy State")
         resp = self.command("RainDelayGet")
         if resp:
-            if resp['type'] == "RainDelaySettingResponse":
+            if resp["type"] == "RainDelaySettingResponse":
                 self.logger.debug(
-                    "Current rain delay state: %s" % (resp['delaySetting']))
+                    "Current rain delay state: %s" % (resp["delaySetting"])
+                )
             else:
-                self.logger.warning("Status request failed with wrong response")
+                self.logger.warning(
+                    "Status request failed with wrong response"
+                )
         else:
             self.logger.warning("Request resulted in no response")
         return resp
@@ -131,11 +176,14 @@ class RainbirdController:
         self.logger.debug("SettingRain DealyState")
         resp = self.command("RainDelaySet", days)
         if resp:
-            if resp['type'] == "AcknowledgeResponse":
+            if resp["type"] == "AcknowledgeResponse":
                 self.logger.debug(
-                    "Current rain delay state set to %d days" % (days))
+                    "Current rain delay state set to %d days" % (days)
+                )
             else:
-                self.logger.warning("Status request failed with wrong response")
+                self.logger.warning(
+                    "Status request failed with wrong response"
+                )
         else:
             self.logger.warning("Request resulted in no response")
         return resp
@@ -144,15 +192,31 @@ class RainbirdController:
         data = rainbird.encode(command, args)
         self.logger.debug("Request to line: " + str(data))
         decrypted_data = self.rainbird_client.request(
-            data, RAIBIRD_COMMANDS["ControllerCommands"]["%sRequest" % command]["length"])
+            data,
+            RAIBIRD_COMMANDS["ControllerCommands"]["%sRequest" % command][
+                "length"
+            ],
+        )
         self.logger.debug("Response from line: " + str(decrypted_data))
         if decrypted_data is None:
             self.logger.warn("Empty response from controller")
             return None
         decoded = rainbird.decode(decrypted_data)
-        if decrypted_data[:2] != RAIBIRD_COMMANDS["ControllerCommands"]['%sRequest' % command]["response"]:
-            raise Exception('Status request failed with wrong response! Requested %s but got %s:\n%s' %
-                            (RAIBIRD_COMMANDS["ControllerCommands"]['%sRequest' % command]["response"],
-                             decrypted_data[:2], decoded))
-        self.logger.debug('Response: %s' % decoded)
+        if (
+            decrypted_data[:2]
+            != RAIBIRD_COMMANDS["ControllerCommands"]["%sRequest" % command][
+                "response"
+            ]
+        ):
+            raise Exception(
+                "Status request failed with wrong response! Requested %s but got %s:\n%s"
+                % (
+                    RAIBIRD_COMMANDS["ControllerCommands"][
+                        "%sRequest" % command
+                    ]["response"],
+                    decrypted_data[:2],
+                    decoded,
+                )
+            )
+        self.logger.debug("Response: %s" % decoded)
         return decoded
