@@ -186,7 +186,7 @@ def decode(data):
             if isinstance(v, dict) and "position" in v and "length" in v:
                 position_ = v["position"]
                 length_ = v["length"]
-                result[k] = int(data[position_ : position_ + length_], 16)
+                result[k] = int(data[position_: position_ + length_], 16)
         return result
     else:
         return {"data": data}
@@ -207,7 +207,7 @@ def encode(command, *args):
             "Too much parameters. %d expected:\n%s"
             % (command_set["length"] - 1, command_set)
         )
-    params = (cmd_code, *tuple(map(lambda x: int(x), *args)))
+    params = (cmd_code,) + tuple(map(lambda x: int(x), *args))
     arg_placeholders = ("%02X" * (len(*args) - 1)) + (
         ("%%0%dX" % ((command_set["length"] - len(*args)) * 2))
         if command_set["length"] > 1
