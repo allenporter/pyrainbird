@@ -12,33 +12,33 @@ MOCKED_PASSWORD = "test123"
 class TestCase(unittest.TestCase):
 
     @responses.activate
-    def testGetRainDelay(self):
-        mock_response('B6', delaySetting=86400)
+    def test_get_rain_delay(self):
+        mock_response('B6', delaySetting=16)
         rainbird = RainbirdController(MOCKED_RAINBIRD_URL, MOCKED_PASSWORD)
-        self.assertEqual(86400, rainbird.get_rain_delay())
+        self.assertEqual(16, rainbird.get_rain_delay())
 
     @responses.activate
-    def testSetRainDelay(self):
+    def test_set_rain_delay(self):
         mock_response('01', pageNumber=0, commandEcho=6)
         rainbird = RainbirdController(MOCKED_RAINBIRD_URL, MOCKED_PASSWORD)
         self.assertEqual(True, rainbird.set_rain_delay(3))
 
     @responses.activate
-    def testIrrigateZone(self):
+    def test_irrigate_zone(self):
         mock_response('01', pageNumber=0, commandEcho=6)
         mock_response('BF', pageNumber=0, activeStations=0b00010000000000000000000000000000)
         rainbird = RainbirdController(MOCKED_RAINBIRD_URL, MOCKED_PASSWORD)
         self.assertEqual(True, rainbird.irrigate_zone(5, 30))
 
     @responses.activate
-    def testStopIrrigation(self):
+    def test_stop_irrigation(self):
         mock_response('01', pageNumber=0, commandEcho=6)
-        mock_response('BF', pageNumber=0, activeStations=0b00000000000000000000000000000000)
+        mock_response('BF', pageNumber=0, activeStations=0b0)
         rainbird = RainbirdController(MOCKED_RAINBIRD_URL, MOCKED_PASSWORD)
         self.assertEqual(True, rainbird.stop_irrigation())
 
     @responses.activate
-    def testGetRainSensor(self):
+    def test_get_rain_sensor(self):
         mock_response('BE', sensorState=1)
         mock_response('BE', sensorState=0)
         rainbird = RainbirdController(MOCKED_RAINBIRD_URL, MOCKED_PASSWORD)
@@ -46,7 +46,7 @@ class TestCase(unittest.TestCase):
         self.assertEqual(0, rainbird.get_rain_sensor_state())
 
     @responses.activate
-    def testNotAcknowledgeResponse(self):
+    def test_not_acknowledge_response(self):
         with self.assertRaises(Exception):
             mock_response('00', commandEcho=17, NAKCode=28)
             rainbird = RainbirdController(MOCKED_RAINBIRD_URL, MOCKED_PASSWORD)
@@ -59,7 +59,7 @@ def mock_response(command, **kvargs):
     for k in resp:
         if k in ["type", "length"]:
             continue
-        param_template = '%%0%dX' % (resp[k]['length'] * 2)
+        param_template = '%%0%dX' % (resp[k]['length'])
         data += param_template % kvargs[k]
 
     responses.add(

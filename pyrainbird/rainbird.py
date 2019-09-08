@@ -58,8 +58,8 @@ def decode(data):
         result = {'type': cmd_template['type']}
         for k, v in cmd_template.items():
             if isinstance(v, dict) and 'position' in v and 'length' in v:
-                position_ = (v['position']-1)*2
-                length_ = v['length']*2
+                position_ = v['position']
+                length_ = v['length']
                 result[k] = int(data[position_:position_ + length_], 16)
         return result
     else:
@@ -77,6 +77,6 @@ def encode(command, *args):
     if len(*args) > command_set['length'] - 1:
         raise Exception('Too much parameters. %d expected:\n%s' % (command_set['length'] - 1, command_set))
     params = (cmd_code, *tuple(map(lambda x: int(x), *args)))
-    zero_padding = ('00' * (command_set['length'] - len(*args) - 1))
-    arg_placeholders = ('%02x' * (len(*args)))
-    return ('%s' + zero_padding + arg_placeholders) % (params)
+    arg_placeholders = ('%02X' * (len(*args) - 1)) + (
+        ("%%0%dX" % ((command_set['length'] - len(*args)) * 2)) if command_set['length'] > 1 else '')
+    return (('%s' + arg_placeholders) % (params))

@@ -80,7 +80,7 @@ class RainbirdController:
 
     def _update_irrigation_state(self):
         self.logger.debug("Requesting current Irrigation station")
-        resp = self.command("CurrentStationsActive")
+        resp = self.command("CurrentStationsActive", 0)
         if resp:
             if resp["type"] == 'CurrentStationsActiveResponse':
                 resp['sprinklers'] = dict()
