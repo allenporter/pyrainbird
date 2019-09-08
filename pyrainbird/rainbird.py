@@ -186,7 +186,7 @@ def decode(data):
             if isinstance(v, dict) and "position" in v and "length" in v:
                 position_ = v["position"]
                 length_ = v["length"]
-                result[k] = int(data[position_: position_ + length_], 16)
+                result[k] = int(data[position_ : position_ + length_], 16)
         return result
     else:
         return {"data": data}

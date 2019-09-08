@@ -20,7 +20,7 @@ def _add_padding(data):
 
 def decrypt(encrypted_data, decrypt_key):
     iv = bytes(encrypted_data[32:48])
-    encrypted_data = bytes(encrypted_data[48 : len(encrypted_data)])
+    encrypted_data = bytes(encrypted_data[48: len(encrypted_data)])
 
     m = SHA256.new()
     m.update(bytes(decrypt_key, "UTF-8"))
@@ -49,4 +49,4 @@ def encrypt(data, encryptkey):
 
 
 def to_bytes(string):
-    return string if sys.version_info < (3, 0) else bytes(string, "UTF-8")
+    return bytes(string.encode('UTF-8')) if sys.version_info < (3, 0) else bytes(string, "UTF-8")
