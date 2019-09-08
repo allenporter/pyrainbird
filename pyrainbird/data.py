@@ -36,7 +36,7 @@ class CommandSupport(Echo):
 
     def __eq__(self, o):
         return (
-            super(CommandSupport, self).__eq__(self, o)
+            super(CommandSupport, self).__eq__(o)
             and isinstance(o, CommandSupport)
             and o.support == self.support
         )
