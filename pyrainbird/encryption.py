@@ -1,3 +1,5 @@
+import sys
+
 from Crypto.Hash import SHA256
 from Crypto.Cipher import AES
 from Crypto import Random
@@ -5,6 +7,10 @@ from Crypto import Random
 BLOCK_SIZE = 16
 INTERRUPT = "\x00"
 PAD = "\x10"
+
+if sys.version_info < (3, 0):
+    def byte(s, encoding):
+        return s
 
 
 def _add_padding(data):
@@ -18,7 +24,7 @@ def _add_padding(data):
 
 def decrypt(encrypted_data, decrypt_key):
     iv = bytes(encrypted_data[32:48])
-    encrypted_data = bytes(encrypted_data[48 : len(encrypted_data)])
+    encrypted_data = bytes(encrypted_data[48: len(encrypted_data)])
 
     m = SHA256.new()
     m.update(bytes(decrypt_key, "UTF-8"))
