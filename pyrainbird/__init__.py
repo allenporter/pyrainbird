@@ -9,6 +9,7 @@ from pyrainbird.data import (
     CommandSupport,
     States,
     WaterBudget,
+    _DEFAULT_PAGE,
 )
 from . import rainbird
 from .client import RainbirdClient
@@ -29,7 +30,7 @@ class RainbirdController:
             server, password, retry, retry_sleep, logger
         )
         self.logger = logger
-        self.zones = States("00000000")
+        self.zones = States("00")
         self.rain_sensor = None
         self.update_delay = update_delay
         self.zone_update_time = None
@@ -45,12 +46,13 @@ class RainbirdController:
             "ModelAndVersion",
         )
 
-    def get_available_stations(self) -> AvailableStations:
+    def get_available_stations(self, page=_DEFAULT_PAGE) -> AvailableStations:
         return self._process_command(
             lambda resp: AvailableStations(
-                resp["setStations"], page=resp["pageNumber"]
+                "%08X" % resp["setStations"], page=resp["pageNumber"]
             ),
             "AvailableStations",
+            page,
         )
 
     def get_command_support(self, command) -> CommandSupport:
@@ -62,7 +64,7 @@ class RainbirdController:
             command,
         )
 
-    def get_serial_version(self) -> int:
+    def get_serial_number(self) -> int:
         return self._process_command(
             lambda resp: resp["serialNumber"], "SerialNumber"
         )
@@ -99,15 +101,21 @@ class RainbirdController:
                 lambda resp: bool(resp["sensorState"]),
                 "CurrentRainSensorState",
             )
-            self.rain_sensor = response
+            if isinstance(response, bool):
+                self.rain_sensor = response
+                self.sensor_update_time = time.time()
+            else:
+                self.rain_sensor = None
         return self.rain_sensor
 
-    def get_zone_state(self, zone) -> bool:
+    def get_zone_state(self, zone, page=_DEFAULT_PAGE) -> bool:
         if _check_delay(self.zone_update_time, self.update_delay):
-            response = self._update_irrigation_state()
+            response = self._update_irrigation_state(page)
             if not isinstance(response, States):
-                self.zones = States("00000000")
+                self.zones = States("00")
                 return None
+            else:
+                self.zone_update_time = time.time()
         return self.zones.active(zone)
 
     def set_program(self, program: int) -> bool:
@@ -202,11 +210,11 @@ class RainbirdController:
             else response
         )
 
-    def _update_irrigation_state(self):
+    def _update_irrigation_state(self, page=_DEFAULT_PAGE):
         result = self._process_command(
-            lambda resp: States("%08X" % resp["activeStations"]),
+            lambda resp: States(("%08X" % resp["activeStations"])[:2]),
             "CurrentStationsActive",
-            0,
+            page,
         )
         if isinstance(result, States):
             self.zones = result
