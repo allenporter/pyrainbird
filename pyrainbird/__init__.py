@@ -85,7 +85,7 @@ class RainbirdController:
             "CurrentDate",
         )
 
-    def water_budget(self, budget: int):
+    def water_budget(self, budget):
         return self._process_command(
             lambda resp: WaterBudget(
                 resp["programCode"], resp["highByte"], resp["lowByte"]
@@ -118,12 +118,12 @@ class RainbirdController:
                 self.zone_update_time = time.time()
         return self.zones.active(zone)
 
-    def set_program(self, program: int):
+    def set_program(self, program):
         return self._process_command(
             lambda resp: True, "ManuallyRunProgram", program
         )
 
-    def test_zone(self, zone: int):
+    def test_zone(self, zone):
         return self._process_command(lambda resp: True, "TestStations", zone)
 
     def irrigate_zone(self, zone, minutes):
