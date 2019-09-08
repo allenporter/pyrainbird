@@ -153,9 +153,10 @@ class RainbirdController:
             lambda resp: True, "AdvanceStation", param
         )
 
-    def get_current_irrigation(self) -> int:
+    def get_current_irrigation(self) -> bool:
         return self._process_command(
-            lambda resp: resp["irrigationState"], "CurrentIrrigationState"
+            lambda resp: bool(resp["irrigationState"]),
+            "CurrentIrrigationState",
         )
 
     def schedule(self, param1, param2):

@@ -78,7 +78,7 @@ class States(object):
             self.states = self.states + (bool((1 << i) & self.mask),)
 
     def active(self, number):
-        return self.states[number-1]
+        return self.states[number - 1]
 
     def __hash__(self) -> int:
         return hash((self.count, self.mask, self.states))

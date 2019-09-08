@@ -11,6 +11,7 @@ from pyrainbird import (
     CommandSupport,
     WaterBudget,
 )
+from pyrainbird.data import Echo
 from pyrainbird.encryption import encrypt
 
 MOCKED_RAINBIRD_URL = "rainbird.local"
@@ -73,14 +74,8 @@ class TestCase(unittest.TestCase):
         self.assertEqual(WaterBudget(1, 5, 3), rainbird.water_budget(5))
 
     def test_get_rain_sensor(self):
-        self._assert_rain_sensor(1,True)
+        self._assert_rain_sensor(1, True)
         self._assert_rain_sensor(0, False)
-
-    @responses.activate
-    def _assert_rain_sensor(self, state, expected):
-        mock_response("BE", sensorState=state)
-        rainbird = RainbirdController(MOCKED_RAINBIRD_URL, MOCKED_PASSWORD)
-        self.assertEqual(expected, rainbird.get_rain_sensor_state())
 
     def test_get_zone_state(self):
         for i in range(1, 9):
@@ -88,20 +83,32 @@ class TestCase(unittest.TestCase):
                 self._assert_zone_state(i, j)
 
     @responses.activate
-    def _assert_zone_state(self, i, j ):
+    def test_set_program(self):
+        mock_response("01", commandEcho=5)
         rainbird = RainbirdController(MOCKED_RAINBIRD_URL, MOCKED_PASSWORD)
-        mask_ = (1 << (i - 1)) * 0x1000000
-        mock_response(
-            "BF", pageNumber=0, activeStations=mask_
-        )
-        self.assertEqual(i == j, rainbird.get_zone_state(j))
+        self.assertEqual(True, rainbird.set_program(5))
 
     @responses.activate
-    def test_get_rain_delay(self):
+    def test_irrigate_zone(self):
+        mock_response("01", pageNumber=0, commandEcho=6)
+        mock_response(
+            "BF", pageNumber=0, activeStations=0b10000000000000000000000000000
+        )
+        rainbird = RainbirdController(MOCKED_RAINBIRD_URL, MOCKED_PASSWORD)
+        self.assertEqual(True, rainbird.irrigate_zone(5, 30))
+
+    @responses.activate
+    def test_test_zone(self):
         mock_response("01", commandEcho=6)
         rainbird = RainbirdController(MOCKED_RAINBIRD_URL, MOCKED_PASSWORD)
-        self.assertEqual(True, rainbird.set_program(3))
+        self.assertEqual(True, rainbird.test_zone(6))
 
+    @responses.activate
+    def test_stop_irrigation(self):
+        mock_response("01", pageNumber=0, commandEcho=6)
+        mock_response("BF", pageNumber=0, activeStations=0b0)
+        rainbird = RainbirdController(MOCKED_RAINBIRD_URL, MOCKED_PASSWORD)
+        self.assertEqual(True, rainbird.stop_irrigation())
 
     @responses.activate
     def test_get_rain_delay(self):
@@ -116,20 +123,20 @@ class TestCase(unittest.TestCase):
         self.assertEqual(True, rainbird.set_rain_delay(3))
 
     @responses.activate
-    def test_irrigate_zone(self):
-        mock_response("01", pageNumber=0, commandEcho=6)
-        mock_response(
-            "BF", pageNumber=0, activeStations=0b10000000000000000000000000000
-        )
+    def test_advance_zone(self):
+        mock_response("01", commandEcho=3)
         rainbird = RainbirdController(MOCKED_RAINBIRD_URL, MOCKED_PASSWORD)
-        self.assertEqual(True, rainbird.irrigate_zone(5, 30))
+        self.assertEqual(True, rainbird.advance_zone(3))
+
+    def test_get_current_irrigation(self):
+        self._assert_get_current_irrigation(1, True)
+        self._assert_get_current_irrigation(0, False)
 
     @responses.activate
-    def test_stop_irrigation(self):
-        mock_response("01", pageNumber=0, commandEcho=6)
-        mock_response("BF", pageNumber=0, activeStations=0b0)
+    def _assert_get_current_irrigation(self, state, expected):
+        mock_response("C8", irrigationState=state)
         rainbird = RainbirdController(MOCKED_RAINBIRD_URL, MOCKED_PASSWORD)
-        self.assertEqual(True, rainbird.stop_irrigation())
+        self.assertEqual(expected, rainbird.get_current_irrigation())
 
     @responses.activate
     def test_not_acknowledge_response(self):
@@ -137,6 +144,19 @@ class TestCase(unittest.TestCase):
             mock_response("00", commandEcho=17, NAKCode=28)
             rainbird = RainbirdController(MOCKED_RAINBIRD_URL, MOCKED_PASSWORD)
             self.assertEqual(False, rainbird.irrigate_zone(1, 30))
+
+    @responses.activate
+    def _assert_rain_sensor(self, state, expected):
+        mock_response("BE", sensorState=state)
+        rainbird = RainbirdController(MOCKED_RAINBIRD_URL, MOCKED_PASSWORD)
+        self.assertEqual(expected, rainbird.get_rain_sensor_state())
+
+    @responses.activate
+    def _assert_zone_state(self, i, j):
+        rainbird = RainbirdController(MOCKED_RAINBIRD_URL, MOCKED_PASSWORD)
+        mask_ = (1 << (i - 1)) * 0x1000000
+        mock_response("BF", pageNumber=0, activeStations=mask_)
+        self.assertEqual(i == j, rainbird.get_zone_state(j))
 
 
 def mock_response(command, **kvargs):
