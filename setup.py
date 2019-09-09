@@ -47,4 +47,6 @@ setup(
     zip_safe=True,
     cmdclass={"test": PyTest},
     packages=find_packages(),
+    package_data={'': ['sipcommands.json']},
+    include_package_data=True,
 )

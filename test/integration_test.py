@@ -68,9 +68,9 @@ class TestCase(unittest.TestCase):
 
     @responses.activate
     def test_get_water_budget(self):
-        mock_response("B0", programCode=1, highByte=5, lowByte=3)
+        mock_response("B0", programCode=1, seasonalAdjust=65)
         rainbird = RainbirdController(MOCKED_RAINBIRD_URL, MOCKED_PASSWORD)
-        self.assertEqual(WaterBudget(1, 5, 3), rainbird.water_budget(5))
+        self.assertEqual(WaterBudget(1, 65), rainbird.water_budget(5))
 
     def test_get_rain_sensor(self):
         self._assert_rain_sensor(1, True)

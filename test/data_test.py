@@ -13,7 +13,7 @@ def encode_name_func(testcase_func, param_num, param):
     )
 
 
-class TestData(unittest.TestCase):
+class TestSequence(unittest.TestCase):
     @parameterized.expand(
         [
             ("01", (True,) + (False,) * 7),

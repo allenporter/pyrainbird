@@ -10,3 +10,4 @@ pytest-mock
 pytest
 six
 requests
+setuptools

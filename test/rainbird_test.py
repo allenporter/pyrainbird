@@ -41,7 +41,6 @@ class TestSequence(unittest.TestCase):
             ["37000F", "RainDelaySet", 15],
             ["4208", "AdvanceStation", 8],
             ["48", "CurrentIrrigationState"],
-            ["200106", "CurrentSchedule", 1, 6],
         ],
         name_func=encode_name_func,
     )
@@ -110,10 +109,9 @@ class TestSequence(unittest.TestCase):
                 {
                     "type": "WaterBudgetResponse",
                     "programCode": 3,
-                    "highByte": 20,
-                    "lowByte": 15,
+                    "seasonalAdjust": 0x83,
                 },
-                "B003140F",
+                "B0030083",
             ],
             [
                 {"type": "CurrentRainSensorStateResponse", "sensorState": 1},

@@ -11,9 +11,9 @@ from pyrainbird.data import (
     WaterBudget,
     _DEFAULT_PAGE,
 )
+from pyrainbird.resources import RAIBIRD_COMMANDS
 from . import rainbird
 from .client import RainbirdClient
-from .rainbird import RAIBIRD_COMMANDS
 
 
 class RainbirdController:
@@ -94,7 +94,7 @@ class RainbirdController:
     def water_budget(self, budget):
         return self._process_command(
             lambda resp: WaterBudget(
-                resp["programCode"], resp["highByte"], resp["lowByte"]
+                resp["programCode"], resp["seasonalAdjust"]
             ),
             "WaterBudget",
             budget,
@@ -163,11 +163,6 @@ class RainbirdController:
         return self._process_command(
             lambda resp: bool(resp["irrigationState"]),
             "CurrentIrrigationState",
-        )
-
-    def schedule(self, param1, param2):
-        return self._process_command(
-            lambda resp: resp, "CurrentSchedule", param1, param2
         )
 
     def command(self, command, *args):
