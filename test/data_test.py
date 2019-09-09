@@ -37,14 +37,8 @@ class TestData(unittest.TestCase):
                 "40000040",
                 (False,) * 6 + (True,) + (False,) * 23 + (True,) + (False,),
             ),
-            (
-                "20000020",
-                (False,) * 5
-                + (True,)
-                + (False,) * 23
-                + (True,)
-                + (False,) * 2,
-            ),
+            ("20000020",
+             (False,) * 5 + (True,) + (False,) * 23 + (True,) + (False,) * 2,),
         ],
         name_func=encode_name_func,
     )
