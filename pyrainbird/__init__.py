@@ -47,9 +47,15 @@ class RainbirdController:
         )
 
     def get_available_stations(self, page=_DEFAULT_PAGE):
+        mask = (
+            "%%0%dX"
+            % RAIBIRD_COMMANDS["ControllerResponses"]["83"]["setStations"][
+                "length"
+            ]
+        )
         return self._process_command(
             lambda resp: AvailableStations(
-                "%08X" % resp["setStations"], page=resp["pageNumber"]
+                mask % resp["setStations"], page=resp["pageNumber"]
             ),
             "AvailableStations",
             page,
@@ -212,8 +218,14 @@ class RainbirdController:
         )
 
     def _update_irrigation_state(self, page=_DEFAULT_PAGE):
+        mask = (
+            "%%0%dX"
+            % RAIBIRD_COMMANDS["ControllerResponses"]["BF"]["activeStations"][
+                "length"
+            ]
+        )
         result = self._process_command(
-            lambda resp: States(("%08X" % resp["activeStations"])[:2]),
+            lambda resp: States((mask % resp["activeStations"])[:2]),
             "CurrentStationsActive",
             page,
         )
