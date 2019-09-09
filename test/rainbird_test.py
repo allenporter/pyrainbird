@@ -34,7 +34,7 @@ class TestSequence(unittest.TestCase):
             ["3E", "CurrentRainSensorState"],
             ["3F10", "CurrentStationsActive", 16],
             ["3811", "ManuallyRunProgram", 17],
-            ["39060012", "ManuallyRunStation", 6, 18],
+            ["39000612", "ManuallyRunStation", 6, 18],
             ["3A17", "TestStations", 23],
             ["40", "StopIrrigation"],
             ["36", "RainDelayGet"],
