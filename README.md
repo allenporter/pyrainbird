@@ -1,4 +1,4 @@
-![](https://www.rainbird.com/images/RainBirdLogo.gif) 
+![](http://iqweb.rainbird.com/iq/images/logos/rainbird.png) 
 # pyrainbird ![](https://img.shields.io/badge/python-2+-green.svg) [![Build Status](https://travis-ci.org/konikvranik/pyrainbird.svg?branch=master)](https://travis-ci.org/konikvranik/pyrainbird) [![Coverage Status](https://coveralls.io/repos/github/konikvranik/pyrainbird/badge.svg?branch=master)](https://coveralls.io/github/konikvranik/pyrainbird?branch=master)
 > Python module for interacting with WiFi LNK module of the Rain Bird Irrigation system
 
