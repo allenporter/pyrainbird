@@ -4,8 +4,7 @@ branch = True
 
 [report]
 exclude_lines =
-  pragma: no cover
-  def __hash__(self):
-  def __ne__(self):
-  def __str__(self):
-  return not __eq__(o)
+    pragma: no cover
+    def\s+__hash__\(self\):
+    def\s+__ne__\(self\s*,[^)]*\):
+    def\s+__str__\(self\):
