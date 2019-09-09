@@ -8,3 +8,4 @@ exclude_lines =
   def __hash__(self):
   def __ne__(self):
   def __str__(self):
+  return not __eq__(o)
