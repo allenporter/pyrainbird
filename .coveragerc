@@ -1,2 +1,9 @@
 [run]
 omit = test/*
+
+[report]
+exclude_lines =
+  pragma: no cover
+  def __hash__(self):
+  def __ne__(self):
+  def __str__(self):
