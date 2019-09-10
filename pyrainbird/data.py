@@ -150,20 +150,18 @@ class AvailableStations(Pageable):
 
 
 class WaterBudget(object):
-    def __init__(self, program, high_byte, low_byte):
+    def __init__(self, program, adjust):
         self.program = program
-        self.high_byte = high_byte
-        self.low_byte = low_byte
+        self.adjust = adjust
 
     def __hash__(self):
-        return hash((self.program, self.high_byte, self.low_byte))
+        return hash((self.program, self.adjust))
 
     def __eq__(self, o):
         return (
             isinstance(o, WaterBudget)
             and self.program == o.program
-            and self.high_byte == o.high_byte
-            and self.low_byte == o.low_byte
+            and self.adjust == o.adjust
         )
 
     def __ne__(self, o):
@@ -172,6 +170,5 @@ class WaterBudget(object):
     def __str__(self):
         return "water budget: program: %d, hi: %02X, lo: %02X" % (
             self.program,
-            self.high_byte,
-            self.low_byte,
+            self.adjust,
         )

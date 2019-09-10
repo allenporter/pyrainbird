@@ -1,2 +1,10 @@
 [run]
 omit = test/*
+branch = True
+
+[report]
+exclude_lines =
+    pragma: no cover
+    def\s+__hash__\(self\):
+    def\s+__ne__\(self\s*,[^)]*\):
+    def\s+__str__\(self\):
