@@ -89,7 +89,7 @@ class ModelAndVersion(object):
 
 
 class States(object):
-    def __init__(self, mask):
+    def __init__(self, mask="0000"):
         self.count = len(mask) * 4
         self.mask = int(mask, 16)
         self.states = ()
