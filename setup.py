@@ -32,7 +32,7 @@ class PyTest(TestCommand):
 
 setup(
     name="pyrainbird",
-    version="0.4.1",
+    version="0.4.2",
     description="Rain Bird Controller",
     install_requires=requirements,
     tests_require=test_requirements,
