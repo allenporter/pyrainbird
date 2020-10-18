@@ -46,7 +46,7 @@ setup(
     classifiers=[],
     zip_safe=True,
     cmdclass={"test": PyTest},
-    packages=find_packages(),
+    packages=find_packages(exclude=("test", "test.*")),
     package_data={'': ['sipcommands.json']},
     include_package_data=True,
 )
