@@ -3,7 +3,7 @@
 > Python module for interacting with WiFi LNK module of the Rain Bird Irrigation system
 
 This project has no affiliation with Rain Bird. This module works with the Rain Bird LNK WiFi Module.
- For more information see http://www.rainbird.com/landscape/products/controllers/LNK-WiFi.htm
+ For more information see https://www.rainbird.com/products/module-wi-fi-lnk
 
 ----
 
