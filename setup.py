@@ -47,6 +47,6 @@ setup(
     zip_safe=True,
     cmdclass={"test": PyTest},
     packages=find_packages(exclude=("test", "test.*")),
-    package_data={'': ['sipcommands.json', 'models.yaml']},
+    package_data={'': ['sipcommands.yaml', 'models.yaml']},
     include_package_data=True,
 )
