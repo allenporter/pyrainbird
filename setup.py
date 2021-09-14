@@ -32,7 +32,7 @@ class PyTest(TestCommand):
 
 setup(
     name="pyrainbird",
-    version="0.4.2",
+    version="0.5.0",
     description="Rain Bird Controller",
     install_requires=requirements,
     tests_require=test_requirements,
@@ -47,6 +47,6 @@ setup(
     zip_safe=True,
     cmdclass={"test": PyTest},
     packages=find_packages(exclude=("test", "test.*")),
-    package_data={'': ['sipcommands.json']},
+    package_data={'': ['sipcommands.json', 'models.yaml']},
     include_package_data=True,
 )
