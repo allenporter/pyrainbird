@@ -1,9 +1,10 @@
-from pyrainbird.resources import RAIBIRD_COMMANDS
+from pyrainbird.resources import RAINBIRD_COMMANDS, RAINBIRD_MODELS
 
 
 def decode(data):
-    if data[:2] in RAIBIRD_COMMANDS["ControllerResponses"]:
-        cmd_template = RAIBIRD_COMMANDS["ControllerResponses"][data[:2]]
+    command_code = data[:2]
+    if command_code in RAINBIRD_COMMANDS["ControllerResponses"]:
+        cmd_template = RAINBIRD_COMMANDS["ControllerResponses"][command_code]
         result = {"type": cmd_template["type"]}
         for k, v in cmd_template.items():
             if isinstance(v, dict) and "position" in v and "length" in v:
@@ -17,13 +18,13 @@ def decode(data):
 
 def encode(command, *args):
     request_command = "%sRequest" % command
-    command_set = RAIBIRD_COMMANDS["ControllerCommands"][request_command]
-    if request_command in RAIBIRD_COMMANDS["ControllerCommands"]:
+    command_set = RAINBIRD_COMMANDS["ControllerCommands"][request_command]
+    if request_command in RAINBIRD_COMMANDS["ControllerCommands"]:
         cmd_code = command_set["command"]
     else:
         raise Exception(
             "Command %s not available. Existing commands: %s"
-            % (request_command, RAIBIRD_COMMANDS["ControllerCommands"])
+            % (request_command, RAINBIRD_COMMANDS["ControllerCommands"])
         )
     if len(args) > command_set["length"] - 1:
         raise Exception(
