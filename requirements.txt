@@ -1,4 +1,5 @@
 pycryptodome
-requests
-datetime
-setuptools
+requests~=2.22.0
+datetime~=4.3
+setuptools~=56.0.0
+PyYAML~=5.1.2

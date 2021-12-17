@@ -5,7 +5,7 @@ import responses
 
 from pyrainbird import (
     RainbirdController,
-    RAIBIRD_COMMANDS,
+    RAINBIRD_COMMANDS,
     ModelAndVersion,
     AvailableStations,
     CommandSupport,
@@ -159,7 +159,7 @@ class TestCase(unittest.TestCase):
 
 
 def mock_response(command, **kvargs):
-    resp = RAIBIRD_COMMANDS["ControllerResponses"][command]
+    resp = RAINBIRD_COMMANDS["ControllerResponses"][command]
     data = command + ("00" * (resp["length"] - 1))
     for k in resp:
         if k in ["type", "length"]:

@@ -1,3 +1,5 @@
+from resources import RAINBIRD_MODELS
+
 _DEFAULT_PAGE = 0
 
 
@@ -65,6 +67,8 @@ class ModelAndVersion(object):
         self.model = model
         self.major = revMajor
         self.minor = revMinor
+        self.model_code = RAINBIRD_MODELS[self.model][0]
+        self.model_name = RAINBIRD_MODELS[self.model][2]
 
     def __hash__(self):
         return hash((self.model, self.major, self.minor))
