@@ -3,11 +3,8 @@ parameterized
 mccabe
 pyflakes
 pytest-cov
-pytest-flakes<4
-pytest-mccabe<2
-pytest-pep8
 pytest-mock
-pytest<6
+pytest
 six
 requests
 setuptools
