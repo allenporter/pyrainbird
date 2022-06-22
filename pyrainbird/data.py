@@ -1,4 +1,4 @@
-from resources import RAINBIRD_MODELS
+from .resources import RAINBIRD_MODELS
 
 _DEFAULT_PAGE = 0
 
