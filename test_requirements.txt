@@ -1,6 +1,5 @@
 responses
 parameterized
-mccabe
 pyflakes
 pytest-cov
 pytest-mock
@@ -8,3 +7,4 @@ pytest
 six
 requests
 setuptools
+flake8
