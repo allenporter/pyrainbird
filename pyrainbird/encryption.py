@@ -49,11 +49,7 @@ def encrypt(data, encryptkey):
 
 
 def to_bytes(string):
-    return (
-        to_bytes_old(string)
-        if sys.version_info < (3, 0)
-        else bytes(string, "UTF-8")
-    )
+    return to_bytes_old(string) if sys.version_info < (3, 0) else bytes(string, "UTF-8")
 
 
 def to_bytes_old(string):
