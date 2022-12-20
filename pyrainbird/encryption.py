@@ -1,4 +1,9 @@
+"""Libraries related to encoding and decoding requests."""
+
+import json
+import logging
 import sys
+import time
 
 from Crypto import Random
 from Crypto.Cipher import AES
@@ -54,3 +59,35 @@ def to_bytes(string):
 
 def to_bytes_old(string):
     return bytes(string.encode("UTF-8"))
+
+
+class PayloadCoder:
+    """PayloadCoder holds encoding/decoding information for the client."""
+
+    def __init__(self, password: str, logger: logging.Logger):
+        """Initialize RainbirdSession."""
+        self._password = password
+        self._logger = logger
+
+    def encode_request(self, data: str, length: int) -> str:
+        """Encode a request payload."""
+        request_id = time.time()
+        send_data = (
+            '{"id":%d,"jsonrpc":"2.0","method":"tunnelSip","params":{"data":"%s","length":%d}}'
+            % (request_id, data, length)
+        )
+        self._logger.debug("Request: %s", send_data)
+        return encrypt(send_data, self._password)
+
+    def decode_response(self, content: bytes) -> str:
+        """Decode a response payload."""
+        decrypted_data = (
+            decrypt(content, self._password)
+            .decode("UTF-8")
+            .rstrip("\x10")
+            .rstrip("\x0A")
+            .rstrip("\x00")
+            .rstrip()
+        )
+        self._logger.debug("Response: %s" % decrypted_data)
+        return json.loads(decrypted_data)["result"]["data"]
