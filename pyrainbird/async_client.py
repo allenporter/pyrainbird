@@ -19,6 +19,16 @@ _LOGGER = logging.getLogger(__name__)
 T = TypeVar("T")
 
 
+HEAD = {
+    "Accept-Language": "en",
+    "Accept-Encoding": "gzip, deflate",
+    "User-Agent": "RainBird/2.0 CFNetwork/811.5.4 Darwin/16.7.0",
+    "Accept": "*/*",
+    "Connection": "keep-alive",
+    "Content-Type": "application/octet-stream",
+}
+
+
 class RainbirdApiException(Exception):
     """Exception from rainbird api."""
 
@@ -36,7 +46,7 @@ class AsyncRainbirdClient:
     async def request(self, data: str, length: int) -> str:
         payload = self._coder.encode_request(data, length)
         try:
-            resp = await self._websession.request("post", self._url, data=payload)
+            resp = await self._websession.request("post", self._url, data=payload, headers=HEAD)
             resp.raise_for_status()
         except ClientError as err:
             raise RainbirdApiException(f"Error from API: {str(err)}") from err
