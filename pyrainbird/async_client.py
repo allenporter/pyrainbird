@@ -101,7 +101,7 @@ class AsyncRainbirdController:
             budget,
         )
 
-    async def get_rain_sensor_state(self) -> bool | None:
+    async def get_rain_sensor_state(self) -> bool:
         """Get the current state for the rain sensor."""
         return await self._process_command(
             lambda resp: bool(resp["sensorState"]),
