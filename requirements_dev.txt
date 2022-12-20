@@ -12,3 +12,5 @@ requests-mock==1.10.0
 flake8==5.0.4
 pytest-aiohttp==1.0.4
 pytest-asyncio==0.20.3
+types-requests==2.28.11.5
+types-PyYAML==6.0.12.2

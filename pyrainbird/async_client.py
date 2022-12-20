@@ -5,6 +5,8 @@ This is an asyncio based client library for rainbird.
 
 import datetime
 import logging
+from collections.abc import Callable
+from typing import Any, TypeVar
 
 import aiohttp
 from aiohttp.client_exceptions import ClientError
@@ -14,6 +16,7 @@ from .data import _DEFAULT_PAGE, AvailableStations, ModelAndVersion, States, Wat
 from .resources import RAINBIRD_COMMANDS
 
 _LOGGER = logging.getLogger(__name__)
+T = TypeVar("T")
 
 
 class RainbirdApiException(Exception):
@@ -164,7 +167,7 @@ class AsyncRainbirdController:
             "CurrentIrrigationState",
         )
 
-    async def _command(self, command: str, *args) -> str:
+    async def _command(self, command: str, *args) -> dict[str, Any]:
         data = rainbird.encode(command, *args)
         _LOGGER.debug("Request to line: " + str(data))
         decrypted_data = await self._client.request(
@@ -192,14 +195,16 @@ class AsyncRainbirdController:
         _LOGGER.debug("Response: %s" % decoded)
         return decoded
 
-    async def _process_command(self, funct, cmd, *args) -> str:
+    async def _process_command(
+        self, funct: Callable[[dict[str, Any]], T], cmd, *args
+    ) -> T:
         response = await self._command(cmd, *args)
-        return (
-            funct(response)
-            if response is not None
-            and response["type"]
-            == RAINBIRD_COMMANDS["ControllerResponses"][
-                RAINBIRD_COMMANDS["ControllerCommands"][cmd + "Request"]["response"]
-            ]["type"]
-            else response
-        )
+        response_type = response["type"]
+        expected_type = RAINBIRD_COMMANDS["ControllerResponses"][
+            RAINBIRD_COMMANDS["ControllerCommands"][cmd + "Request"]["response"]
+        ]["type"]
+        if response_type != expected_type:
+            raise RainbirdApiException(
+                f"Response type '{response_type}' did not match '{expected_type}"
+            )
+        return funct(response)
