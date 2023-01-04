@@ -41,3 +41,5 @@ time.sleep(4)
 controller.stop_irrigation()
 
 ```
+
+See `examples/` for additional examples.
