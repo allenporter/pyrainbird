@@ -6,7 +6,7 @@ This is an asyncio based client library for rainbird.
 import datetime
 import logging
 from collections.abc import Callable
-from typing import Any, TypeVar
+from typing import Any, TypeVar, Optional
 
 import aiohttp
 from aiohttp.client_exceptions import ClientError
@@ -52,7 +52,7 @@ class AsyncRainbirdClient:
         self,
         websession: aiohttp.ClientSession,
         host: str,
-        password: str | None,
+        password: Optional[str],
     ) -> None:
         self._websession = websession
         if host.startswith("/") or host.startswith("http://"):
