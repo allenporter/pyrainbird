@@ -49,6 +49,7 @@ def mock_app() -> aiohttp.web.Application:
     app["response"] = []
     app["request"] = []
     app.router.add_post("/stick", handler)
+    app.router.add_post("/phone-api", handler)
     return app
 
 
@@ -81,15 +82,32 @@ def mock_rainbird_client(
     return func
 
 
+@pytest.fixture(name="cloud_client")
+def mock_cloud_client(
+    test_client: Callable[[], Awaitable[TestClient]]
+) -> Callable[[], Awaitable[AsyncRainbirdClient]]:
+    """Fixture to fake out the auth library."""
+
+    async def func() -> AsyncRainbirdClient:
+        client = await test_client()
+        return AsyncRainbirdClient(
+            cast(aiohttp.ClientSession, client), "/phone-api", password=None
+        )
+
+    return func
+
+
 @pytest.fixture(name="rainbird_controller")
 def mock_rainbird_controller(
     rainbird_client: Callable[[], Awaitable[AsyncRainbirdClient]],
+    cloud_client: Callable[[], Awaitable[AsyncRainbirdClient]],
 ) -> Callable[[], Awaitable[AsyncRainbirdController]]:
     """Fixture to fake out the auth library."""
 
     async def func() -> AsyncRainbirdController:
-        client = await rainbird_client()
-        return AsyncRainbirdController(client)
+        local = await rainbird_client()
+        cloud = await cloud_client()
+        return AsyncRainbirdController(local, cloud)
 
     return func
 

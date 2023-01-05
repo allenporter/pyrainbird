@@ -31,7 +31,9 @@ class RainbirdClient:
         self.coder = encryption.PayloadCoder(password, logger)
 
     def request(self, data, length):
-        payload = self.coder.encode_request(data, length)
+        payload = self.coder.encode_command(
+            "tunnelSip", {"data": data, "length": length}
+        )
         for i in range(0, self.retry):
             try:
                 resp = requests.post(
@@ -51,7 +53,7 @@ class RainbirdClient:
                     "Response: %d, %s" % (resp.status_code, resp.reason)
                 )
             else:
-                return self.coder.decode_response(resp.content)
+                return self.coder.decode_command(resp.content)["data"]
 
             time.sleep(self.retry_sleep)
             continue
