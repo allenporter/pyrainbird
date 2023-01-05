@@ -6,3 +6,5 @@ This module communicates directly towards the IP Address of the WiFi module. You
 
 See [examples](examples/) for additional details on how to use the APIs.
 
+This package is now hosted at https://github.com/allenporter/pyrainbird and was forked
+from https://github.com/jbarrancos/pyrainbird which is no longer maintained.
