@@ -4,11 +4,13 @@ import json
 import logging
 import sys
 import time
-from typing import Any
+from typing import Any, Optional
 
 from Crypto import Random
 from Crypto.Cipher import AES
 from Crypto.Hash import SHA256
+
+from .exceptions import RainbirdApiException
 
 BLOCK_SIZE = 16
 INTERRUPT = "\x00"
@@ -65,7 +67,7 @@ def to_bytes_old(string):
 class PayloadCoder:
     """PayloadCoder holds encoding/decoding information for the client."""
 
-    def __init__(self, password: str | None, logger: logging.Logger):
+    def __init__(self, password: Optional[str], logger: logging.Logger):
         """Initialize RainbirdSession."""
         self._password = password
         self._logger = logger
@@ -87,16 +89,23 @@ class PayloadCoder:
 
     def decode_command(self, content: bytes) -> str:
         """Decode a response payload."""
-        if self._password is None:
-            self._logger.debug("Response: %s" % content)
-            return json.loads(content)["result"]
-        decrypted_data = (
-            decrypt(content, self._password)
-            .decode("UTF-8")
-            .rstrip("\x10")
-            .rstrip("\x0A")
-            .rstrip("\x00")
-            .rstrip()
-        )
-        self._logger.debug("Response: %s" % decrypted_data)
-        return json.loads(decrypted_data)["result"]
+        if self._password is not None:
+            decrypted_data = (
+                decrypt(content, self._password)
+                .decode("UTF-8")
+                .rstrip("\x10")
+                .rstrip("\x0A")
+                .rstrip("\x00")
+                .rstrip()
+            )
+            content = decrypted_data
+        self._logger.debug("Response: %s" % content)
+        response = json.loads(content)
+        if error := response.get("error"):
+            msg = ["Error from controller"]
+            if code := error.get("code"):
+               msg.append(f"Code: {code}")
+            if message := error.get("message"):
+               msg.append(f"Message: {message}")
+            raise RainbirdApiException(", ".join(msg))
+        return response["result"]

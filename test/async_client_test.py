@@ -250,7 +250,7 @@ async def test_not_acknowledge_response(
         await controller.irrigate_zone(1, 30)
 
 
-async def test_get_wifi_settings(
+async def test_get_wifi_params(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
     response: ResponseResult,
 ) -> None:
@@ -276,8 +276,8 @@ async def test_get_wifi_settings(
         }
     )
     response(aiohttp.web.Response(body=encrypt(payload, PASSWORD)))
-    settings = await controller.get_wifi_settings()
-    assert settings.dict() == {
+    params = await controller.get_wifi_params()
+    assert params.dict() == {
         "ap_security": "unknown",
         "ap_timeout_idle": 20,
         "ap_timeout_no_lan": 20,

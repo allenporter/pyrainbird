@@ -18,11 +18,16 @@ from .data import (
     ModelAndVersion,
     ScheduleAndSettings,
     States,
+    NetworkStatus,
     WaterBudget,
     WeatherAndStatus,
-    WifiSettings,
+    WifiParams,
+    Settings,
+    ProgramInfo
 )
+from .exceptions import RainbirdApiException
 from .resources import RAINBIRD_COMMANDS
+
 
 _LOGGER = logging.getLogger(__name__)
 T = TypeVar("T")
@@ -38,10 +43,6 @@ HEAD = {
 }
 
 CLOUD_API_URL = "http://rdz-rbcloud.rainbird.com/phone-api"
-
-
-class RainbirdApiException(Exception):
-    """Exception from rainbird api."""
 
 
 class AsyncRainbirdClient:
@@ -146,10 +147,25 @@ class AsyncRainbirdController:
             "CurrentDate",
         )
 
-    async def get_wifi_settings(self) -> WifiSettings:
-        """Return wifi and other settings."""
+    async def get_wifi_params(self) -> WifiParams:
+        """Return wifi parameters and other settings."""
         result = await self._local_client.request("getWifiParams")
-        return WifiSettings.parse_obj(result)
+        return WifiParams.parse_obj(result)
+
+    async def get_settings(self) -> Settings:
+        """Return wifi parameters and other settings."""
+        result = await self._local_client.request("getSettings")
+        return Settings.parse_obj(result)
+
+    async def get_program_info(self) -> ProgramInfo:
+        """Return wifi parameters and other settings."""
+        result = await self._local_client.request("getProgramInfo")
+        return ProgramInfo.parse_obj(result)
+
+    async def get_network_status(self) -> NetworkStatus:
+        """Return the device network status."""
+        result = await self._local_client.request("getNetworkStatus")
+        return NetworkStatus.parse_obj(result)
 
     async def water_budget(self, budget) -> WaterBudget:
         """Return the water budget."""
@@ -234,7 +250,10 @@ class AsyncRainbirdController:
     async def get_weather_and_status(
         self, stick_id: str, country: str, zip_code: str
     ) -> WeatherAndStatus:
-        """Request the schedule and settings from the cloud."""
+        """Request the schedule and settings from the cloud.
+
+        The results include things like custom station names, program names, etc.
+        """
         if not self._cloud_client:
             raise ValueError("Cloud client not configured")
         result = await self._cloud_client.request(
@@ -245,7 +264,6 @@ class AsyncRainbirdController:
                 "ZipCode": zip_code,
             },
         )
-        print("result=", result)
         return WeatherAndStatus.parse_obj(result)
 
     async def _command(self, command: str, *args) -> dict[str, Any]:

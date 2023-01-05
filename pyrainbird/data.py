@@ -184,11 +184,11 @@ class WaterBudget(object):
         )
 
 
-class WifiSettings(BaseModel):
-    """Wifi and other settings."""
+class WifiParams(BaseModel):
+    """Wifi parameters for the device."""
 
-    """The mac address for the device, also referred to as the stick id."""
     mac_address: Optional[str] = Field(alias="macAddress")
+    """The mac address for the device, also referred to as the stick id."""
 
     local_ip_address: Optional[str] = Field(alias="localIpAddress")
     local_netmask: Optional[str] = Field(alias="localNetmask")
@@ -203,17 +203,32 @@ class WifiSettings(BaseModel):
     sick_version: Optional[str] = Field(alias="stickVersion")
 
 
-class Settings(BaseModel):
-    """Settings from the cloud API."""
+class ProgramInfo(BaseModel):
+    """Program information for the device."""
 
-    flow_rates: list[str] = Field(default_factory=list, alias="FlowRates")
-    flow_units: list[str] = Field(default_factory=list, alias="FlowUnits")
-    code: Optional[str]
-    country: Optional[str]
-    global_disable: bool = Field(alias="globalDisable")
+    soil_types: list[int] = Field(default_factory=list, alias="SoilTypes")
+    flow_rates: list[int] = Field(default_factory=list, alias="FlowRates")
+    flow_units: list[int] = Field(default_factory=list, alias="FlowUnits")
+
+
+class Settings(BaseModel):
+    """Settings for the device."""
+
     num_programs: int = Field(alias="numPrograms")
     program_opt_out_mask: str = Field(alias="programOptOutMask")
-    soil_types: list[int] = Field(default_factory=[], alias="soilTypes")
+
+    code: Optional[str]
+    """Zip code for the device."""
+
+    country: Optional[str]
+    """Country location of the device."""
+
+    global_disable: bool = Field(alias="globalDisable")
+
+    # Program information
+    soil_types: list[int] = Field(default_factory=list, alias="soilTypes")
+    flow_rates: list[str] = Field(default_factory=list, alias="FlowRates")
+    flow_units: list[str] = Field(default_factory=list, alias="FlowUnits")
 
 
 class ScheduleAndSettings:
@@ -285,3 +300,10 @@ class WeatherAndStatus(BaseModel):
     controller: Optional[Controller] = Field(alias="Controller")
     forecasted_rain: Optional[dict[str, Any]] = Field(alias="ForecastedRain")
     weather: Optional[Weather] = Field(alias="Weather")
+
+
+class NetworkStatus(BaseModel):
+    """Get the device network status."""
+
+    network_up: bool = Field(alias="networkUp")
+    internet_up: bool = Field(alias="internetUp")
