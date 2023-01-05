@@ -8,7 +8,7 @@ commands for the tool.
 $ export RAINBIRD_SERVER=192.168.1.10
 $ export RAINBIRD_PASSWORD=mypass
 $ ./rainbird_tool --help
-$ ./rainbird_tool get_wifi_settings --help
+$ ./rainbird_tool get_wifi_settings
 ```
 """
 
