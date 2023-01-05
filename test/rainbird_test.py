@@ -2,7 +2,7 @@ import unittest
 
 from parameterized import parameterized
 
-from pyrainbird.rainbird import encode, decode
+from pyrainbird.rainbird import decode, encode
 
 
 def encode_name_func(testcase_func, param_num, param):

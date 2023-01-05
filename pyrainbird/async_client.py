@@ -12,7 +12,16 @@ import aiohttp
 from aiohttp.client_exceptions import ClientError
 
 from . import encryption, rainbird
-from .data import _DEFAULT_PAGE, AvailableStations, ModelAndVersion, States, WaterBudget
+from .data import (
+    _DEFAULT_PAGE,
+    AvailableStations,
+    ModelAndVersion,
+    ScheduleAndSettings,
+    States,
+    WaterBudget,
+    WeatherAndStatus,
+    WifiSettings,
+)
 from .resources import RAINBIRD_COMMANDS
 
 _LOGGER = logging.getLogger(__name__)
@@ -28,6 +37,8 @@ HEAD = {
     "Content-Type": "application/octet-stream",
 }
 
+CLOUD_API_URL = "http://rdz-rbcloud.rainbird.com/phone-api"
+
 
 class RainbirdApiException(Exception):
     """Exception from rainbird api."""
@@ -37,29 +48,58 @@ class AsyncRainbirdClient:
     """An asyncio rainbird client."""
 
     def __init__(
-        self, websession: aiohttp.ClientSession, host: str, password: str
+        self,
+        websession: aiohttp.ClientSession,
+        host: str,
+        password: str | None,
     ) -> None:
         self._websession = websession
-        self._url = host if host.startswith("/") else f"http://{host}/stick"
+        if host.startswith("/") or host.startswith("http://"):
+            self._url = host
+        else:
+            self._url = f"http://{host}/stick"
         self._coder = encryption.PayloadCoder(password, _LOGGER)
 
-    async def request(self, data: str, length: int) -> str:
-        payload = self._coder.encode_request(data, length)
+    async def tunnelSip(self, data: str, length: int) -> str:
+        """Send a tunnelSip request."""
+        result = await self.request("tunnelSip", {"data": data, "length": length})
+        return result["data"]
+
+    async def request(
+        self, method: str, params: dict[str, Any] = None
+    ) -> dict[str, Any]:
+        """Send a request for any command."""
+        payload = self._coder.encode_command(method, params or {})
         try:
-            resp = await self._websession.request("post", self._url, data=payload, headers=HEAD)
+            resp = await self._websession.request(
+                "post", self._url, data=payload, headers=HEAD
+            )
             resp.raise_for_status()
         except ClientError as err:
             raise RainbirdApiException(f"Error from API: {str(err)}") from err
         content = await resp.read()
-        return self._coder.decode_response(content)
+        return self._coder.decode_command(content)
+
+
+def CreateController(
+    websession: aiohttp.ClientSession, host: str, password: str
+) -> "AsyncRainbirdController":
+    local_client = AsyncRainbirdClient(websession, host, password)
+    cloud_client = AsyncRainbirdClient(websession, CLOUD_API_URL, None)
+    return AsyncRainbirdController(local_client, cloud_client)
 
 
 class AsyncRainbirdController:
     """Rainbord controller that uses asyncio."""
 
-    def __init__(self, client: AsyncRainbirdClient):
+    def __init__(
+        self,
+        local_client: AsyncRainbirdClient,
+        cloud_client: AsyncRainbirdClient = None,
+    ) -> None:
         """Initialize AsyncRainbirdController."""
-        self._client = client
+        self._local_client = local_client
+        self._cloud_client = cloud_client
 
     async def get_model_and_version(self) -> ModelAndVersion:
         """Return the model and version."""
@@ -105,6 +145,11 @@ class AsyncRainbirdController:
             lambda resp: datetime.date(resp["year"], resp["month"], resp["day"]),
             "CurrentDate",
         )
+
+    async def get_wifi_settings(self) -> WifiSettings:
+        """Return wifi and other settings."""
+        result = await self._local_client.request("getWifiParams")
+        return WifiSettings.parse_obj(result)
 
     async def water_budget(self, budget) -> WaterBudget:
         """Return the water budget."""
@@ -177,10 +222,36 @@ class AsyncRainbirdController:
             "CurrentIrrigationState",
         )
 
+    async def get_schedule_and_settings(self, stick_id: str) -> ScheduleAndSettings:
+        """Request the schedule and settings from the cloud."""
+        if not self._cloud_client:
+            raise ValueError("Cloud client not configured")
+        result = await self._cloud_client.request(
+            "requestScheduleAndSettings", {"StickId": stick_id}
+        )
+        return ScheduleAndSettings.parse_obj(result)
+
+    async def get_weather_and_status(
+        self, stick_id: str, country: str, zip_code: str
+    ) -> WeatherAndStatus:
+        """Request the schedule and settings from the cloud."""
+        if not self._cloud_client:
+            raise ValueError("Cloud client not configured")
+        result = await self._cloud_client.request(
+            "requestWeatherAndStatus",
+            {
+                "Country": country,
+                "StickId": stick_id,
+                "ZipCode": zip_code,
+            },
+        )
+        print("result=", result)
+        return WeatherAndStatus.parse_obj(result)
+
     async def _command(self, command: str, *args) -> dict[str, Any]:
         data = rainbird.encode(command, *args)
         _LOGGER.debug("Request to line: " + str(data))
-        decrypted_data = await self._client.request(
+        decrypted_data = await self._local_client.tunnelSip(
             data,
             RAINBIRD_COMMANDS["ControllerCommands"]["%sRequest" % command]["length"],
         )

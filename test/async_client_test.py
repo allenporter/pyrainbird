@@ -1,6 +1,7 @@
 """Test for AsyncRainbirdController."""
 
 import datetime
+import json
 from collections.abc import Awaitable, Callable
 
 import aiohttp
@@ -29,7 +30,7 @@ async def test_request(
     """Test of basic request/response handling."""
     response(aiohttp.web.Response(body=RESPONSE))
     client = await rainbird_client()
-    resp = await client.request(REQUEST, LENGTH)
+    resp = await client.tunnelSip(REQUEST, LENGTH)
     assert resp == RESULT_DATA
 
 
@@ -247,3 +248,114 @@ async def test_not_acknowledge_response(
     api_response("00", commandEcho=17, NAKCode=28)
     with pytest.raises(RainbirdApiException):
         await controller.irrigate_zone(1, 30)
+
+
+async def test_get_wifi_settings(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    response: ResponseResult,
+) -> None:
+    controller = await rainbird_controller()
+    payload = json.dumps(
+        {
+            "jsonrpc": "2.0",
+            "result": {
+                "macAddress": "11:22:33:44:55:66",
+                "localIpAddress": "192.168.1.10",
+                "localNetmask": "255.255.255.0",
+                "localGateway": "192.168.1.1",
+                "rssi": -59,
+                "wifiSsid": "some-ssid",
+                "wifiPassword": "some-pass",
+                "wifiSecurity": "wpa2-aes",
+                "apTimeoutNoLan": 20,
+                "apTimeoutIdle": 20,
+                "apSecurity": "unknown",
+                "stickVersion": "Rain Bird Stick Rev C/1.63",
+            },
+            "id": 1234,
+        }
+    )
+    response(aiohttp.web.Response(body=encrypt(payload, PASSWORD)))
+    settings = await controller.get_wifi_settings()
+    assert settings.dict() == {
+        "ap_security": "unknown",
+        "ap_timeout_idle": 20,
+        "ap_timeout_no_lan": 20,
+        "local_gateway": "192.168.1.1",
+        "local_ip_address": "192.168.1.10",
+        "local_netmask": "255.255.255.0",
+        "mac_address": "11:22:33:44:55:66",
+        "rssi": -59,
+        "sick_version": "Rain Bird Stick Rev C/1.63",
+        "wifi_password": "some-pass",
+        "wifi_security": "wpa2-aes",
+        "wifi_ssid": "some-ssid",
+    }
+
+
+async def test_get_schedule_and_settings(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    response: ResponseResult,
+) -> None:
+    controller = await rainbird_controller()
+    payload = {
+            "id": 440,
+            "jsonrpc": "2.0",
+            "result": {
+                "0300": "83003F000000",
+                "0B": "8B012F0000",
+                "3000": "B0000064",
+                "3001": "B0010050",
+                "3002": "B0020050",
+                "3B00": "BB0000000000000000FF0000",
+                "3F00": "BF0000000000",
+                "4A01": "CA012B483163",
+                "4C": "CC1228270417E700040001FFFF000000",
+                "schedule": {
+                    "200000": "A0000000000400",
+                    "200010": "A000106A0601006401",
+                    "200011": "A000116A0300006400",
+                    "200012": "A00012000300006400",
+                    "200060": "A0006000F0FFFFFFFFFFFF",
+                    "200061": "A00061FFFFFFFFFFFFFFFF",
+                    "200062": "A00062FFFFFFFFFFFFFFFF",
+                    "200080": "A00080001900000000001400000000",
+                    "200081": "A00081000700000000001400000000",
+                    "200082": "A00082000A00000000000000000000",
+                    "200083": "A00083000000000000000000000000",
+                    "200084": "A00084000000000000000000000000",
+                    "200085": "A00085000000000000000000000000",
+                    "3000": "B0000064",
+                    "3001": "B0010050",
+                    "3002": "B0020050",
+                    "3100": "0131",
+                    "3101": "0131",
+                    "3102": "0131",
+                    "31FF0064": "0131",
+                },
+                "settings": {
+                    "FlowRates": [],
+                    "FlowUnits": [],
+                    "code": "90210",
+                    "country": "US",
+                    "globalDisable": False,
+                    "numPrograms": 2,
+                    "programOptOutMask": "07",
+                    "soilTypes": [1, 0, 0],
+                },
+                "status": "good",
+            },
+    }
+    response(aiohttp.web.json_response(payload))
+    result = await controller.get_schedule_and_settings("11:22:33:44:55:66")
+    assert result.settings
+    settings = result.settings
+    assert settings.flow_rates == []
+    assert settings.flow_units == []
+    assert settings.code == "90210"
+    assert settings.country == "US"
+    assert settings.global_disable == False
+    assert settings.num_programs == 2
+    assert settings.program_opt_out_mask == "07"
+    assert settings.soil_types == [1, 0, 0]
+    assert result.status == "good"

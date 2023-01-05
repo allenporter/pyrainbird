@@ -4,6 +4,7 @@ import json
 import logging
 import sys
 import time
+from typing import Any
 
 from Crypto import Random
 from Crypto.Cipher import AES
@@ -64,23 +65,31 @@ def to_bytes_old(string):
 class PayloadCoder:
     """PayloadCoder holds encoding/decoding information for the client."""
 
-    def __init__(self, password: str, logger: logging.Logger):
+    def __init__(self, password: str | None, logger: logging.Logger):
         """Initialize RainbirdSession."""
         self._password = password
         self._logger = logger
 
-    def encode_request(self, data: str, length: int) -> str:
+    def encode_command(self, method: str, params: dict[str, Any]) -> str:
         """Encode a request payload."""
         request_id = time.time()
-        send_data = (
-            '{"id":%d,"jsonrpc":"2.0","method":"tunnelSip","params":{"data":"%s","length":%d}}'
-            % (request_id, data, length)
-        )
+        data = {
+            "id": request_id,
+            "jsonrpc": "2.0",
+            "method": method,
+            "params": params,
+        }
+        send_data = json.dumps(data)
         self._logger.debug("Request: %s", send_data)
+        if self._password is None:
+            return send_data
         return encrypt(send_data, self._password)
 
-    def decode_response(self, content: bytes) -> str:
+    def decode_command(self, content: bytes) -> str:
         """Decode a response payload."""
+        if self._password is None:
+            self._logger.debug("Response: %s" % content)
+            return json.loads(content)["result"]
         decrypted_data = (
             decrypt(content, self._password)
             .decode("UTF-8")
@@ -90,4 +99,4 @@ class PayloadCoder:
             .rstrip()
         )
         self._logger.debug("Response: %s" % decrypted_data)
-        return json.loads(decrypted_data)["result"]["data"]
+        return json.loads(decrypted_data)["result"]

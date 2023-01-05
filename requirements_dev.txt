@@ -2,6 +2,7 @@
 aiohttp==3.8.3
 responses==0.22.0
 parameterized==0.8.1
+pydantic==1.10.4
 pyflakes==2.5.0
 pytest-cov==4.0.0
 pytest-mock==3.10.0
