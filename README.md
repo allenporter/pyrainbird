@@ -2,6 +2,8 @@
 # pyrainbird ![](https://img.shields.io/badge/python-2+-green.svg) [![Build Status](https://travis-ci.org/konikvranik/pyrainbird.svg?branch=master)](https://travis-ci.org/konikvranik/pyrainbird) [![Coverage Status](https://coveralls.io/repos/github/konikvranik/pyrainbird/badge.svg?branch=master)](https://coveralls.io/github/konikvranik/pyrainbird?branch=master)
 > Python module for interacting with WiFi LNK module of the Rain Bird Irrigation system
 
+NOTE: This project is deprecated and is now maintained at https://github.com/allenporter/pyrainbird
+
 This project has no affiliation with Rain Bird. This module works with the Rain Bird LNK WiFi Module.
  For more information see https://www.rainbird.com/products/module-wi-fi-lnk
 
