@@ -16,8 +16,8 @@ from pyrainbird import (
 from pyrainbird.async_client import (
     AsyncRainbirdClient,
     AsyncRainbirdController,
-    RainbirdApiException,
 )
+from pyrainbird.exceptions import RainbirdApiException, RainbirdAuthException
 from pyrainbird.encryption import encrypt
 
 from .conftest import LENGTH, PASSWORD, REQUEST, RESPONSE, RESULT_DATA, ResponseResult
@@ -43,6 +43,18 @@ async def test_request_failure(
     response(aiohttp.web.Response(status=500))
     client = await rainbird_client()
     with pytest.raises(RainbirdApiException):
+        await client.request(REQUEST, LENGTH)
+
+
+async def test_request_permission_failure(
+    rainbird_client: Callable[[], Awaitable[AsyncRainbirdClient]],
+    response: ResponseResult,
+) -> None:
+    """Test a basic request failure handling."""
+
+    response(aiohttp.web.Response(status=403))
+    client = await rainbird_client()
+    with pytest.raises(RainbirdAuthException):
         await client.request(REQUEST, LENGTH)
 
 
