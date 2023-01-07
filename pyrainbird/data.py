@@ -2,6 +2,7 @@
 
 from typing import Any, Optional
 
+from dataclasses import dataclass
 from pydantic import BaseModel, Field
 
 from .resources import RAINBIRD_MODELS
@@ -9,86 +10,50 @@ from .resources import RAINBIRD_MODELS
 _DEFAULT_PAGE = 0
 
 
-class Pageable(object):
-    def __init__(self, page=_DEFAULT_PAGE):
-        self.page = page
+@dataclass
+class Pageable:
+    """Response object that supports paging."""
 
-    def __hash__(self):
-        return hash(self.page)
-
-    def __eq__(self, o):
-        return isinstance(o, Pageable) and self.page == o.page
-
-    def __ne__(self, o):
-        return not self.__eq__(o)
-
-    def __str__(self):
-        return "page: %d" % self.page
+    page: int = _DEFAULT_PAGE
 
 
-class Echo(object):
-    def __init__(self, echo):
-        self.echo = echo
+@dataclass
+class Echo:
+    """Echo response from the API."""
 
-    def __hash__(self):
-        return hash(self.echo)
-
-    def __eq__(self, o):
-        return isinstance(o, Echo) and self.echo == o.echo
-
-    def __ne__(self, o):
-        return not self.__eq__(o)
+    echo: int
 
     def __str__(self):
         return "echo: %02X" % self.echo
 
 
-class CommandSupport(Echo):
-    def __init__(self, support, echo=0):
-        super(CommandSupport, self).__init__(echo)
-        self.support = support
+@dataclass
+class CommandSupport:
+    """Command support response from the API."""
 
-    def __eq__(self, o):
-        return (
-            super(CommandSupport, self).__eq__(o)
-            and isinstance(o, CommandSupport)
-            and o.support == self.support
-        )
-
-    def __ne__(self, o):
-        return not self.__eq__(o)
-
-    def __hash__(self):
-        return hash((super(CommandSupport, self).__hash__(), self.support))
+    support: int
+    echo: int
 
     def __str__(self):
-        return "command support: %02X, %s" % (
-            self.support,
-            super(CommandSupport, self).__str__(),
-        )
+        return "command support: %02X, echo: %s" % (self.support, self.echo)
 
 
-class ModelAndVersion(object):
-    def __init__(self, model, revMajor, revMinor):
-        self.model = model
-        self.major = revMajor
-        self.minor = revMinor
-        self.model_code = RAINBIRD_MODELS[self.model][0]
-        self.model_name = RAINBIRD_MODELS[self.model][2]
+@dataclass
+class ModelAndVersion:
+    """Model and version response from the API."""
 
-    def __hash__(self):
-        return hash((self.model, self.major, self.minor))
+    model: str
+    major: str
+    minor: str
 
-    def __eq__(self, o):
-        return (
-            isinstance(o, ModelAndVersion)
-            and self.model == o.model
-            and self.major == o.major
-            and self.minor == o.minor
-        )
+    @property
+    def model_code(self):
+        """The model code."""
+        return RAINBIRD_MODELS[self.model][0]
 
-    def __ne__(self, o):
-        return not self.__eq__(o)
+    @property
+    def model_name(self):
+        return RAINBIRD_MODELS[self.model][2]
 
     def __str__(self):
         return "model: %04X, version: %d.%d" % (
