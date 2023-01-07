@@ -5,11 +5,12 @@ This is an asyncio based client library for rainbird.
 
 import datetime
 import logging
+from http import HTTPStatus
 from collections.abc import Callable
 from typing import Any, TypeVar, Optional
 
 import aiohttp
-from aiohttp.client_exceptions import ClientError
+from aiohttp.client_exceptions import ClientError, ClientResponseError
 
 from . import encryption, rainbird
 from .data import (
@@ -25,7 +26,7 @@ from .data import (
     Settings,
     ProgramInfo
 )
-from .exceptions import RainbirdApiException
+from .exceptions import RainbirdApiException, RainbirdAuthException
 from .resources import RAINBIRD_COMMANDS
 
 
@@ -76,8 +77,12 @@ class AsyncRainbirdClient:
                 "post", self._url, data=payload, headers=HEAD
             )
             resp.raise_for_status()
-        except ClientError as err:
+        except ClientResponseError as err:
+            if err.status == HTTPStatus.FORBIDDEN:
+                raise RainbirdAuthException(f"Error authenticating with Device: {err}") from err
             raise RainbirdApiException(f"Error from API: {str(err)}") from err
+        except ClientError as err:
+            raise RainbirdApiException(f"Error communicating with device: {str(err)}") from err
         content = await resp.read()
         return self._coder.decode_command(content)
 
