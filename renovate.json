@@ -11,5 +11,8 @@
       "automergeType": "branch",
       "matchUpdateTypes": ["minor", "patch"]
     }
-  ]
+  ],
+  "pip_requirements": {
+    "fileMatch": ["requirements_dev.txt"]
+  }
 }
