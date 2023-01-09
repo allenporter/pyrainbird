@@ -294,16 +294,6 @@ class AsyncRainbirdController:
         )
         return WeatherAndStatus.parse_obj(result)
 
-    async def test_command_support(self, command_id: int) -> bool:
-        """Test if the device supports the specified command."""
-        return await self._process_command(
-            lambda resp: bool(resp["support"]), "CommandSupport", command_id
-        )
-
-    async def test_rpc_support(self, rpc: str) -> dict[str, Any]:
-        """Test if the device supports the specified command."""
-        return await self._local_client.request(rpc)
-
     async def get_combined_controller_state(self) -> ControllerState:
         """Return the combined controller state."""
         return await self._process_command(
@@ -319,8 +309,15 @@ class AsyncRainbirdController:
             "ControllerFirmwareVersion",
         )
 
-    async def get_schedule(self, zone: int) -> str:
-        await self._process_command(lambda resp: True, "RetrieveSchedule", zone)
+    async def test_command_support(self, command_id: int) -> bool:
+        """Debugging command to test if the device supports the specified command."""
+        return await self._process_command(
+            lambda resp: bool(resp["support"]), "CommandSupport", command_id
+        )
+
+    async def test_rpc_support(self, rpc: str) -> dict[str, Any]:
+        """Debugging command to see if the device supports the specified json RPC method."""
+        return await self._local_client.request(rpc)
 
     async def _command(self, command: str, *args) -> dict[str, Any]:
         data = rainbird.encode(command, *args)
