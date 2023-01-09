@@ -101,6 +101,11 @@ class PayloadCoder:
             content = decrypted_data
         self._logger.debug("Response: %s" % content)
         response = json.loads(content)
+        # COMMAND_NOT_SUPPORTED: 0
+        # BAD_LENGTH: 1
+        # INCOMPATIBLE_DATA: 2
+        # CHECKSUM_ERROR: 3
+        # UNKNOWN: 4
         if error := response.get("error"):
             msg = ["Error from controller"]
             if code := error.get("code"):
