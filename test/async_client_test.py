@@ -13,12 +13,10 @@ from pyrainbird import (
     ModelAndVersion,
     WaterBudget,
 )
-from pyrainbird.async_client import (
-    AsyncRainbirdClient,
-    AsyncRainbirdController,
-)
-from pyrainbird.exceptions import RainbirdApiException, RainbirdAuthException
+from pyrainbird.async_client import AsyncRainbirdClient, AsyncRainbirdController
+from pyrainbird.data import SoilType
 from pyrainbird.encryption import encrypt
+from pyrainbird.exceptions import RainbirdApiException, RainbirdAuthException
 
 from .conftest import LENGTH, PASSWORD, REQUEST, RESPONSE, RESULT_DATA, ResponseResult
 
@@ -262,6 +260,21 @@ async def test_not_acknowledge_response(
         await controller.irrigate_zone(1, 30)
 
 
+async def test_get_network_status(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    response: ResponseResult,
+) -> None:
+    controller = await rainbird_controller()
+    payload = json.dumps(
+        {"jsonrpc": "2.0", "result": {"networkUp": True, "internetUp": True}, "id": 0}
+    )
+    response(aiohttp.web.Response(body=encrypt(payload, PASSWORD)))
+    result = await controller.get_network_status()
+    assert result
+    assert result.network_up
+    assert result.internet_up
+
+
 async def test_get_wifi_params(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
     response: ResponseResult,
@@ -311,52 +324,52 @@ async def test_get_schedule_and_settings(
 ) -> None:
     controller = await rainbird_controller()
     payload = {
-            "id": 440,
-            "jsonrpc": "2.0",
-            "result": {
-                "0300": "83003F000000",
-                "0B": "8B012F0000",
+        "id": 440,
+        "jsonrpc": "2.0",
+        "result": {
+            "0300": "83003F000000",
+            "0B": "8B012F0000",
+            "3000": "B0000064",
+            "3001": "B0010050",
+            "3002": "B0020050",
+            "3B00": "BB0000000000000000FF0000",
+            "3F00": "BF0000000000",
+            "4A01": "CA012B483163",
+            "4C": "CC1228270417E700040001FFFF000000",
+            "schedule": {
+                "200000": "A0000000000400",
+                "200010": "A000106A0601006401",
+                "200011": "A000116A0300006400",
+                "200012": "A00012000300006400",
+                "200060": "A0006000F0FFFFFFFFFFFF",
+                "200061": "A00061FFFFFFFFFFFFFFFF",
+                "200062": "A00062FFFFFFFFFFFFFFFF",
+                "200080": "A00080001900000000001400000000",
+                "200081": "A00081000700000000001400000000",
+                "200082": "A00082000A00000000000000000000",
+                "200083": "A00083000000000000000000000000",
+                "200084": "A00084000000000000000000000000",
+                "200085": "A00085000000000000000000000000",
                 "3000": "B0000064",
                 "3001": "B0010050",
                 "3002": "B0020050",
-                "3B00": "BB0000000000000000FF0000",
-                "3F00": "BF0000000000",
-                "4A01": "CA012B483163",
-                "4C": "CC1228270417E700040001FFFF000000",
-                "schedule": {
-                    "200000": "A0000000000400",
-                    "200010": "A000106A0601006401",
-                    "200011": "A000116A0300006400",
-                    "200012": "A00012000300006400",
-                    "200060": "A0006000F0FFFFFFFFFFFF",
-                    "200061": "A00061FFFFFFFFFFFFFFFF",
-                    "200062": "A00062FFFFFFFFFFFFFFFF",
-                    "200080": "A00080001900000000001400000000",
-                    "200081": "A00081000700000000001400000000",
-                    "200082": "A00082000A00000000000000000000",
-                    "200083": "A00083000000000000000000000000",
-                    "200084": "A00084000000000000000000000000",
-                    "200085": "A00085000000000000000000000000",
-                    "3000": "B0000064",
-                    "3001": "B0010050",
-                    "3002": "B0020050",
-                    "3100": "0131",
-                    "3101": "0131",
-                    "3102": "0131",
-                    "31FF0064": "0131",
-                },
-                "settings": {
-                    "FlowRates": [],
-                    "FlowUnits": [],
-                    "code": "90210",
-                    "country": "US",
-                    "globalDisable": False,
-                    "numPrograms": 2,
-                    "programOptOutMask": "07",
-                    "soilTypes": [1, 0, 0],
-                },
-                "status": "good",
+                "3100": "0131",
+                "3101": "0131",
+                "3102": "0131",
+                "31FF0064": "0131",
             },
+            "settings": {
+                "FlowRates": [],
+                "FlowUnits": [],
+                "code": "90210",
+                "country": "US",
+                "globalDisable": False,
+                "numPrograms": 2,
+                "programOptOutMask": "07",
+                "soilTypes": [1, 0, 0],
+            },
+            "status": "good",
+        },
     }
     response(aiohttp.web.json_response(payload))
     result = await controller.get_schedule_and_settings("11:22:33:44:55:66")
@@ -369,5 +382,116 @@ async def test_get_schedule_and_settings(
     assert settings.global_disable == False
     assert settings.num_programs == 2
     assert settings.program_opt_out_mask == "07"
-    assert settings.soil_types == [1, 0, 0]
+    assert settings.soil_types == [SoilType.CLAY, 0, 0]
     assert result.status == "good"
+
+
+async def test_get_server_mode(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    response: ResponseResult,
+) -> None:
+    """Test the get server mode rpc."""
+    controller = await rainbird_controller()
+    payload = {
+        "jsonrpc": "2.0",
+        "result": {
+            "serverMode": True,
+            "checkInInterval": 10,
+            "serverUrl": "http://rdz-rbcloud.rainbird.com:80/rdz-api",
+            "relayTimeout": 5,
+            "missedCheckins": 0,
+        },
+        "id": 0,
+    }
+    response(aiohttp.web.Response(body=encrypt(json.dumps(payload), PASSWORD)))
+    result = await controller.get_server_mode()
+    assert result.server_mode
+    assert result.check_in_interval == 10
+    assert result.server_url == "http://rdz-rbcloud.rainbird.com:80/rdz-api"
+    assert result.relay_timeout == 5
+    assert result.missed_checkins == 0
+
+
+async def test_get_settings(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    response: ResponseResult,
+) -> None:
+    """Test getting the settings."""
+    controller = await rainbird_controller()
+    payload = {
+        "jsonrpc": "2.0",
+        "result": {
+            "country": "US",
+            "code": "90210",
+            "globalDisable": True,
+            "numPrograms": 3,
+            "programOptOutMask": "07",
+            "SoilTypes": [1, 0, 0],
+            "FlowRates": [0, 0, 0],
+            "FlowUnits": [0, 0, 0],
+        },
+        "id": 0,
+    }
+    response(aiohttp.web.Response(body=encrypt(json.dumps(payload), PASSWORD)))
+    result = await controller.get_settings()
+    assert result.global_disable
+    assert result.num_programs == 3
+    assert result.program_opt_out_mask == "07"
+    assert result.soil_types == [SoilType.CLAY, SoilType.NONE, SoilType.NONE]
+    assert result.flow_rates == [0, 0, 0]
+    assert result.flow_units == [0, 0, 0]
+    assert result.country == "US"
+    assert result.code == "90210"
+
+
+async def test_get_zip_code(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    response: ResponseResult,
+) -> None:
+    """Test the get zip code rpc."""
+    controller = await rainbird_controller()
+    payload = {"jsonrpc": "2.0", "result": {"country": "US", "code": "90210"}, "id": 0}
+    response(aiohttp.web.Response(body=encrypt(json.dumps(payload), PASSWORD)))
+    result = await controller.get_zip_code()
+    assert result.country == "US"
+    assert result.code == "90210"
+
+
+async def test_get_weather_adjustment_mask(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    response: ResponseResult,
+) -> None:
+    """Test getting the weather adjustment mask."""
+    controller = await rainbird_controller()
+    payload = {
+        "jsonrpc": "2.0",
+        "result": {"globalDisable": True, "numPrograms": 3, "programOptOutMask": "07"},
+        "id": 0,
+    }
+    response(aiohttp.web.Response(body=encrypt(json.dumps(payload), PASSWORD)))
+    result = await controller.get_weather_adjustment_mask()
+    assert result.global_disable
+    assert result.num_programs == 3
+    assert result.program_opt_out_mask == "07"
+
+
+async def test_get_combined_controller_state(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    response: ResponseResult,
+) -> None:
+    """Test getting the combined controller state."""
+    controller = await rainbird_controller()
+    payload = {
+        "jsonrpc": "2.0",
+        "result": {"data": "CC140B230817E700030001FFFF000000"},
+        "id": 0,
+    }
+    response(aiohttp.web.Response(body=encrypt(json.dumps(payload), PASSWORD)))
+    result = await controller.get_combined_controller_state()
+    assert result
+    assert result.delay_setting == 3
+    assert result.sensor_state == 0
+    assert result.irrigation_state == 1
+    assert result.seasonal_adjust == 65535
+    assert result.remaining_runtime == 0
+    assert result.active_station == 0
