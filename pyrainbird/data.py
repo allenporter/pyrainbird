@@ -360,10 +360,6 @@ class ControllerState(BaseModel):
 
     device_time: datetime.datetime
 
-    @property
-    def device_time(self) -> datetime.datetime:
-        """Return the device time."""
-
     @root_validator(pre=True)
     def _device_time(cls, values: dict[str, Any]):
         """Validate different ways the SoilTypes parameter is handled."""

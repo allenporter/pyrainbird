@@ -379,7 +379,7 @@ async def test_get_schedule_and_settings(
     assert settings.flow_units == []
     assert settings.code == "90210"
     assert settings.country == "US"
-    assert settings.global_disable == False
+    assert not settings.global_disable
     assert settings.num_programs == 2
     assert settings.program_opt_out_mask == "07"
     assert settings.soil_types == [SoilType.CLAY, 0, 0]
@@ -495,3 +495,4 @@ async def test_get_combined_controller_state(
     assert result.seasonal_adjust == 65535
     assert result.remaining_runtime == 0
     assert result.active_station == 0
+    assert result.device_time == datetime.datetime(2023, 1, 8, 20, 11, 35)
