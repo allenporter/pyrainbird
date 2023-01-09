@@ -10,3 +10,5 @@
 0x099: ["TBOS_BT", 9,"TBOS-BT",true,3,8]
 0x107: ["ESP_MEv2", 10,"ESP-Me",true,4,6]
 0x103: ["ESP_RZXe2", 11,"ESP-RZXe2",false,8,6]
+0x812: ["RC2", 12, "RC2", true, 3, 4]
+0x812: ["ARC8", 13, "ARC8", true, 3, 4]

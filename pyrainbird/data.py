@@ -1,9 +1,11 @@
 """Data model for rainbird client api."""
 
+import datetime
+from dataclasses import dataclass
+from enum import IntEnum
 from typing import Any, Optional
 
-from dataclasses import dataclass
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, root_validator
 
 from .resources import RAINBIRD_MODELS
 
@@ -56,11 +58,21 @@ class ModelAndVersion:
         return RAINBIRD_MODELS[self.model][2]
 
     def __str__(self):
-        return "model: %04X, version: %d.%d" % (
+        return "model: %04X (%s), version: %d.%d" % (
             self.model,
+            self.model_name,
             self.major,
             self.minor,
         )
+
+
+@dataclass
+class ControllerFirmwareVersion:
+    """Controller firmware version."""
+
+    major: str
+    minor: str
+    patch: str
 
 
 class States(object):
@@ -143,7 +155,7 @@ class WaterBudget(object):
         return not self.__eq__(o)
 
     def __str__(self):
-        return "water budget: program: %d, hi: %02X, lo: %02X" % (
+        return "water budget: program: %d, adjust: %s" % (
             self.program,
             self.adjust,
         )
@@ -168,12 +180,31 @@ class WifiParams(BaseModel):
     sick_version: Optional[str] = Field(alias="stickVersion")
 
 
-class ProgramInfo(BaseModel):
-    """Program information for the device."""
+class SoilType(IntEnum):
+    """Soil type."""
 
-    soil_types: list[int] = Field(default_factory=list, alias="SoilTypes")
+    NONE = 0
+    CLAY = 1
+    SAND = 2
+    OTHER = 3
+
+
+class ProgramInfo(BaseModel):
+    """Program information for the device.
+
+    The values are repeated once for each program.
+    """
+
+    soil_types: list[SoilType] = Field(default_factory=list, alias="SoilTypes")
     flow_rates: list[int] = Field(default_factory=list, alias="FlowRates")
     flow_units: list[int] = Field(default_factory=list, alias="FlowUnits")
+
+    @root_validator(pre=True)
+    def _soil_type(cls, values: dict[str, Any]):
+        """Validate different ways the SoilTypes parameter is handled."""
+        if soil_type := values.get("soilTypes"):
+            values["SoilTypes"] = soil_type
+        return values
 
 
 class Settings(BaseModel):
@@ -181,6 +212,7 @@ class Settings(BaseModel):
 
     num_programs: int = Field(alias="numPrograms")
     program_opt_out_mask: str = Field(alias="programOptOutMask")
+    global_disable: bool = Field(alias="globalDisable")
 
     code: Optional[str]
     """Zip code for the device."""
@@ -188,12 +220,36 @@ class Settings(BaseModel):
     country: Optional[str]
     """Country location of the device."""
 
+    # Program information
+    soil_types: list[SoilType] = Field(default_factory=list, alias="SoilTypes")
+    flow_rates: list[int] = Field(default_factory=list, alias="FlowRates")
+    flow_units: list[int] = Field(default_factory=list, alias="FlowUnits")
+
+    @root_validator(pre=True)
+    def _soil_type(cls, values: dict[str, Any]):
+        """Validate different ways the SoilTypes parameter is handled."""
+        print("values=", values)
+        if soil_type := values.get("soilTypes"):
+            values["SoilTypes"] = soil_type
+        return values
+
+
+class WeatherAdjustmentMask(BaseModel):
+    """Weather adjustment mask response."""
+
+    num_programs: int = Field(alias="numPrograms")
+    program_opt_out_mask: str = Field(alias="programOptOutMask")
     global_disable: bool = Field(alias="globalDisable")
 
-    # Program information
-    soil_types: list[int] = Field(default_factory=list, alias="soilTypes")
-    flow_rates: list[str] = Field(default_factory=list, alias="FlowRates")
-    flow_units: list[str] = Field(default_factory=list, alias="FlowUnits")
+
+class ZipCode(BaseModel):
+    """Get the zip code of the device."""
+
+    code: Optional[str]
+    """Zip code for the device."""
+
+    country: Optional[str]
+    """Country location of the device."""
 
 
 class ScheduleAndSettings:
@@ -272,3 +328,54 @@ class NetworkStatus(BaseModel):
 
     network_up: bool = Field(alias="networkUp")
     internet_up: bool = Field(alias="internetUp")
+
+
+class ServerMode(BaseModel):
+    """Details about the device server connection."""
+
+    server_mode: bool = Field(alias="serverMode")
+    check_in_interval: int = Field(alias="checkInInterval")
+    server_url: str = Field(alias="serverUrl")
+    relay_timeout: int = Field(alias="relayTimeout")
+    missed_checkins: int = Field(alias="missedCheckins")
+
+
+class ControllerState(BaseModel):
+    """Details about the controller state."""
+
+    delay_setting: int = Field(alias="delaySetting")
+    """Number of days that irrigation is paused."""
+
+    sensor_state: int = Field(alias="sensorState")
+    """Rain sensor status."""
+
+    irrigation_state: int = Field(alias="irrigationState")
+    """State of irrigation."""
+
+    seasonal_adjust: int = Field(alias="seasonalAdjust")
+    remaining_runtime: int = Field(alias="remainingRuntime")
+
+    # TODO: Likely need to make this a mask w/ States
+    active_station: int = Field(alias="activeStation")
+
+    device_time: datetime.datetime
+
+    @property
+    def device_time(self) -> datetime.datetime:
+        """Return the device time."""
+
+    @root_validator(pre=True)
+    def _device_time(cls, values: dict[str, Any]):
+        """Validate different ways the SoilTypes parameter is handled."""
+        for field in {"year", "month", "day", "hour", "minute", "second"}:
+            if field not in values:
+                raise ValueError(f"Missing field '{field}' in values")
+        values["device_time"] = datetime.datetime(
+            int(values["year"]),
+            int(values["month"]),
+            int(values["day"]),
+            int(values["hour"]),
+            int(values["minute"]),
+            int(values["second"]),
+        )
+        return values

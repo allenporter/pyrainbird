@@ -5,9 +5,9 @@ This is an asyncio based client library for rainbird.
 
 import datetime
 import logging
-from http import HTTPStatus
 from collections.abc import Callable
-from typing import Any, TypeVar, Optional
+from http import HTTPStatus
+from typing import Any, Optional, TypeVar
 
 import aiohttp
 from aiohttp.client_exceptions import ClientError, ClientResponseError
@@ -16,19 +16,23 @@ from . import encryption, rainbird
 from .data import (
     _DEFAULT_PAGE,
     AvailableStations,
+    ControllerFirmwareVersion,
+    ControllerState,
     ModelAndVersion,
-    ScheduleAndSettings,
-    States,
     NetworkStatus,
+    ProgramInfo,
+    ScheduleAndSettings,
+    ServerMode,
+    Settings,
+    States,
     WaterBudget,
+    WeatherAdjustmentMask,
     WeatherAndStatus,
     WifiParams,
-    Settings,
-    ProgramInfo
+    ZipCode,
 )
 from .exceptions import RainbirdApiException, RainbirdAuthException
 from .resources import RAINBIRD_COMMANDS
-
 
 _LOGGER = logging.getLogger(__name__)
 T = TypeVar("T")
@@ -79,10 +83,14 @@ class AsyncRainbirdClient:
             resp.raise_for_status()
         except ClientResponseError as err:
             if err.status == HTTPStatus.FORBIDDEN:
-                raise RainbirdAuthException(f"Error authenticating with Device: {err}") from err
+                raise RainbirdAuthException(
+                    f"Error authenticating with Device: {err}"
+                ) from err
             raise RainbirdApiException(f"Error from API: {str(err)}") from err
         except ClientError as err:
-            raise RainbirdApiException(f"Error communicating with device: {str(err)}") from err
+            raise RainbirdApiException(
+                f"Error communicating with device: {str(err)}"
+            ) from err
         content = await resp.read()
         return self._coder.decode_command(content)
 
@@ -158,12 +166,22 @@ class AsyncRainbirdController:
         return WifiParams.parse_obj(result)
 
     async def get_settings(self) -> Settings:
-        """Return wifi parameters and other settings."""
+        """Return a combined set of device settings."""
         result = await self._local_client.request("getSettings")
         return Settings.parse_obj(result)
 
+    async def get_weather_adjustment_mask(self) -> WeatherAdjustmentMask:
+        """Return the weather adjustment mask, subset of the settings."""
+        result = await self._local_client.request("getWeatherAdjustmentMask")
+        return WeatherAdjustmentMask.parse_obj(result)
+
+    async def get_zip_code(self) -> ZipCode:
+        """Return zip code and location, a subset of the settings."""
+        result = await self._local_client.request("getZipCode")
+        return ZipCode.parse_obj(result)
+
     async def get_program_info(self) -> ProgramInfo:
-        """Return wifi parameters and other settings."""
+        """Return program information, a subset of the settings."""
         result = await self._local_client.request("getProgramInfo")
         return ProgramInfo.parse_obj(result)
 
@@ -171,6 +189,11 @@ class AsyncRainbirdController:
         """Return the device network status."""
         result = await self._local_client.request("getNetworkStatus")
         return NetworkStatus.parse_obj(result)
+
+    async def get_server_mode(self) -> ServerMode:
+        """Return details about the device server setup."""
+        result = await self._local_client.request("getServerMode")
+        return ServerMode.parse_obj(result)
 
     async def water_budget(self, budget) -> WaterBudget:
         """Return the water budget."""
@@ -270,6 +293,31 @@ class AsyncRainbirdController:
             },
         )
         return WeatherAndStatus.parse_obj(result)
+
+    async def get_combined_controller_state(self) -> ControllerState:
+        """Return the combined controller state."""
+        return await self._process_command(
+            lambda resp: ControllerState.parse_obj(resp), "CombinedControllerState"
+        )
+
+    async def get_controller_firmware_version(self) -> ControllerFirmwareVersion:
+        """Return the controller firmware version."""
+        return await self._process_command(
+            lambda resp: ControllerFirmwareVersion(
+                resp["major"], resp["minor"], resp["patch"]
+            ),
+            "ControllerFirmwareVersion",
+        )
+
+    async def test_command_support(self, command_id: int) -> bool:
+        """Debugging command to test if the device supports the specified command."""
+        return await self._process_command(
+            lambda resp: bool(resp["support"]), "CommandSupport", command_id
+        )
+
+    async def test_rpc_support(self, rpc: str) -> dict[str, Any]:
+        """Debugging command to see if the device supports the specified json RPC method."""
+        return await self._local_client.request(rpc)
 
     async def _command(self, command: str, *args) -> dict[str, Any]:
         data = rainbird.encode(command, *args)

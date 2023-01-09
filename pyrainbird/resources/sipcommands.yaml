@@ -18,33 +18,50 @@ ControllerCommands:
     command: '05'
     response: '85'
     length: 1
+  ControllerFirmwareVersionRequest:
+    command: '0B'
+    response: '8B'
+    length: 1
+  # UniversalMessageRequest
   CurrentTimeRequest:
     command: '10'
     response: '90'
     length: 1
+  # SetTimeRequest: 11
   CurrentDateRequest:
     command: '12'
     response: '92'
     length: 1
+  # SetDateRequest: 13
+  # currentTimeZone: FC
+  # SetTimeZoneRequest: 2B
+  RetrieveScheduleRequest:
+    command: '20'
+    parameter: 0
+    response: 'A0'
+    length: 3
+  # SetSchedule: 21
   WaterBudgetRequest:
     command: '30'
     parameter: 0
     response: B0
     length: 2
+  # WaterBudgetSet: 31
   ZonesSeasonalAdjustFactorRequest:
     command: '32'
     parameter: 0
     response: B2
     length: 2
-  CurrentRainSensorStateRequest:
-    command: 3E
-    response: BE
+  # ZonesSeasonalAdjustFactorSet: 33
+  RainDelayGetRequest:
+    command: '36'
+    response: B6
     length: 1
-  CurrentStationsActiveRequest:
-    command: 3F
+  RainDelaySetRequest:
+    command: '37'
     parameter: 0
-    response: BF
-    length: 2
+    response: '01'
+    length: 3
   ManuallyRunProgramRequest:
     command: '38'
     parameter: 0
@@ -61,19 +78,21 @@ ControllerCommands:
     parameter: 0
     response: '01'
     length: 2
+  # CurrentQueueRequest: 3B
+  CurrentRainSensorStateRequest:
+    command: 3E
+    response: BE
+    length: 1
+  CurrentStationsActiveRequest:
+    command: 3F
+    parameter: 0
+    response: BF
+    length: 2
   StopIrrigationRequest:
     command: '40'
     response: '01'
     length: 1
-  RainDelayGetRequest:
-    command: '36'
-    response: B6
-    length: 1
-  RainDelaySetRequest:
-    command: '37'
-    parameter: 0
-    response: '01'
-    length: 3
+  # AdvanceStationRequest: 42
   AdvanceStationRequest:
     command: '42'
     parameter: 0
@@ -104,7 +123,31 @@ ControllerCommands:
     command: 4C
     response: CC
     length: 1
+  # IrrigationStatisticsRequest: 4D
+  # StartLearnFlowSequenceRequest: 60
+  # CancelLearnFlowSequenceRequest: 61
+  # LearnFlowSequenceStatusRequest: 62
+  # FlowMonitorStatusRequest: 63
+  # FlowMonitorStatusSetRequest: 64
+  # FlowMonitorRateRequest: 65
+  # LogEntriesRequest: 70
+
 ControllerResponses:
+  '00':
+    length: 3
+    type: NotAcknowledgeResponse
+    commandEcho:
+      position: 2
+      length: 2
+    NAKCode:
+      position: 4
+      length: 2
+  '01':
+    length: 2
+    type: AcknowledgeResponse
+    commandEcho:
+      position: 2
+      length: 2
   '82':
     length: 5
     type: ModelAndVersionResponse
@@ -141,6 +184,19 @@ ControllerResponses:
     serialNumber:
       position: 2
       length: 16
+  '8B':
+    length: 5
+    type: ControllerFirmwareVersion
+    major:
+      position: 2
+      length: 2
+    minor:
+      position: 4
+      length: 2
+    patch:
+      position: 6
+      length: 4
+  # UniversalMessageTransportResponse 8C
   '90':
     length: 4
     type: CurrentTimeResponse
@@ -165,21 +221,10 @@ ControllerResponses:
     year:
       position: 5
       length: 3
-  '00':
-    length: 3
-    type: NotAcknowledgeResponse
-    commandEcho:
-      position: 2
-      length: 2
-    NAKCode:
-      position: 4
-      length: 2
-  '01':
+  # RetrieveScheduleResponse A0
+  'A0':
     length: 2
-    type: AcknowledgeResponse
-    commandEcho:
-      position: 2
-      length: 2
+    type: RetrieveScheduleResponse
   'B0':
     length: 4
     type: WaterBudgetResponse
@@ -198,6 +243,13 @@ ControllerResponses:
     stationsSA:
       position: 4
       length: 32
+  'B6':
+    length: 3
+    type: RainDelaySettingResponse
+    delaySetting:
+      position: 2
+      length: 4
+  # CurrentQueueResponse BB
   'BE':
     length: 2
     type: CurrentRainSensorStateResponse
@@ -213,12 +265,7 @@ ControllerResponses:
     activeStations:
       position: 4
       length: 8
-  'B6':
-    length: 3
-    type: RainDelaySettingResponse
-    delaySetting:
-      position: 2
-      length: 4
+
   'C8':
     length: 2
     type: CurrentIrrigationStateResponse
@@ -273,3 +320,10 @@ ControllerResponses:
     activeStation:
       position: 30
       length: 2
+  # IrrigationStatisticsResponse CD
+  # StartLearnFlowSequenceResponse E0
+  # CancelLearnFlowSequenceResponse E0
+  # LearnFlowSequenceStatusResponse E2
+  # FlowMonitorStatusResponse E3
+  # FlowMonitorStatusSetResponse 64
+  # FlowMonitorRateResponse E5

@@ -104,6 +104,11 @@ class PayloadCoder:
         if error := response.get("error"):
             msg = ["Error from controller"]
             if code := error.get("code"):
+               # COMMAND_NOT_SUPPORTED: 0
+               # BAD_LENGTH: 1
+               # INCOMPATIBLE_DATA: 2
+               # CHECKSUM_ERROR: 3
+               # UNKNOWN: 4
                msg.append(f"Code: {code}")
             if message := error.get("message"):
                msg.append(f"Message: {message}")
