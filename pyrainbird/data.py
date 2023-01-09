@@ -1,5 +1,7 @@
 """Data model for rainbird client api."""
 
+import datetime
+from enum import IntEnum
 from typing import Any, Optional
 
 from dataclasses import dataclass
@@ -56,11 +58,21 @@ class ModelAndVersion:
         return RAINBIRD_MODELS[self.model][2]
 
     def __str__(self):
-        return "model: %04X, version: %d.%d" % (
+        return "model: %04X (%s), version: %d.%d" % (
             self.model,
+            self.model_name,
             self.major,
             self.minor,
         )
+
+
+@dataclass
+class ControllerFirmwareVersion:
+    """Controller firmware version."""
+
+    major: str
+    minor: str
+    patch: str
 
 
 class States(object):
@@ -168,10 +180,22 @@ class WifiParams(BaseModel):
     sick_version: Optional[str] = Field(alias="stickVersion")
 
 
-class ProgramInfo(BaseModel):
-    """Program information for the device."""
+class SoilType(IntEnum):
+  """Soil type."""
 
-    soil_types: list[int] = Field(default_factory=list, alias="SoilTypes")
+  NONE = 0
+  CLAY = 1
+  SAND = 2
+  OTHER = 3
+
+
+class ProgramInfo(BaseModel):
+    """Program information for the device.
+
+    The values are repeated once for each program.
+    """
+
+    soil_types: list[SoilType] = Field(default_factory=list, alias="SoilTypes")
     flow_rates: list[int] = Field(default_factory=list, alias="FlowRates")
     flow_units: list[int] = Field(default_factory=list, alias="FlowUnits")
 
@@ -191,9 +215,9 @@ class Settings(BaseModel):
     global_disable: bool = Field(alias="globalDisable")
 
     # Program information
-    soil_types: list[int] = Field(default_factory=list, alias="soilTypes")
-    flow_rates: list[str] = Field(default_factory=list, alias="FlowRates")
-    flow_units: list[str] = Field(default_factory=list, alias="FlowUnits")
+    soil_types: list[SoilType] = Field(default_factory=list, alias="SoilTypes")
+    flow_rates: list[int] = Field(default_factory=list, alias="FlowRates")
+    flow_units: list[int] = Field(default_factory=list, alias="FlowUnits")
 
 
 class ScheduleAndSettings:
@@ -272,3 +296,39 @@ class NetworkStatus(BaseModel):
 
     network_up: bool = Field(alias="networkUp")
     internet_up: bool = Field(alias="internetUp")
+
+class ServerMode(BaseModel):
+    """Details about the device server connection."""
+
+    server_mode: bool = Field(alias="serverMode")
+    check_in_interval: int = Field(alias="checkInInterval")
+    server_url: str = Field(alias="serverUrl")
+    relay_timeout: int = Field(alias="relayTimeout")
+    missed_checkins: int = Field(alias="missedCheckins")
+
+
+class ControllerState(BaseModel):
+    """Details about the controller state."""
+
+    delay_setting: int = Field(alias="delaySetting")
+    sensor_state: int = Field(alias="sensorState")
+
+    irrigation_state: int = Field(alias="irrigationState")
+    seasonal_adjust: int = Field(alias="seasonalAdjust")
+    remaining_runtime: int = Field(alias="remainingRuntime")
+
+    # TODO: Likely need to make this a mask w/ States
+    active_station: int = Field(alias="activeStation")
+
+    hour: int
+    minute: int
+    second: int
+
+    year: int
+    month: int
+    day: int
+
+    @property
+    def device_time(self) -> datetime.datetime:
+        """Return the device time."""
+        return datetime.datetime(year, month, day, hour, minute, second)

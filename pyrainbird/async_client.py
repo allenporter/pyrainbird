@@ -16,6 +16,7 @@ from . import encryption, rainbird
 from .data import (
     _DEFAULT_PAGE,
     AvailableStations,
+    ControllerFirmwareVersion,
     ModelAndVersion,
     ScheduleAndSettings,
     States,
@@ -24,7 +25,9 @@ from .data import (
     WeatherAndStatus,
     WifiParams,
     Settings,
-    ProgramInfo
+    ProgramInfo,
+    ServerMode,
+    ControllerState,
 )
 from .exceptions import RainbirdApiException, RainbirdAuthException
 from .resources import RAINBIRD_COMMANDS
@@ -172,6 +175,12 @@ class AsyncRainbirdController:
         result = await self._local_client.request("getNetworkStatus")
         return NetworkStatus.parse_obj(result)
 
+    async def get_server_mode(self) -> ServerMode:
+        """Return details about the device server setup."""
+        result = await self._local_client.request("getServerMode")
+        return ServerMode.parse_obj(result)
+
+
     async def water_budget(self, budget) -> WaterBudget:
         """Return the water budget."""
         return await self._process_command(
@@ -270,6 +279,27 @@ class AsyncRainbirdController:
             },
         )
         return WeatherAndStatus.parse_obj(result)
+
+    async def test_command_support(self, command_id: int) -> bool:
+        """Test if the device supports the specified command."""
+        return await self._process_command(lambda resp: bool(resp["support"]), "CommandSupport", command_id)
+
+    async def test_rpc_support(self, rpc: str) -> dict[str, Any]:
+        """Test if the device supports the specified command."""
+        return await self._local_client.request(rpc)
+
+    async def get_combined_controller_state(self) -> ControllerState:
+        """Return the combined controller state."""
+        return await self._process_command(lambda resp: ControllerState.parse_obj(resp), "CombinedControllerState")
+
+    async def get_controller_firmware_version(self) -> ControllerFirmwareVersion:
+        """Return the controller firmware version."""
+        return await self._process_command(
+            lambda resp: ControllerFirmwareVersion(resp["major"], resp["minor"], resp["patch"]),
+            "ControllerFirmwareVersion")
+
+    async def get_schedule(self, zone: int) -> str:
+        await self._process_command(lambda resp: True, "RetrieveSchedule", zone)
 
     async def _command(self, command: str, *args) -> dict[str, Any]:
         data = rainbird.encode(command, *args)
