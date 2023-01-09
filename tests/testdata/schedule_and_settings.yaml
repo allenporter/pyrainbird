@@ -1,0 +1,49 @@
+data:
+  - 83003F000000
+  - 8B012F0000
+  - B0000064
+  - B0010050
+  - B0020050
+  - BB0000000000000000FF0000
+  - BF0000000000
+  - CA012B483163
+  - CC1228270417E700040001FFFF000000
+decoded_data:
+  - type: AvailableStationsResponse
+    setStations: 0x3F000000
+    pageNumber: 0
+  - type: ControllerFirmwareVersion
+    major: 1
+    minor: 47
+    patch: 0
+  - type: WaterBudgetResponse
+    programCode: 0
+    seasonalAdjust: 100
+  - type: WaterBudgetResponse
+    programCode: 1
+    seasonalAdjust: 80
+  - type: WaterBudgetResponse
+    programCode: 2
+    seasonalAdjust: 80
+  # Not currently parsed CurrentQueueResponse
+  - data: BB0000000000000000FF0000
+  - type: CurrentStationsActiveResponse
+    activeStations: 0
+    pageNumber: 0
+  - type: ControllerEventTimestampResponse
+    eventId: 1
+    # This value doesn't seem correct
+    timestamp: 726151523
+  - type: CombinedControllerStateResponse
+    year: 2023
+    month: 1
+    day: 4
+    hour: 18
+    minute: 40
+    second: 39
+    sensorState: 0
+    delaySetting: 4
+    activeStation: 0
+    irrigationState: 1
+    seasonalAdjust: 65535
+    remainingRuntime: 0

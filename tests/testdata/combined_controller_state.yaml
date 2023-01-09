@@ -1,0 +1,16 @@
+data:
+  - CC140B230817E700030001FFFF000000
+decoded_data:
+  - type: CombinedControllerStateResponse
+    year: 2023
+    month: 1
+    day: 8
+    hour: 20
+    minute: 11
+    second: 35
+    delaySetting: 3
+    sensorState: 0
+    irrigationState: 1
+    seasonalAdjust: 65535
+    remainingRuntime: 0
+    activeStation: 0

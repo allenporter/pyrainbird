@@ -1,7 +1,10 @@
 import unittest
 
+import pytest
 from parameterized import parameterized
+from pytest_golden.plugin import GoldenTestFixture
 
+from pyrainbird import rainbird
 from pyrainbird.rainbird import decode, encode
 
 
@@ -19,6 +22,14 @@ def decode_name_func(testcase_func, param_num, param):
         param_num,
         parameterized.to_safe_name(param.args[0]["type"]),
     )
+
+
+@pytest.mark.golden_test("testdata/*.yaml")
+def test_decode(golden: GoldenTestFixture) -> None:
+    """Fixture to read golden file and compare to golden output."""
+    data = golden["data"]
+    decoded_data = [rainbird.decode(case) for case in data]
+    assert decoded_data == golden.out["decoded_data"]
 
 
 class TestSequence(unittest.TestCase):
