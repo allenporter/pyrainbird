@@ -5,12 +5,12 @@ import responses
 
 from pyrainbird import (
     RainbirdController,
-    RAINBIRD_COMMANDS,
     ModelAndVersion,
     AvailableStations,
     CommandSupport,
     WaterBudget,
 )
+from pyrainbird.resources import RAINBIRD_RESPONSES_BY_ID, RESERVED_FIELDS
 from pyrainbird.encryption import encrypt
 
 MOCKED_RAINBIRD_URL = "rainbird.local"
@@ -159,10 +159,10 @@ class TestCase(unittest.TestCase):
 
 
 def mock_response(command, **kvargs):
-    resp = RAINBIRD_COMMANDS["ControllerResponses"][command]
+    resp = RAINBIRD_RESPONSES_BY_ID[command]
     data = command + ("00" * (resp["length"] - 1))
     for k in resp:
-        if k in ["type", "length"]:
+        if k in RESERVED_FIELDS:
             continue
         param_template = "%%0%dX" % (resp[k]["length"])
         start_ = resp[k]["position"]

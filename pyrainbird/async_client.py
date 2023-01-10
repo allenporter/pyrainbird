@@ -32,7 +32,7 @@ from .data import (
     ZipCode,
 )
 from .exceptions import RainbirdApiException, RainbirdAuthException
-from .resources import RAINBIRD_COMMANDS
+from .resources import RAINBIRD_COMMANDS, RAINBIRD_RESPONSES_BY_ID
 
 _LOGGER = logging.getLogger(__name__)
 T = TypeVar("T")
@@ -130,7 +130,7 @@ class AsyncRainbirdController:
         """Get the available stations."""
         mask = (
             "%%0%dX"
-            % RAINBIRD_COMMANDS["ControllerResponses"]["83"]["setStations"]["length"]
+            % RAINBIRD_RESPONSES_BY_ID["83"]["setStations"]["length"]
         )
         return await self._process_command(
             lambda resp: AvailableStations(
@@ -214,7 +214,7 @@ class AsyncRainbirdController:
         """Return the current state of the zone."""
         mask = (
             "%%0%dX"
-            % RAINBIRD_COMMANDS["ControllerResponses"]["BF"]["activeStations"]["length"]
+            % RAINBIRD_RESPONSES_BY_ID["BF"]["activeStations"]["length"]
         )
         return await self._process_command(
             lambda resp: States((mask % resp["activeStations"])[:4]),
@@ -330,41 +330,25 @@ class AsyncRainbirdController:
     async def _command(self, command: str, *args) -> dict[str, Any]:
         data = rainbird.encode(command, *args)
         _LOGGER.debug("Request to line: " + str(data))
+        command_data = RAINBIRD_COMMANDS["%sRequest" % command]
         decrypted_data = await self._local_client.tunnelSip(
             data,
-            RAINBIRD_COMMANDS["ControllerCommands"]["%sRequest" % command]["length"],
+            command_data["length"],
         )
         _LOGGER.debug("Response from line: " + str(decrypted_data))
         decoded = rainbird.decode(decrypted_data)
-        if (
-            decrypted_data[:2]
-            != RAINBIRD_COMMANDS["ControllerCommands"]["%sRequest" % command][
-                "response"
-            ]
-        ):
+        response_code = decrypted_data[:2]
+        expected_response_code = command_data["response"]
+        if response_code != expected_response_code:
             raise RainbirdApiException(
                 "Status request failed with wrong response! Requested %s but got %s:\n%s"
-                % (
-                    RAINBIRD_COMMANDS["ControllerCommands"]["%sRequest" % command][
-                        "response"
-                    ],
-                    decrypted_data[:2],
-                    decoded,
-                )
+                % (expected_response_code, response_code, decoded)
             )
         _LOGGER.debug("Response: %s" % decoded)
         return decoded
 
     async def _process_command(
-        self, funct: Callable[[dict[str, Any]], T], cmd, *args
+        self, funct: Callable[[dict[str, Any]], T], command: str, *args
     ) -> T:
-        response = await self._command(cmd, *args)
-        response_type = response["type"]
-        expected_type = RAINBIRD_COMMANDS["ControllerResponses"][
-            RAINBIRD_COMMANDS["ControllerCommands"][cmd + "Request"]["response"]
-        ]["type"]
-        if response_type != expected_type:
-            raise RainbirdApiException(
-                f"Response type '{response_type}' did not match '{expected_type}"
-            )
+        response = await self._command(command, *args)
         return funct(response)

@@ -11,7 +11,7 @@ from pyrainbird.data import (
     States,
     WaterBudget,
 )
-from pyrainbird.resources import RAINBIRD_COMMANDS
+from pyrainbird.resources import RAINBIRD_COMMANDS, RAINBIRD_RESPONSES_BY_ID
 
 from . import rainbird
 from .client import RainbirdClient
@@ -50,7 +50,7 @@ class RainbirdController:
     def get_available_stations(self, page=_DEFAULT_PAGE):
         mask = (
             "%%0%dX"
-            % RAINBIRD_COMMANDS["ControllerResponses"]["83"]["setStations"]["length"]
+            % RAINBIRD_RESPONSES_BY_ID["83"]["setStations"]["length"]
         )
         return self._process_command(
             lambda resp: AvailableStations(
@@ -151,7 +151,7 @@ class RainbirdController:
         self.logger.debug("Request to line: " + str(data))
         decrypted_data = self.rainbird_client.request(
             data,
-            RAINBIRD_COMMANDS["ControllerCommands"]["%sRequest" % command]["length"],
+            RAINBIRD_COMMANDS["%sRequest" % command]["length"],
         )
         self.logger.debug("Response from line: " + str(decrypted_data))
         if decrypted_data is None:
@@ -160,14 +160,14 @@ class RainbirdController:
         decoded = rainbird.decode(decrypted_data)
         if (
             decrypted_data[:2]
-            != RAINBIRD_COMMANDS["ControllerCommands"]["%sRequest" % command][
+            != RAINBIRD_COMMANDS["%sRequest" % command][
                 "response"
             ]
         ):
             raise Exception(
                 "Status request failed with wrong response! Requested %s but got %s:\n%s"
                 % (
-                    RAINBIRD_COMMANDS["ControllerCommands"]["%sRequest" % command][
+                    RAINBIRD_COMMANDS["%sRequest" % command][
                         "response"
                     ],
                     decrypted_data[:2],
@@ -183,8 +183,8 @@ class RainbirdController:
             funct(response)
             if response is not None
             and response["type"]
-            == RAINBIRD_COMMANDS["ControllerResponses"][
-                RAINBIRD_COMMANDS["ControllerCommands"][cmd + "Request"]["response"]
+            == RAINBIRD_RESPONSES_BY_ID[
+                RAINBIRD_COMMANDS[cmd + "Request"]["response"]
             ]["type"]
             else response
         )
@@ -192,7 +192,7 @@ class RainbirdController:
     def _update_irrigation_state(self, page=_DEFAULT_PAGE):
         mask = (
             "%%0%dX"
-            % RAINBIRD_COMMANDS["ControllerResponses"]["BF"]["activeStations"]["length"]
+            % RAINBIRD_RESPONSES_BY_ID["BF"]["activeStations"]["length"]
         )
         result = self._process_command(
             lambda resp: States((mask % resp["activeStations"])[:4]),

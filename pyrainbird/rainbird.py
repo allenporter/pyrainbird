@@ -1,9 +1,12 @@
 """Library for encoding and decoding rainbird tunnelSip commands."""
 
 from collections.abc import Callable
+import logging
 from typing import Any
 
-from .resources import RAINBIRD_COMMANDS
+from .resources import RAINBIRD_COMMANDS, RAINBIRD_RESPONSES_BY_ID
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def decode_template(data: str, cmd_template: dict[str, Any]) -> dict[str, int]:
@@ -89,9 +92,9 @@ DECODERS: dict[str, Callable[[str, dict[str, Any]], dict[str, Any]]] = {
 def decode(data: str) -> dict[str, Any]:
     """Decode a rainbird tunnelSip command response."""
     command_code = data[:2]
-    if command_code not in RAINBIRD_COMMANDS["ControllerResponses"]:
+    if not (cmd_template := RAINBIRD_RESPONSES_BY_ID.get(command_code)):
+        _LOGGER.warning("Unrecognized server response code '%s' from '%s'", command_code, data)
         return {"data": data}
-    cmd_template = RAINBIRD_COMMANDS["ControllerResponses"][command_code]
     decoder = DECODERS[cmd_template.get("decoder", DEFAULT_DECODER)]
     return {"type": cmd_template["type"], **decoder(data, cmd_template)}
 
@@ -99,14 +102,12 @@ def decode(data: str) -> dict[str, Any]:
 def encode(command: str, *args) -> str:
     """Encode a rainbird tunnelSip command request."""
     request_command = "%sRequest" % command
-    command_set = RAINBIRD_COMMANDS["ControllerCommands"][request_command]
-    if request_command in RAINBIRD_COMMANDS["ControllerCommands"]:
-        cmd_code = command_set["command"]
-    else:
+    if not (command_set := RAINBIRD_COMMANDS.get(request_command)):
         raise Exception(
             "Command %s not available. Existing commands: %s"
             % (request_command, RAINBIRD_COMMANDS["ControllerCommands"])
         )
+    cmd_code = command_set["command"]
     if len(args) > command_set["length"] - 1:
         raise Exception(
             "Too much parameters. %d expected:\n%s"
