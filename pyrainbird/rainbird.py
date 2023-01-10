@@ -101,11 +101,10 @@ def decode(data: str) -> dict[str, Any]:
 
 def encode(command: str, *args) -> str:
     """Encode a rainbird tunnelSip command request."""
-    request_command = "%sRequest" % command
-    if not (command_set := RAINBIRD_COMMANDS.get(request_command)):
+    if not (command_set := RAINBIRD_COMMANDS.get(command)):
         raise Exception(
             "Command %s not available. Existing commands: %s"
-            % (request_command, RAINBIRD_COMMANDS["ControllerCommands"])
+            % (command, RAINBIRD_COMMANDS.keys())
         )
     cmd_code = command_set["command"]
     if len(args) > command_set["length"] - 1:

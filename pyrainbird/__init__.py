@@ -147,7 +147,7 @@ class RainbirdController:
         )
 
     def command(self, command, *args):
-        data = rainbird.encode(command, *args)
+        data = rainbird.encode(f"{command}Request", *args)
         self.logger.debug("Request to line: " + str(data))
         decrypted_data = self.rainbird_client.request(
             data,
