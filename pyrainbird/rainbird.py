@@ -24,29 +24,38 @@ def decode_schedule(data: str, cmd_template: dict[str, Any]) -> dict[str, Any]:
     if subcommand == 0:
         # Delay, Snooze, Rainsensor
         return {
-            "stationDelay": int(rest[0:4]),
-            "snooze": int(rest[4:6]),
-            "rainSensor": int(rest[6:8]),
+            "controllerInfo": {
+                "stationDelay": int(rest[0:4]),
+                "rainDelay": int(rest[4:6]),
+                "rainSensor": int(rest[6:8]),
+            }
         }
 
     if subcommand & 16 == 16:
         program = subcommand & ~16
         fields = list(int(rest[i : i + 2], 16) for i in range(0, len(rest), 2))
         return {
-            "program": program,
-            "daysOfWeekMask": fields[0],
-            "period": fields[1],
-            "synchro": fields[2],
-            "permanentDaysOff": fields[3],
-            "reserved": fields[4],
-            "frequency": fields[5],
+            "programInfo": {
+                "program": program,
+                "daysOfWeekMask": fields[0],
+                "period": fields[1],
+                "synchro": fields[2],
+                "permanentDaysOff": fields[3],
+                "reserved": fields[4],
+                "frequency": fields[5],
+            }
         }
 
     if subcommand & 96 == 96:
         program = subcommand & ~96
         # Note: 65535 is disabled
         entries = list(int(rest[i : i + 4], 16) for i in range(0, len(rest), 4))
-        return {"program": program, "startTime": entries}
+        return {
+            "programStartInfo": {
+                "program": program,
+                "startTime": entries,
+            }
+        }
 
     if subcommand & 128 == 128:
         station = subcommand & ~128
