@@ -1,0 +1,5 @@
+data:
+  - "C801"
+decoded_data:
+  - type: CurrentIrrigationStateResponse
+    irrigationState: 1

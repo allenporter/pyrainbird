@@ -1,0 +1,5 @@
+data:
+  - "BE01"
+decoded_data:
+  - type: CurrentRainSensorStateResponse
+    sensorState: 1
