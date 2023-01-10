@@ -278,7 +278,7 @@ class AsyncRainbirdController:
     async def get_weather_and_status(
         self, stick_id: str, country: str, zip_code: str
     ) -> WeatherAndStatus:
-        """Request the schedule and settings from the cloud.
+        """Request the weather and status of the device.
 
         The results include things like custom station names, program names, etc.
         """
@@ -307,6 +307,14 @@ class AsyncRainbirdController:
                 resp["major"], resp["minor"], resp["patch"]
             ),
             "ControllerFirmwareVersion",
+        )
+
+    async def get_schedule(self, command_code: str) -> dict[str, Any]:
+        """Run the schedule command for the specified raw command code."""
+        return await self._process_command(
+            lambda resp: resp,
+            "RetrieveSchedule",
+            command_code,
         )
 
     async def test_command_support(self, command_id: int) -> bool:
