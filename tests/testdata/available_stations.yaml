@@ -1,0 +1,6 @@
+data:
+  - 830F0010
+decoded_data:
+  - type: AvailableStationsResponse
+    pageNumber: 15
+    setStations: 16

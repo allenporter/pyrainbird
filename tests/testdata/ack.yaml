@@ -1,0 +1,13 @@
+data:
+  - "0106"
+  - "000203"
+  - "848201"
+decoded_data:
+  - type: AcknowledgeResponse
+    commandEcho: 6
+  - type: NotAcknowledgeResponse
+    commandEcho: 2
+    NAKCode: 3
+  - type: CommandSupportResponse
+    commandEcho: 0x82
+    support: 1
