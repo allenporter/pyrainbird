@@ -1,0 +1,103 @@
+data:
+  - A0000000000400
+  - A000106A0601006401
+  - A000116A0300006400
+  - A00012000300006400
+  - A0006000F0FFFFFFFFFFFF
+  - A00061FFFFFFFFFFFFFFFF
+  - A00062FFFFFFFFFFFFFFFF
+  - A00080001900000000001400000000
+  - A00081000700000000001400000000
+  - A00082000A00000000000000000000
+  - A00083000000000000000000000000
+  - A00084000000000000000000000000
+  - A00085000000000000000000000000
+  - B0000064
+  - B0010050
+  - B0020050
+  - "0131"
+decoded_data:
+  - type: RetrieveScheduleResponse
+    stationDelay: 0
+    rainSensor: 0
+    snooze: 4
+  - type: RetrieveScheduleResponse
+    program: 0
+    daysOfWeekMask: 106
+    period: 6
+    synchro: 1
+    permanentDaysOff: 0
+    reserved: 100
+    frequency: 1
+  - type: RetrieveScheduleResponse
+    program: 1
+    daysOfWeekMask: 106
+    period: 3
+    synchro: 0
+    permanentDaysOff: 0
+    reserved: 100
+    frequency: 0
+  - type: RetrieveScheduleResponse
+    program: 2
+    daysOfWeekMask: 0
+    period: 3
+    synchro: 0
+    permanentDaysOff: 0
+    reserved: 100
+    frequency: 0
+  - type: RetrieveScheduleResponse
+    program: 0
+    startTime: [240, 65535, 65535, 65535]
+  - type: RetrieveScheduleResponse
+    program: 1
+    startTime: [65535, 65535, 65535, 65535]
+  - type: RetrieveScheduleResponse
+    program: 2
+    startTime: [65535, 65535, 65535, 65535]
+  - type: RetrieveScheduleResponse
+    durations:
+      - zone: 0
+        durations: [25, 0, 0]
+      - zone: 1
+        durations: [20, 0, 0]
+  - type: RetrieveScheduleResponse
+    durations:
+      - zone: 2
+        durations: [7, 0, 0]
+      - zone: 3
+        durations: [20, 0, 0]
+  - type: RetrieveScheduleResponse
+    durations:
+      - zone: 4
+        durations: [10, 0, 0]
+      - zone: 5
+        durations: [0, 0, 0]
+  - type: RetrieveScheduleResponse
+    durations:
+      - zone: 6
+        durations: [0, 0, 0]
+      - zone: 7
+        durations: [0, 0, 0]
+  - type: RetrieveScheduleResponse
+    durations:
+      - zone: 8
+        durations: [0, 0, 0]
+      - zone: 9
+        durations: [0, 0, 0]
+  - type: RetrieveScheduleResponse
+    durations:
+      - zone: 10
+        durations: [0, 0, 0]
+      - zone: 11
+        durations: [0, 0, 0]
+  - type: WaterBudgetResponse
+    programCode: 0
+    seasonalAdjust: 100
+  - type: WaterBudgetResponse
+    programCode: 1
+    seasonalAdjust: 80
+  - type: WaterBudgetResponse
+    programCode: 2
+    seasonalAdjust: 80
+  - type: AcknowledgeResponse
+    commandEcho: 0x31

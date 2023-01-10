@@ -221,10 +221,11 @@ ControllerResponses:
     year:
       position: 5
       length: 3
-  # RetrieveScheduleResponse A0
   'A0':
-    length: 2
+    length: 18
     type: RetrieveScheduleResponse
+    # Requires a custom processor that can't be expressed in yaml
+    decoder: decode_schedule
   'B0':
     length: 4
     type: WaterBudgetResponse
@@ -265,7 +266,6 @@ ControllerResponses:
     activeStations:
       position: 4
       length: 8
-
   'C8':
     length: 2
     type: CurrentIrrigationStateResponse
