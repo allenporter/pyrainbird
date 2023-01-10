@@ -8,7 +8,6 @@ import aiohttp
 import pytest
 
 from pyrainbird import (
-    RAINBIRD_COMMANDS,
     AvailableStations,
     ModelAndVersion,
     WaterBudget,
@@ -17,6 +16,7 @@ from pyrainbird.async_client import AsyncRainbirdClient, AsyncRainbirdController
 from pyrainbird.data import SoilType
 from pyrainbird.encryption import encrypt
 from pyrainbird.exceptions import RainbirdApiException, RainbirdAuthException
+from pyrainbird.resources import RAINBIRD_RESPONSES_BY_ID, RESERVED_FIELDS
 
 from .conftest import LENGTH, PASSWORD, REQUEST, RESPONSE, RESULT_DATA, ResponseResult
 
@@ -61,10 +61,10 @@ def mock_api_response(response: ResponseResult) -> Callable[[...], Awaitable[Non
     """Fixture to construct a fake API response."""
 
     def _put_result(command: str, **kvargs) -> None:
-        resp = RAINBIRD_COMMANDS["ControllerResponses"][command]
+        resp = RAINBIRD_RESPONSES_BY_ID[command]
         data = command + ("00" * (resp["length"] - 1))
         for k in resp:
-            if k in ["type", "length"]:
+            if k in RESERVED_FIELDS:
                 continue
             param_template = "%%0%dX" % (resp[k]["length"])
             start_ = resp[k]["position"]

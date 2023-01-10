@@ -32,7 +32,7 @@ from .data import (
     ZipCode,
 )
 from .exceptions import RainbirdApiException, RainbirdAuthException
-from .resources import RAINBIRD_COMMANDS
+from .resources import LENGTH, RAINBIRD_COMMANDS, RAINBIRD_RESPONSES, RESPONSE
 
 _LOGGER = logging.getLogger(__name__)
 T = TypeVar("T")
@@ -68,7 +68,7 @@ class AsyncRainbirdClient:
 
     async def tunnelSip(self, data: str, length: int) -> str:
         """Send a tunnelSip request."""
-        result = await self.request("tunnelSip", {"data": data, "length": length})
+        result = await self.request("tunnelSip", {"data": data, LENGTH: length})
         return result["data"]
 
     async def request(
@@ -123,41 +123,41 @@ class AsyncRainbirdController:
                 response["protocolRevisionMajor"],
                 response["protocolRevisionMinor"],
             ),
-            "ModelAndVersion",
+            "ModelAndVersionRequest",
         )
 
     async def get_available_stations(self, page=_DEFAULT_PAGE) -> AvailableStations:
         """Get the available stations."""
         mask = (
             "%%0%dX"
-            % RAINBIRD_COMMANDS["ControllerResponses"]["83"]["setStations"]["length"]
+            % RAINBIRD_RESPONSES["AvailableStationsResponse"]["setStations"][LENGTH]
         )
         return await self._process_command(
             lambda resp: AvailableStations(
                 mask % resp["setStations"], page=resp["pageNumber"]
             ),
-            "AvailableStations",
+            "AvailableStationsRequest",
             page,
         )
 
     async def get_serial_number(self) -> str:
         """Get the device serial number."""
         return await self._process_command(
-            lambda resp: resp["serialNumber"], "SerialNumber"
+            lambda resp: resp["serialNumber"], "SerialNumberRequest"
         )
 
     async def get_current_time(self) -> datetime.time:
         """Get the device current time."""
         return await self._process_command(
             lambda resp: datetime.time(resp["hour"], resp["minute"], resp["second"]),
-            "CurrentTime",
+            "CurrentTimeRequest",
         )
 
     async def get_current_date(self) -> datetime.date:
         """Get the device current date."""
         return await self._process_command(
             lambda resp: datetime.date(resp["year"], resp["month"], resp["day"]),
-            "CurrentDate",
+            "CurrentDateRequest",
         )
 
     async def get_wifi_params(self) -> WifiParams:
@@ -199,7 +199,7 @@ class AsyncRainbirdController:
         """Return the water budget."""
         return await self._process_command(
             lambda resp: WaterBudget(resp["programCode"], resp["seasonalAdjust"]),
-            "WaterBudget",
+            "WaterBudgetRequest",
             budget,
         )
 
@@ -207,18 +207,20 @@ class AsyncRainbirdController:
         """Get the current state for the rain sensor."""
         return await self._process_command(
             lambda resp: bool(resp["sensorState"]),
-            "CurrentRainSensorState",
+            "CurrentRainSensorStateRequest",
         )
 
     async def get_zone_states(self, page=_DEFAULT_PAGE) -> States:
         """Return the current state of the zone."""
         mask = (
             "%%0%dX"
-            % RAINBIRD_COMMANDS["ControllerResponses"]["BF"]["activeStations"]["length"]
+            % RAINBIRD_RESPONSES["CurrentStationsActiveResponse"]["activeStations"][
+                LENGTH
+            ]
         )
         return await self._process_command(
             lambda resp: States((mask % resp["activeStations"])[:4]),
-            "CurrentStationsActive",
+            "CurrentStationsActiveRequest",
             page,
         )
 
@@ -229,41 +231,43 @@ class AsyncRainbirdController:
 
     async def set_program(self, program: int) -> None:
         """Start a program."""
-        await self._process_command(lambda resp: True, "ManuallyRunProgram", program)
+        await self._process_command(
+            lambda resp: True, "ManuallyRunProgramRequest", program
+        )
 
     async def test_zone(self, zone: int) -> None:
         """Test a zone."""
-        await self._process_command(lambda resp: True, "TestStations", zone)
+        await self._process_command(lambda resp: True, "TestStationsRequest", zone)
 
     async def irrigate_zone(self, zone: int, minutes: int) -> None:
         """Send the irrigate command."""
         await self._process_command(
-            lambda resp: True, "ManuallyRunStation", zone, minutes
+            lambda resp: True, "ManuallyRunStationRequest", zone, minutes
         )
 
     async def stop_irrigation(self) -> None:
         """Send the stop command."""
-        await self._process_command(lambda resp: True, "StopIrrigation")
+        await self._process_command(lambda resp: True, "StopIrrigationRequest")
 
     async def get_rain_delay(self) -> int:
         """Return the current rain delay value."""
         return await self._process_command(
-            lambda resp: resp["delaySetting"], "RainDelayGet"
+            lambda resp: resp["delaySetting"], "RainDelayGetRequest"
         )
 
     async def set_rain_delay(self, days: int) -> None:
         """Set the rain delay value in days."""
-        await self._process_command(lambda resp: True, "RainDelaySet", days)
+        await self._process_command(lambda resp: True, "RainDelaySetRequest", days)
 
     async def advance_zone(self, param: int) -> None:
         """Advance to the zone with the specified param."""
-        await self._process_command(lambda resp: True, "AdvanceStation", param)
+        await self._process_command(lambda resp: True, "AdvanceStationRequest", param)
 
     async def get_current_irrigation(self) -> bool:
         """Return True if the irrigation state is on."""
         return await self._process_command(
             lambda resp: bool(resp["irrigationState"]),
-            "CurrentIrrigationState",
+            "CurrentIrrigationStateRequest",
         )
 
     async def get_schedule_and_settings(self, stick_id: str) -> ScheduleAndSettings:
@@ -297,7 +301,8 @@ class AsyncRainbirdController:
     async def get_combined_controller_state(self) -> ControllerState:
         """Return the combined controller state."""
         return await self._process_command(
-            lambda resp: ControllerState.parse_obj(resp), "CombinedControllerState"
+            lambda resp: ControllerState.parse_obj(resp),
+            "CombinedControllerStateRequest",
         )
 
     async def get_controller_firmware_version(self) -> ControllerFirmwareVersion:
@@ -306,21 +311,21 @@ class AsyncRainbirdController:
             lambda resp: ControllerFirmwareVersion(
                 resp["major"], resp["minor"], resp["patch"]
             ),
-            "ControllerFirmwareVersion",
+            "ControllerFirmwareVersionRequest",
         )
 
     async def get_schedule(self, command_code: str) -> dict[str, Any]:
         """Run the schedule command for the specified raw command code."""
         return await self._process_command(
             lambda resp: resp,
-            "RetrieveSchedule",
+            "RetrieveScheduleRequest",
             command_code,
         )
 
     async def test_command_support(self, command_id: int) -> bool:
         """Debugging command to test if the device supports the specified command."""
         return await self._process_command(
-            lambda resp: bool(resp["support"]), "CommandSupport", command_id
+            lambda resp: bool(resp["support"]), "CommandSupportRequest", command_id
         )
 
     async def test_rpc_support(self, rpc: str) -> dict[str, Any]:
@@ -330,41 +335,25 @@ class AsyncRainbirdController:
     async def _command(self, command: str, *args) -> dict[str, Any]:
         data = rainbird.encode(command, *args)
         _LOGGER.debug("Request to line: " + str(data))
+        command_data = RAINBIRD_COMMANDS[command]
         decrypted_data = await self._local_client.tunnelSip(
             data,
-            RAINBIRD_COMMANDS["ControllerCommands"]["%sRequest" % command]["length"],
+            command_data[LENGTH],
         )
         _LOGGER.debug("Response from line: " + str(decrypted_data))
         decoded = rainbird.decode(decrypted_data)
-        if (
-            decrypted_data[:2]
-            != RAINBIRD_COMMANDS["ControllerCommands"]["%sRequest" % command][
-                "response"
-            ]
-        ):
+        response_code = decrypted_data[:2]
+        expected_response_code = command_data[RESPONSE]
+        if response_code != expected_response_code:
             raise RainbirdApiException(
                 "Status request failed with wrong response! Requested %s but got %s:\n%s"
-                % (
-                    RAINBIRD_COMMANDS["ControllerCommands"]["%sRequest" % command][
-                        "response"
-                    ],
-                    decrypted_data[:2],
-                    decoded,
-                )
+                % (expected_response_code, response_code, decoded)
             )
         _LOGGER.debug("Response: %s" % decoded)
         return decoded
 
     async def _process_command(
-        self, funct: Callable[[dict[str, Any]], T], cmd, *args
+        self, funct: Callable[[dict[str, Any]], T], command: str, *args
     ) -> T:
-        response = await self._command(cmd, *args)
-        response_type = response["type"]
-        expected_type = RAINBIRD_COMMANDS["ControllerResponses"][
-            RAINBIRD_COMMANDS["ControllerCommands"][cmd + "Request"]["response"]
-        ]["type"]
-        if response_type != expected_type:
-            raise RainbirdApiException(
-                f"Response type '{response_type}' did not match '{expected_type}"
-            )
+        response = await self._command(command, *args)
         return funct(response)
