@@ -1,29 +1,37 @@
+"""Resources related to rainbird devices."""
+
 import yaml
 from pkg_resources import resource_stream
+from typing import Any
 
-_SIP_COMMANDS = yaml.load(
+COMMAND = "command"
+
+TYPE = "type"
+# Fields in the command template that should not be encoded
+RESERVED_FIELDS = [ "command", "type", "length" ]
+
+SIP_COMMANDS = yaml.load(
     resource_stream("pyrainbird.resources", "sipcommands.yaml"), Loader=yaml.FullLoader
 )
 RAINBIRD_MODELS = yaml.load(
     resource_stream("pyrainbird.resources", "models.yaml"), Loader=yaml.FullLoader
 )
 
-# Fields in the template that should not be encoded
-RESERVED_FIELDS = [ "command", "type", "length" ]
+def build_id_map(commands: dict[str, Any]) -> dict[str, Any]:
+    """Build an ID based map for the specified command struct."""
+    return  {
+        content[COMMAND]: {
+            **content,
+            TYPE: key,
+        }
+        for key, content in commands.items()
+    }
 
-RAINBIRD_COMMANDS = { **_SIP_COMMANDS['ControllerCommands'] }
-RAINBIRD_COMMANDS_BY_ID = {
-    request["command"]: {
-        **request,
-        "type": request_key,
-    }
-    for request_key, request in _SIP_COMMANDS['ControllerCommands'].items()
-}
-RAINBIRD_RESPONSES = { **_SIP_COMMANDS['ControllerResponses'] }
-RAINBIRD_RESPONSES_BY_ID = {
-    response["command"]: {
-        **response,
-        "type": response_key,
-    }
-    for response_key, response in _SIP_COMMANDS['ControllerResponses'].items()
-}
+CONTROLLER_COMMANDS = "ControllerCommands"
+CONTROLLER_RESPONSES = "ControllerResponses"
+
+RAINBIRD_COMMANDS = { **SIP_COMMANDS[CONTROLLER_COMMANDS] }
+RAINBIRD_RESPONSES = { **SIP_COMMANDS[CONTROLLER_RESPONSES] }
+
+RAINBIRD_COMMANDS_BY_ID = build_id_map(SIP_COMMANDS[CONTROLLER_COMMANDS])
+RAINBIRD_RESPONSES_BY_ID = build_id_map(SIP_COMMANDS[CONTROLLER_RESPONSES])
