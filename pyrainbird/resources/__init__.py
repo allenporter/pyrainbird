@@ -6,8 +6,6 @@ import yaml
 from pkg_resources import resource_stream
 
 COMMAND = "command"
-
-COMMAND = "command"
 TYPE = "type"
 LENGTH = "length"
 RESPONSE = "response"
