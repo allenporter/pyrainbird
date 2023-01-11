@@ -29,12 +29,36 @@ ControllerCommands:
     command: '10'
     response: '90'
     length: 1
-  # SetTimeRequest: 11
+  SetCurrentTimeRequest:
+    command: '11'
+    response: '01'
+    length: 4
+    hour:
+      position: 2
+      length: 2
+    minute:
+      position: 4
+      length: 2
+    second:
+      position: 6
+      length: 2
   CurrentDateRequest:
     command: '12'
     response: '92'
     length: 1
-  # SetDateRequest: 13
+  SetCurrentDateRequest:
+    command: '13'
+    response: '01'
+    length: 4
+    day:
+      position: 2
+      length: 2
+    month:
+      position: 4
+      length: 1
+    year:
+      position: 5
+      length: 3
   # currentTimeZone: FC
   # SetTimeZoneRequest: 2B
   RetrieveScheduleRequest:

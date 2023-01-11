@@ -12,26 +12,33 @@ $ ./rainbird_tool get_wifi_settings
 ```
 """
 
-import asyncio
-import aiohttp
-import sys
-import inspect
 import argparse
-import logging
-
-from pyrainbird import async_client
+import asyncio
+import datetime
+import inspect
 import logging
 import os
+from typing import Any
 
+import aiohttp
+
+from pyrainbird import async_client
 
 _LOGGER = logging.getLogger(__name__)
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--log-level', default='warning', choices=['debug', 'info', 'warning', 'error', 'critical'], help='The log level')
+    parser.add_argument(
+        "--log-level",
+        default="warning",
+        choices=["debug", "info", "warning", "error", "critical"],
+        help="The log level",
+    )
 
-    subcommand_parsers = parser.add_subparsers(title='Commands', dest='command', required=True)
+    subcommand_parsers = parser.add_subparsers(
+        title="Commands", dest="command", required=True
+    )
     for method_name in dir(async_client.AsyncRainbirdController):
         if method_name.startswith("_"):
             continue
@@ -47,7 +54,9 @@ def parse_args():
             continue
 
         # Create a parser for the method
-        method_parser = subcommand_parsers.add_parser(method_name, help=f'Call the {method_name} method')
+        method_parser = subcommand_parsers.add_parser(
+            method_name, help=f"Call the {method_name} method"
+        )
         method_parser.set_defaults(func=method)
 
         # Get the arguments of the method
@@ -60,9 +69,21 @@ def parse_args():
     return parser.parse_args()
 
 
+def parse_value(value: Any) -> Any:
+    """Parse the command line arg into a value."""
+    try:
+        return datetime.date.fromisoformat(value)
+    except ValueError:
+        pass
+    try:
+        return datetime.time.fromisoformat(value)
+    except ValueError:
+        pass
+    return int(value, 16)
+
+
 async def main():
     args = parse_args()
-    print(getattr(logging, args.log_level.upper()))
     logging.basicConfig(level=getattr(logging, args.log_level.upper()))
 
     host = os.environ["RAINBIRD_SERVER"]
@@ -70,10 +91,15 @@ async def main():
 
     async with aiohttp.ClientSession() as session:
         client = async_client.CreateController(session, host, password)
-        method_args = {k: v for k, v in vars(args).items() if k != 'func' and k != 'command' and k != 'log_level'}
+        method_args = {
+            k: parse_value(v)
+            for k, v in vars(args).items()
+            if k != "func" and k != "command" and k != "log_level"
+        }
         result = await args.func(client, **method_args)
         print(result)
 
+
 # Run the main function if this script is run
-if __name__ == '__main__':
+if __name__ == "__main__":
     asyncio.run(main())

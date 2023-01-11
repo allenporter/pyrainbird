@@ -1,13 +1,29 @@
 data:
+  - "10"
   - "900C3623"
+  - "12"
   - "9212B7E2"
+  - "11162F13"
+  - "130917E7"
+  - "0111"
 decoded_data:
+  - type: CurrentTimeRequest
   - type: CurrentTimeResponse
     hour: 12
     minute: 54
     second: 35
+  - type: CurrentDateRequest
   - type: CurrentDateResponse
     year: 2018
     month: 11
     day: 18
-
+  - type: SetCurrentTimeRequest
+    hour: 22
+    minute: 47
+    second: 19
+  - type: SetCurrentDateRequest
+    day: 9
+    month: 1
+    year: 2023
+  - type: AcknowledgeResponse
+    commandEcho: 17
