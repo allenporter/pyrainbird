@@ -17,9 +17,11 @@ RESERVED_FIELDS = [COMMAND, TYPE, LENGTH, RESPONSE, DECODER]
 SIP_COMMANDS = yaml.load(
     resource_stream("pyrainbird.resources", "sipcommands.yaml"), Loader=yaml.FullLoader
 )
-RAINBIRD_MODELS = yaml.load(
+MODEL_INFO = yaml.load(
     resource_stream("pyrainbird.resources", "models.yaml"), Loader=yaml.FullLoader
 )
+
+RAINBIRD_MODELS = { info["device_id"]: info for info in MODEL_INFO }
 
 
 def build_id_map(commands: dict[str, Any]) -> dict[str, Any]:

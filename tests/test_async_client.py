@@ -73,8 +73,17 @@ async def test_get_model_and_version(
     api_response: Callable[[...], Awaitable[None]],
 ) -> None:
     controller = await rainbird_controller()
-    api_response("82", modelID=16, protocolRevisionMajor=1, protocolRevisionMinor=3)
-    assert await controller.get_model_and_version() == ModelAndVersion(16, 1, 3)
+    api_response("82", modelID=0x0A, protocolRevisionMajor=1, protocolRevisionMinor=3)
+    result = await controller.get_model_and_version()
+    assert result == ModelAndVersion(0x0A, 1, 3)
+    assert result.model_code == "ESP_TM2v2"
+    assert result.model_name == "ESP-TM2"
+    model_info = result.model_info
+    assert model_info.code == "ESP_TM2v2"
+    assert model_info.name == "ESP-TM2"
+    assert model_info.supports_water_budget
+    assert model_info.max_programs == 3
+    assert model_info.max_run_times == 4
 
 
 async def test_get_available_stations(

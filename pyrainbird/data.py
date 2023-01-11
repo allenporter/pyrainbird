@@ -41,21 +41,40 @@ class CommandSupport:
 
 
 @dataclass
+class ModelInfo:
+    """Details about capabilities of a specific model."""
+    device_id: str
+    code: str
+    name: str
+    supports_water_budget: bool
+    max_programs: int
+    max_run_times: int
+
+
+@dataclass
 class ModelAndVersion:
     """Model and version response from the API."""
 
-    model: str
+    model: int
+    """The device model number hex code."""
+
     major: str
     minor: str
 
     @property
-    def model_code(self):
-        """The model code."""
-        return RAINBIRD_MODELS[self.model][0]
+    def model_code(self) -> str:
+        """The device model code string."""
+        return self.model_info.code
 
     @property
-    def model_name(self):
-        return RAINBIRD_MODELS[self.model][2]
+    def model_name(self) -> str:
+        """The device model name."""
+        return self.model_info.name
+
+    @property
+    def model_info(self) -> ModelInfo:
+        """Return details about a device model capabilities."""
+        return ModelInfo(**RAINBIRD_MODELS["%04x" % self.model])
 
     def __str__(self):
         return "model: %04X (%s), version: %d.%d" % (
