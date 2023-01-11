@@ -7,13 +7,12 @@ from collections.abc import Awaitable, Callable
 import aiohttp
 import pytest
 
-from pyrainbird import AvailableStations, ModelAndVersion, WaterBudget
-from pyrainbird import rainbird
+from pyrainbird import AvailableStations, ModelAndVersion, WaterBudget, rainbird
 from pyrainbird.async_client import AsyncRainbirdClient, AsyncRainbirdController
 from pyrainbird.data import SoilType
 from pyrainbird.encryption import encrypt
 from pyrainbird.exceptions import RainbirdApiException, RainbirdAuthException
-from pyrainbird.resources import RAINBIRD_COMMANDS_BY_ID, RESERVED_FIELDS
+from pyrainbird.resources import RAINBIRD_COMMANDS_BY_ID
 
 from .conftest import LENGTH, PASSWORD, REQUEST, RESPONSE, RESULT_DATA, ResponseResult
 
@@ -429,6 +428,29 @@ async def test_get_settings(
     assert result.code == "90210"
 
 
+async def test_get_program_info(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    response: ResponseResult,
+) -> None:
+    """Test getting the settings."""
+    controller = await rainbird_controller()
+    payload = {
+        "jsonrpc": "2.0",
+        "result": {
+            "SoilTypes": [1, 0, 0],
+            "FlowRates": [0, 0, 0],
+            "FlowUnits": [0, 0, 0],
+        },
+        "id": 0,
+    }
+    response(aiohttp.web.Response(body=encrypt(json.dumps(payload), PASSWORD)))
+    result = await controller.get_program_info()
+    assert result
+    assert result.soil_types == [SoilType.CLAY, SoilType.NONE, SoilType.NONE]
+    assert result.flow_rates == [0, 0, 0]
+    assert result.flow_units == [0, 0, 0]
+
+
 async def test_get_zip_code(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
     response: ResponseResult,
@@ -481,3 +503,85 @@ async def test_get_combined_controller_state(
     assert result.remaining_runtime == 0
     assert result.active_station == 0
     assert result.device_time == datetime.datetime(2023, 1, 8, 20, 11, 35)
+
+
+async def test_get_controller_firmware_version(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    response: ResponseResult,
+) -> None:
+    """Test getting the controller firmware version."""
+    controller = await rainbird_controller()
+    payload = {
+        "jsonrpc": "2.0",
+        "result": {"length": 5, "data": "8B012F0000"},
+        "id": 0,
+    }
+    response(aiohttp.web.Response(body=encrypt(json.dumps(payload), PASSWORD)))
+    result = await controller.get_controller_firmware_version()
+    assert result
+    assert result.major == 1
+    assert result.minor == 47
+    assert result.patch == 0
+
+
+async def test_get_command_support(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    response: ResponseResult,
+) -> None:
+    """Test the command for testing if a command is supported."""
+    controller = await rainbird_controller()
+    payload = {
+        "jsonrpc": "2.0",
+        "result": {"length": 3, "data": "840701"},
+        "id": 0,
+    }
+    response(aiohttp.web.Response(body=encrypt(json.dumps(payload), PASSWORD)))
+    assert await controller.test_command_support("07")
+
+
+async def test_rpc_command_support(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    response: ResponseResult,
+) -> None:
+    """Test checking for an RPC support."""
+    controller = await rainbird_controller()
+    payload = {
+        "jsonrpc": "2.0",
+        "result": {"apSecurity": "unknown"},
+        "id": 0,
+    }
+    response(aiohttp.web.Response(body=encrypt(json.dumps(payload), PASSWORD)))
+    result = await controller.test_rpc_support("getWifiParams")
+    assert result == {"apSecurity": "unknown"}
+
+
+async def test_error_response(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    response: ResponseResult,
+) -> None:
+    """Test checking for an RPC support."""
+    controller = await rainbird_controller()
+    payload = {
+        "jsonrpc": "2.0",
+        "error": {"code": -32601, "message": "Method not found"},
+        "id": "null",
+    }
+    response(aiohttp.web.Response(body=encrypt(json.dumps(payload), PASSWORD)))
+    with pytest.raises(RainbirdApiException, match=r"Method not found"):
+        await controller.test_rpc_support("invalid")
+
+
+async def test_unrecognized_response(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    response: ResponseResult,
+) -> None:
+    """Test checking for an RPC support."""
+    controller = await rainbird_controller()
+    payload = {
+        "jsonrpc": "2.0",
+        "result": {"data": "F100000000"},
+        "id": 0,
+    }
+    response(aiohttp.web.Response(body=encrypt(json.dumps(payload), PASSWORD)))
+    with pytest.raises(RainbirdApiException, match=r"wrong response"):
+        await controller.test_command_support("00")
