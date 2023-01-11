@@ -32,7 +32,7 @@ from .data import (
     ZipCode,
 )
 from .exceptions import RainbirdApiException, RainbirdAuthException
-from .resources import LENGTH, RAINBIRD_COMMANDS, RAINBIRD_RESPONSES, RESPONSE
+from .resources import LENGTH, RAINBIRD_COMMANDS, RESPONSE
 
 _LOGGER = logging.getLogger(__name__)
 T = TypeVar("T")
@@ -130,7 +130,7 @@ class AsyncRainbirdController:
         """Get the available stations."""
         mask = (
             "%%0%dX"
-            % RAINBIRD_RESPONSES["AvailableStationsResponse"]["setStations"][LENGTH]
+            % RAINBIRD_COMMANDS["AvailableStationsResponse"]["setStations"][LENGTH]
         )
         return await self._process_command(
             lambda resp: AvailableStations(
@@ -214,7 +214,7 @@ class AsyncRainbirdController:
         """Return the current state of the zone."""
         mask = (
             "%%0%dX"
-            % RAINBIRD_RESPONSES["CurrentStationsActiveResponse"]["activeStations"][
+            % RAINBIRD_COMMANDS["CurrentStationsActiveResponse"]["activeStations"][
                 LENGTH
             ]
         )

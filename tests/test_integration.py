@@ -4,14 +4,15 @@ import unittest
 import responses
 
 from pyrainbird import (
-    RainbirdController,
-    ModelAndVersion,
     AvailableStations,
     CommandSupport,
+    ModelAndVersion,
+    RainbirdController,
     WaterBudget,
 )
-from pyrainbird.resources import RAINBIRD_RESPONSES_BY_ID, RESERVED_FIELDS
+from pyrainbird import rainbird
 from pyrainbird.encryption import encrypt
+from pyrainbird.resources import RAINBIRD_COMMANDS_BY_ID, RESERVED_FIELDS
 
 MOCKED_RAINBIRD_URL = "rainbird.local"
 MOCKED_PASSWORD = "test123"
@@ -24,9 +25,7 @@ class TestCase(unittest.TestCase):
             "82", modelID=16, protocolRevisionMajor=1, protocolRevisionMinor=3
         )
         rainbird = RainbirdController(MOCKED_RAINBIRD_URL, MOCKED_PASSWORD)
-        self.assertEqual(
-            ModelAndVersion(16, 1, 3), rainbird.get_model_and_version()
-        )
+        self.assertEqual(ModelAndVersion(16, 1, 3), rainbird.get_model_and_version())
 
     @responses.activate
     def test_get_available_stations(self):
@@ -40,9 +39,7 @@ class TestCase(unittest.TestCase):
     def test_get_command_support(self):
         mock_response("84", commandEcho=6, support=1)
         rainbird = RainbirdController(MOCKED_RAINBIRD_URL, MOCKED_PASSWORD)
-        self.assertEqual(
-            CommandSupport(1, 6), rainbird.get_command_support(0x85)
-        )
+        self.assertEqual(CommandSupport(1, 6), rainbird.get_command_support(0x85))
 
     @responses.activate
     def test_get_serial_number(self):
@@ -53,16 +50,14 @@ class TestCase(unittest.TestCase):
     @responses.activate
     def test_get_current_time(self):
         time = datetime.time()
-        mock_response(
-            "90", hour=time.hour, minute=time.minute, second=time.second
-        )
+        mock_response("90", hour=time.hour, minute=time.minute, second=time.second)
         rainbird = RainbirdController(MOCKED_RAINBIRD_URL, MOCKED_PASSWORD)
         self.assertEqual(time, rainbird.get_current_time())
 
     @responses.activate
     def test_get_current_date(self):
         date = datetime.date.today()
-        mock_response("92", year=date.year, month=date.month, day=date.day)
+        mock_response("92", day=date.day, month=date.month, year=date.year)
         rainbird = RainbirdController(MOCKED_RAINBIRD_URL, MOCKED_PASSWORD)
         self.assertEqual(date, rainbird.get_current_date())
 
@@ -159,7 +154,7 @@ class TestCase(unittest.TestCase):
 
 
 def mock_response(command, **kvargs):
-    resp = RAINBIRD_RESPONSES_BY_ID[command]
+    resp = RAINBIRD_COMMANDS_BY_ID[command]
     data = command + ("00" * (resp["length"] - 1))
     for k in resp:
         if k in RESERVED_FIELDS:
@@ -172,12 +167,13 @@ def mock_response(command, **kvargs):
             (param_template % kvargs[k]),
             data[end_:],
         )
+    data = rainbird.encode_command(resp, *kvargs.values())
 
     responses.add(
         responses.POST,
         "http://%s/stick" % MOCKED_RAINBIRD_URL,
         body=encrypt(
-            (u'{"jsonrpc": "2.0", "result": {"data":"%s"}, "id": 1} ' % data),
+            ('{"jsonrpc": "2.0", "result": {"data":"%s"}, "id": 1} ' % data),
             MOCKED_PASSWORD,
         ),
         content_type="application/octet-stream",

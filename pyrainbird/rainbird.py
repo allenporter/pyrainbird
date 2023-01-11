@@ -1,10 +1,19 @@
 """Library for encoding and decoding rainbird tunnelSip commands."""
 
-from collections.abc import Callable
 import logging
+from collections.abc import Callable
 from typing import Any
 
-from .resources import RAINBIRD_COMMANDS, RAINBIRD_RESPONSES_BY_ID
+from .exceptions import RainbirdCodingException
+from .resources import (
+    DECODER,
+    LENGTH,
+    POSITION,
+    RAINBIRD_COMMANDS,
+    RAINBIRD_COMMANDS_BY_ID,
+    RESERVED_FIELDS,
+    TYPE,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -13,10 +22,12 @@ def decode_template(data: str, cmd_template: dict[str, Any]) -> dict[str, int]:
     """Decode the command from the template in yaml."""
     result = {}
     for k, v in cmd_template.items():
-        if isinstance(v, dict) and "position" in v and "length" in v:
-            position_ = v["position"]
-            length_ = v["length"]
-            result[k] = int(data[position_ : position_ + length_], 16)
+        if (
+            isinstance(v, dict)
+            and (position := v.get(POSITION))
+            and (length := v.get(LENGTH))
+        ):
+            result[k] = int(data[position : position + length], 16)
     return result
 
 
@@ -92,28 +103,59 @@ DECODERS: dict[str, Callable[[str, dict[str, Any]], dict[str, Any]]] = {
 def decode(data: str) -> dict[str, Any]:
     """Decode a rainbird tunnelSip command response."""
     command_code = data[:2]
-    if not (cmd_template := RAINBIRD_RESPONSES_BY_ID.get(command_code)):
-        _LOGGER.warning("Unrecognized server response code '%s' from '%s'", command_code, data)
+    if not (cmd_template := RAINBIRD_COMMANDS_BY_ID.get(command_code)):
+        _LOGGER.warning(
+            "Unrecognized server response code '%s' from '%s'", command_code, data
+        )
         return {"data": data}
-    decoder = DECODERS[cmd_template.get("decoder", DEFAULT_DECODER)]
-    return {"type": cmd_template["type"], **decoder(data, cmd_template)}
+    decoder = DECODERS[cmd_template.get(DECODER, DEFAULT_DECODER)]
+    return {TYPE: cmd_template[TYPE], **decoder(data, cmd_template)}
 
 
 def encode(command: str, *args) -> str:
     """Encode a rainbird tunnelSip command request."""
     if not (command_set := RAINBIRD_COMMANDS.get(command)):
-        raise Exception(
-            "Command %s not available. Existing commands: %s"
-            % (command, RAINBIRD_COMMANDS.keys())
+        raise RainbirdCodingException(
+            f"Command {command} not available. Existing commands: {RAINBIRD_COMMANDS.keys()}"
         )
+    return encode_command(command_set, *args)
+
+
+def encode_command(command_set: dict[str, Any], *args) -> str:
+    """Encode a rainbird tunnelSip command request."""
     cmd_code = command_set["command"]
-    if len(args) > command_set["length"] - 1:
-        raise Exception(
-            "Too much parameters. %d expected:\n%s"
-            % (command_set["length"] - 1, command_set)
+    if not (length := command_set[LENGTH]):
+        raise RainbirdCodingException(f"Unable to encode command missing length: {command_set}")
+    if len(args) > length:
+        raise RainbirdCodingException(
+            f"Too many parameters. {length} expected: {command_set}"
         )
-    params = (cmd_code,) + tuple(map(lambda x: int(x), args))
-    arg_placeholders = (
-        ("%%0%dX" % ((command_set["length"] - len(args)) * 2)) if len(args) > 0 else ""
-    ) + ("%02X" * (len(args) - 1))
-    return ("%s" + arg_placeholders) % (params)
+
+    if length == 1 or "parameter" in command_set or "parameterOne" in command_set:
+        # TODO: Replace old style encoding with new encoding below
+        params = (cmd_code,) + tuple(map(lambda x: int(x), args))
+        arg_placeholders = (
+            ("%%0%dX" % ((length - len(args)) * 2)) if len(args) > 0 else ""
+        ) + ("%02X" * (len(args) - 1))
+        return ("%s" + arg_placeholders) % (params)
+
+    data = cmd_code + ("00" * (length - 1))
+    args_list = list(args)
+    for k in command_set:
+        if k in RESERVED_FIELDS:
+            continue
+        command_arg = command_set[k]
+        command_arg_length = command_arg[LENGTH]
+        arg = args_list.pop(0)
+        if isinstance(arg, str):
+            arg = int(arg, 16)
+        param_template = "%%0%dX" % (command_arg_length)
+        start_ = command_arg[POSITION]
+        end_ = start_ + command_arg_length
+        data = "%s%s%s" % (
+            data[:start_],
+            # TODO: Replace with kwargs
+            (param_template % arg),
+            data[end_:],
+        )
+    return data

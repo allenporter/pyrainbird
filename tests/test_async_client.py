@@ -7,16 +7,13 @@ from collections.abc import Awaitable, Callable
 import aiohttp
 import pytest
 
-from pyrainbird import (
-    AvailableStations,
-    ModelAndVersion,
-    WaterBudget,
-)
+from pyrainbird import AvailableStations, ModelAndVersion, WaterBudget
+from pyrainbird import rainbird
 from pyrainbird.async_client import AsyncRainbirdClient, AsyncRainbirdController
 from pyrainbird.data import SoilType
 from pyrainbird.encryption import encrypt
 from pyrainbird.exceptions import RainbirdApiException, RainbirdAuthException
-from pyrainbird.resources import RAINBIRD_RESPONSES_BY_ID, RESERVED_FIELDS
+from pyrainbird.resources import RAINBIRD_COMMANDS_BY_ID, RESERVED_FIELDS
 
 from .conftest import LENGTH, PASSWORD, REQUEST, RESPONSE, RESULT_DATA, ResponseResult
 
@@ -61,20 +58,8 @@ def mock_api_response(response: ResponseResult) -> Callable[[...], Awaitable[Non
     """Fixture to construct a fake API response."""
 
     def _put_result(command: str, **kvargs) -> None:
-        resp = RAINBIRD_RESPONSES_BY_ID[command]
-        data = command + ("00" * (resp["length"] - 1))
-        for k in resp:
-            if k in RESERVED_FIELDS:
-                continue
-            param_template = "%%0%dX" % (resp[k]["length"])
-            start_ = resp[k]["position"]
-            end_ = start_ + resp[k]["length"]
-            data = "%s%s%s" % (
-                data[:start_],
-                (param_template % kvargs[k]),
-                data[end_:],
-            )
-
+        command_set = RAINBIRD_COMMANDS_BY_ID[command]
+        data = rainbird.encode_command(command_set, *kvargs.values())
         body = encrypt(
             ('{"jsonrpc": "2.0", "result": {"data":"%s"}, "id": 1} ' % data),
             PASSWORD,
@@ -127,7 +112,7 @@ async def test_get_current_date(
 ) -> None:
     controller = await rainbird_controller()
     date = datetime.date.today()
-    api_response("92", year=date.year, month=date.month, day=date.day)
+    api_response("92", day=date.day, month=date.month, year=date.year)
     assert await controller.get_current_date() == date
 
 
