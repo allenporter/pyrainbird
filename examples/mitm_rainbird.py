@@ -5,16 +5,15 @@ See https://docs.mitmproxy.org/stable/addons-overview/ for more technical detail
 mitm addons.
 """
 
-import gzip
 import json
 import logging
-from typing import Optional, Iterable
 import os
+from typing import Optional
+
+from mitmproxy import contentviews, flow, http
 
 import pyrainbird
-
-from mitmproxy import contentviews, flow
-from mitmproxy import http
+from pyrainbird import rainbird
 
 
 class DecodeRainbirdView(contentviews.View):
@@ -31,10 +30,7 @@ class DecodeRainbirdView(contentviews.View):
     ) -> contentviews.TViewResult:
 
         logging.debug("raw %s", data)
-        output = [
-            "--- Raw ---",
-            data
-        ]
+        output = ["--- Raw ---", data]
         passwd = os.environ["RAINBIRD_PASSWORD"]
         decrypted_data = (
             pyrainbird.encryption.decrypt(data, passwd)
@@ -45,26 +41,23 @@ class DecodeRainbirdView(contentviews.View):
             .rstrip()
         )
         logging.debug("decrypted %s", decrypted_data)
-        output.extend([
-            "--- Decrypted ---",
-            decrypted_data
-        ])
+        output.extend(["--- Decrypted ---", decrypted_data])
         json_body = json.loads(decrypted_data)
         if "params" in json_body:
             # Request
             params = json_body["params"]
-            output.extend([
-                "--- request params ---",
-                str(params)
-            ])
+            output.extend(["--- request params ---", str(params)])
+            if params_data := params.get("data"):
+                decoded_data = rainbird.decode(params_data)
+                output.extend(["--- decoded request data ---", str(decoded_data)])
         elif "result" in json_body:
             # Response
             result = json_body["result"]
             logging.info("response: %s", result)
-            output.extend([
-                "--- response result ---",
-                str(result)
-            ])
+            output.extend(["--- response result ---", str(result)])
+            if result_data := result.get("data"):
+                decoded_data = rainbird.decode(result_data)
+                output.extend(["--- decoded response data ---", str(decoded_data)])
 
         def result():
             for row in output:
@@ -86,7 +79,7 @@ class DecodeRainbirdView(contentviews.View):
             return 0
         if content_type != "application/octet-stream":
             return 0
-        if flow.request: 
+        if flow.request:
             if "/stick" in flow.request.path:
                 return 1
         return 0
@@ -95,8 +88,9 @@ class DecodeRainbirdView(contentviews.View):
 view = DecodeRainbirdView()
 
 
-def load(l):
+def load(_l):
     contentviews.add(view)
+
 
 def done():
     contentviews.remove(view)
