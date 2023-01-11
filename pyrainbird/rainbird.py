@@ -132,6 +132,7 @@ def encode_command(command_set: dict[str, Any], *args) -> str:
         )
 
     if length == 1 or "parameter" in command_set or "parameterOne" in command_set:
+        # TODO: Replace old style encoding with new encoding below
         params = (cmd_code,) + tuple(map(lambda x: int(x), args))
         arg_placeholders = (
             ("%%0%dX" % ((length - len(args)) * 2)) if len(args) > 0 else ""
