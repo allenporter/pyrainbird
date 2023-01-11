@@ -115,6 +115,26 @@ async def test_get_current_date(
     assert await controller.get_current_date() == date
 
 
+async def test_set_current_time(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    api_response: Callable[[...], Awaitable[None]],
+) -> None:
+    """Test for setting the current time."""
+    controller = await rainbird_controller()
+    api_response("01", commandEcho="11")
+    await controller.set_current_time(datetime.datetime.now().time())
+
+
+async def test_set_current_date(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    api_response: Callable[[...], Awaitable[None]],
+) -> None:
+    """Test for setting the current date."""
+    controller = await rainbird_controller()
+    api_response("01", commandEcho="13")
+    await controller.set_current_date(datetime.date.today())
+
+
 async def test_get_water_budget(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
     api_response: Callable[[...], Awaitable[None]],

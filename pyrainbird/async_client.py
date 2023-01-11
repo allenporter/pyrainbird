@@ -153,11 +153,31 @@ class AsyncRainbirdController:
             "CurrentTimeRequest",
         )
 
+    async def set_current_time(self, value: datetime.time) -> None:
+        """Set the device current time."""
+        await self._process_command(
+            lambda resp: True,
+            "SetCurrentTimeRequest",
+            value.hour,
+            value.minute,
+            value.second,
+        )
+
     async def get_current_date(self) -> datetime.date:
         """Get the device current date."""
         return await self._process_command(
             lambda resp: datetime.date(resp["year"], resp["month"], resp["day"]),
             "CurrentDateRequest",
+        )
+
+    async def set_current_date(self, value: datetime.date) -> None:
+        """Set the device current date."""
+        await self._process_command(
+            lambda resp: True,
+            "SetCurrentDateRequest",
+            value.day,
+            value.month,
+            value.year,
         )
 
     async def get_wifi_params(self) -> WifiParams:
