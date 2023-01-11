@@ -125,7 +125,7 @@ def encode_command(command_set: dict[str, Any], *args) -> str:
     """Encode a rainbird tunnelSip command request."""
     cmd_code = command_set["command"]
     if not (length := command_set[LENGTH]):
-        raise RainbirdCodingException(f"Unable to encode command '{command}'")
+        raise RainbirdCodingException(f"Unable to encode command missing length: {command_set}")
     if len(args) > length:
         raise RainbirdCodingException(
             f"Too many parameters. {length} expected: {command_set}"
