@@ -155,18 +155,6 @@ class TestCase(unittest.TestCase):
 
 def mock_response(command, **kvargs):
     resp = RAINBIRD_COMMANDS_BY_ID[command]
-    data = command + ("00" * (resp["length"] - 1))
-    for k in resp:
-        if k in RESERVED_FIELDS:
-            continue
-        param_template = "%%0%dX" % (resp[k]["length"])
-        start_ = resp[k]["position"]
-        end_ = start_ + resp[k]["length"]
-        data = "%s%s%s" % (
-            data[:start_],
-            (param_template % kvargs[k]),
-            data[end_:],
-        )
     data = rainbird.encode_command(resp, *kvargs.values())
 
     responses.add(
