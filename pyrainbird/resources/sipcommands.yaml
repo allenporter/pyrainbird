@@ -6,12 +6,14 @@ ControllerCommands:
     length: 1
   AvailableStationsRequest:
     command: '03'
-    parameter: 0
     response: '83'
     length: 2
+    page:
+      position: 2
+      length: 2
   CommandSupportRequest:
     command: '04'
-    commandToTest: '02'
+    parameter: '02'  #commandToTest: '02'
     response: '84'
     length: 2
   SerialNumberRequest:
@@ -223,8 +225,8 @@ ControllerResponses:
       length: 3
   RetrieveScheduleResponse:
     command: 'A0'
-    length: 18
-    # Requires a custom processor that can't be expressed in yaml
+    # Requires a custom processor that can't be expressed in yaml. This
+    # does not set a length for now to indicate it requires custom encoding.
     decoder: decode_schedule
   WaterBudgetResponse:
     command: 'B0'

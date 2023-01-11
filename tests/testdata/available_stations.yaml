@@ -1,6 +1,16 @@
 data:
-  - 830F0010
+  - "0300"
+  - "83003F000000"
+  - "0315"
+  - "83FF00000000"
 decoded_data:
+  - type: AvailableStationsRequest
+    page: 0
   - type: AvailableStationsResponse
-    pageNumber: 15
-    setStations: 16
+    pageNumber: 0
+    setStations: 0x3F000000
+  - type: AvailableStationsRequest
+    page: 0x15
+  - type: AvailableStationsResponse
+    pageNumber: 255
+    setStations: 0

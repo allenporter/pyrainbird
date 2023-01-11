@@ -4,8 +4,8 @@ import pytest
 from parameterized import parameterized
 from pytest_golden.plugin import GoldenTestFixture
 
-from pyrainbird import rainbird
 from pyrainbird.rainbird import decode, encode
+from pyrainbird.resources import LENGTH, RAINBIRD_COMMANDS
 
 
 def encode_name_func(testcase_func, param_num, param):
@@ -28,8 +28,23 @@ def decode_name_func(testcase_func, param_num, param):
 def test_decode(golden: GoldenTestFixture) -> None:
     """Fixture to read golden file and compare to golden output."""
     data = golden["data"]
-    decoded_data = [rainbird.decode(case) for case in data]
+    decoded_data = [decode(case) for case in data]
     assert decoded_data == golden.out["decoded_data"]
+
+
+@pytest.mark.golden_test("testdata/*.yaml")
+def test_encode(golden: GoldenTestFixture) -> None:
+    """Test that we can re-encode decoded output to get back the original."""
+    data = golden["data"]
+    decoded_data = [decode(case) for case in data]
+
+    for entry in decoded_data:
+        command = entry["type"]
+        del entry["type"]
+        expected_data = data.pop(0)
+        if LENGTH not in RAINBIRD_COMMANDS[command]:
+            continue
+        assert encode(command, *entry.values()) == expected_data
 
 
 class TestSequence(unittest.TestCase):

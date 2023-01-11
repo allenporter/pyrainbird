@@ -228,7 +228,6 @@ class Settings(BaseModel):
     @root_validator(pre=True)
     def _soil_type(cls, values: dict[str, Any]):
         """Validate different ways the SoilTypes parameter is handled."""
-        print("values=", values)
         if soil_type := values.get("soilTypes"):
             values["SoilTypes"] = soil_type
         return values

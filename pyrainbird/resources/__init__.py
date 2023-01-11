@@ -9,8 +9,10 @@ COMMAND = "command"
 TYPE = "type"
 LENGTH = "length"
 RESPONSE = "response"
+POSITION = "position"
+DECODER = "decoder"
 # Fields in the command template that should not be encoded
-RESERVED_FIELDS = [COMMAND, TYPE, LENGTH, RESPONSE]
+RESERVED_FIELDS = [COMMAND, TYPE, LENGTH, RESPONSE, DECODER]
 
 SIP_COMMANDS = yaml.load(
     resource_stream("pyrainbird.resources", "sipcommands.yaml"), Loader=yaml.FullLoader
@@ -34,8 +36,11 @@ def build_id_map(commands: dict[str, Any]) -> dict[str, Any]:
 CONTROLLER_COMMANDS = "ControllerCommands"
 CONTROLLER_RESPONSES = "ControllerResponses"
 
-RAINBIRD_COMMANDS = {**SIP_COMMANDS[CONTROLLER_COMMANDS]}
-RAINBIRD_RESPONSES = {**SIP_COMMANDS[CONTROLLER_RESPONSES]}
-
-RAINBIRD_COMMANDS_BY_ID = build_id_map(SIP_COMMANDS[CONTROLLER_COMMANDS])
-RAINBIRD_RESPONSES_BY_ID = build_id_map(SIP_COMMANDS[CONTROLLER_RESPONSES])
+RAINBIRD_COMMANDS = {
+    **SIP_COMMANDS[CONTROLLER_COMMANDS],
+    **SIP_COMMANDS[CONTROLLER_RESPONSES],
+}
+RAINBIRD_COMMANDS_BY_ID = {
+    **build_id_map(SIP_COMMANDS[CONTROLLER_COMMANDS]),
+    **build_id_map(SIP_COMMANDS[CONTROLLER_RESPONSES]),
+}

@@ -1,7 +1,9 @@
 data:
+  - "02"
   - "820006090C"
   - "850000000000008963"
 decoded_data:
+  - type: ModelAndVersionRequest
   - type: ModelAndVersionResponse
     modelID: 6
     protocolRevisionMajor: 9

@@ -4,7 +4,8 @@ data:
   - B0000064
   - B0010050
   - B0020050
-  - BB0000000000000000FF0000
+  # Not decoding current queue
+  # - BB0000000000000000FF0000
   - BF0000000000
   - CA012B483163
   - CC1228270417E700040001FFFF000000
@@ -26,7 +27,7 @@ decoded_data:
     programCode: 2
     seasonalAdjust: 80
   # Not currently parsed CurrentQueueResponse
-  - data: BB0000000000000000FF0000
+  # - data: BB0000000000000000FF0000
   - type: CurrentStationsActiveResponse
     activeStations: 0
     pageNumber: 0
