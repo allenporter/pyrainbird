@@ -1,0 +1,22 @@
+data:
+- A00010110602006402  # Odd
+- A00010110602006403  # Event
+decoded_data:
+- type: RetrieveScheduleResponse
+  programInfo:
+    program: 0
+    daysOfWeekMask: 17
+    period: 6
+    synchro: 2
+    permanentDaysOff: 0
+    reserved: 100
+    frequency: 2
+- type: RetrieveScheduleResponse
+  programInfo:
+    program: 0
+    daysOfWeekMask: 17
+    period: 6  # Every 6 days
+    synchro: 2  # 2 days remaining
+    permanentDaysOff: 0
+    reserved: 100
+    frequency: 3
