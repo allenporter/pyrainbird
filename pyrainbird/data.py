@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field, root_validator
 from .resources import RAINBIRD_MODELS
 
 _DEFAULT_PAGE = 0
+_MAX_ZONES = 32
 
 
 @dataclass
@@ -43,6 +44,7 @@ class CommandSupport:
 @dataclass
 class ModelInfo:
     """Details about capabilities of a specific model."""
+
     device_id: str
     code: str
     name: str
@@ -94,8 +96,16 @@ class ControllerFirmwareVersion:
     patch: str
 
 
-class States(object):
-    def __init__(self, mask="0000"):
+@dataclass
+class States:
+    """Rainbird controller response containing a bitmask string e.g. active zones."""
+
+    count: int
+    mask: str
+    states: tuple
+
+    def __init__(self, mask: str) -> None:
+        """Initialize States."""
         self.count = len(mask) * 4
         self.mask = int(mask, 16)
         self.states = ()
@@ -106,22 +116,16 @@ class States(object):
             for i in range(0, 8):
                 self.states = self.states + (bool((1 << i) & current),)
 
-    def active(self, number):
+    def active(self, number: int) -> bool:
+        """Return true if the specified zone is active."""
+        if number > len(self.states):
+            return False
         return self.states[number - 1]
 
-    def __hash__(self):
-        return hash((self.count, self.mask, self.states))
-
-    def __eq__(self, o):
-        return (
-            isinstance(o, States)
-            and self.count == o.count
-            and self.mask == o.mask
-            and self.states == o.states
-        )
-
-    def __ne__(self, o):
-        return not self.__eq__(o)
+    @property
+    def active_set(self):
+        """Return the set of active zones."""
+        return {number for number in range(1, _MAX_ZONES + 1) if self.active(number)}
 
     def __str__(self):
         result = ()
@@ -134,6 +138,11 @@ class AvailableStations(Pageable):
     def __init__(self, mask, page=_DEFAULT_PAGE):
         super(AvailableStations, self).__init__(page)
         self.stations = States(mask)
+
+    @property
+    def active_set(self):
+        """Return the set of active zones."""
+        return self.stations.active_set
 
     def __hash__(self):
         return hash((super(AvailableStations, self).__hash__(), self.stations))

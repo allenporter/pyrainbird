@@ -9,7 +9,7 @@ from collections.abc import Awaitable, Callable
 import aiohttp
 import pytest
 
-from pyrainbird import AvailableStations, ModelAndVersion, WaterBudget, rainbird
+from pyrainbird import ModelAndVersion, WaterBudget, rainbird
 from pyrainbird.async_client import AsyncRainbirdClient, AsyncRainbirdController
 from pyrainbird.data import SoilType
 from pyrainbird.encryption import encrypt
@@ -105,7 +105,8 @@ async def test_get_available_stations(
 ) -> None:
     controller = await rainbird_controller()
     api_response("83", pageNumber=1, setStations=0x7F000000)
-    assert await controller.get_available_stations() == AvailableStations("7f000000", 1)
+    stations = await controller.get_available_stations()
+    assert stations.active_set == {1, 2, 3, 4, 5, 6, 7}
 
 
 async def test_get_serial_number(
@@ -179,6 +180,20 @@ async def test_get_rain_sensor(
     controller = await rainbird_controller()
     api_response("BE", sensorState=state)
     assert await controller.get_rain_sensor_state() == expected
+
+
+async def test_get_zone_states(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    api_response: Callable[[...], Awaitable[None]],
+) -> None:
+    controller = await rainbird_controller()
+    for i in range(1, 8):
+        mask = (1 << (i - 1)) * 0x1000000
+        api_response("BF", pageNumber=0, activeStations=mask)
+        states = await controller.get_zone_states()
+        assert i in states.active_set
+        assert i - 1 not in states.active_set
+        assert i + 1 not in states.active_set
 
 
 async def test_get_zone_state(

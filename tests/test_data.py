@@ -16,8 +16,8 @@ def encode_name_func(testcase_func, param_num, param):
 class TestSequence(unittest.TestCase):
     @parameterized.expand(
         [
-            ("01", (True,) + (False,) * 7),
-            ("02", (False,) + (True,) + (False,) * 6),
+            ("01", (False,) * 0 + (True,) + (False,) * 7),
+            ("02", (False,) * 1 + (True,) + (False,) * 6),
             ("04", (False,) * 2 + (True,) + (False,) * 5),
             ("08", (False,) * 3 + (True,) + (False,) * 4),
             ("10", (False,) * 4 + (True,) + (False,) * 3),
@@ -37,10 +37,20 @@ class TestSequence(unittest.TestCase):
                 "40000040",
                 (False,) * 6 + (True,) + (False,) * 23 + (True,) + (False,),
             ),
-            ("20000020",
-             (False,) * 5 + (True,) + (False,) * 23 + (True,) + (False,) * 2,),
+            (
+                "20000020",
+                (False,) * 5 + (True,) + (False,) * 23 + (True,) + (False,) * 2,
+            ),
         ],
         name_func=encode_name_func,
     )
     def test_states(self, mask, expected):
-        self.assertEqual(expected, States(mask).states)
+        states = States(mask)
+        self.assertEqual(expected, states.states)
+        i = 1
+        print(states.active_set)
+        for bit in expected:
+            print(bit)
+            active = i in states.active_set
+            assert active == bit
+            i = i + 1
