@@ -79,7 +79,11 @@ def parse_value(value: Any) -> Any:
         return datetime.time.fromisoformat(value)
     except ValueError:
         pass
-    return int(value, 16)
+    try:
+        return int(value, 16)
+    except ValueError:
+        pass
+    return str(value)
 
 
 async def main():

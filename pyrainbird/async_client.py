@@ -46,7 +46,7 @@ HEAD = {
     "Connection": "keep-alive",
     "Content-Type": "application/octet-stream",
 }
-
+DATA = "data"
 CLOUD_API_URL = "http://rdz-rbcloud.rainbird.com/phone-api"
 
 
@@ -65,11 +65,6 @@ class AsyncRainbirdClient:
         else:
             self._url = f"http://{host}/stick"
         self._coder = encryption.PayloadCoder(password, _LOGGER)
-
-    async def tunnelSip(self, data: str, length: int) -> str:
-        """Send a tunnelSip request."""
-        result = await self.request("tunnelSip", {"data": data, LENGTH: length})
-        return result["data"]
 
     async def request(
         self, method: str, params: dict[str, Any] = None
@@ -352,11 +347,20 @@ class AsyncRainbirdController:
         """Debugging command to see if the device supports the specified json RPC method."""
         return await self._local_client.request(rpc)
 
+    async def _tunnelSip(self, data: str, length: int) -> str:
+        """Send a tunnelSip request."""
+        result = await self._local_client.request(
+            "tunnelSip", {DATA: data, LENGTH: length}
+        )
+        if DATA not in result:
+            raise RainbirdApiException("Missing 'data' in tunnelSip response")
+        return result[DATA]
+
     async def _command(self, command: str, *args) -> dict[str, Any]:
         data = rainbird.encode(command, *args)
         _LOGGER.debug("Request to line: " + str(data))
         command_data = RAINBIRD_COMMANDS[command]
-        decrypted_data = await self._local_client.tunnelSip(
+        decrypted_data = await self._tunnelSip(
             data,
             command_data[LENGTH],
         )

@@ -1,5 +1,7 @@
 """Test for AsyncRainbirdController."""
 
+from __future__ import annotations
+
 import datetime
 import json
 from collections.abc import Awaitable, Callable
@@ -24,8 +26,8 @@ async def test_request(
     """Test of basic request/response handling."""
     response(aiohttp.web.Response(body=RESPONSE))
     client = await rainbird_client()
-    resp = await client.tunnelSip(REQUEST, LENGTH)
-    assert resp == RESULT_DATA
+    resp = await client.request("method", {"key": "value"})
+    assert resp == {"data": RESULT_DATA}
 
 
 async def test_request_failure(
@@ -52,18 +54,29 @@ async def test_request_permission_failure(
         await client.request(REQUEST, LENGTH)
 
 
+@pytest.fixture(name="encrypt_response")
+def mock_encrypt_response(response: ResponseResult) -> Callable[[...], Awaitable[None]]:
+    """Fixture to encrypt API responses."""
+
+    def _put_result(plaintext: str | dict) -> None:
+        if isinstance(plaintext, dict):
+            plaintext = json.dumps(plaintext)
+        body = encrypt(plaintext, PASSWORD)
+        response(aiohttp.web.Response(body=body))
+
+    return _put_result
+
+
 @pytest.fixture(name="api_response")
-def mock_api_response(response: ResponseResult) -> Callable[[...], Awaitable[None]]:
+def mock_api_response(
+    encrypt_response: ResponseResult,
+) -> Callable[[...], Awaitable[None]]:
     """Fixture to construct a fake API response."""
 
     def _put_result(command: str, **kvargs) -> None:
         command_set = RAINBIRD_COMMANDS_BY_ID[command]
         data = rainbird.encode_command(command_set, *kvargs.values())
-        body = encrypt(
-            ('{"jsonrpc": "2.0", "result": {"data":"%s"}, "id": 1} ' % data),
-            PASSWORD,
-        )
-        response(aiohttp.web.Response(body=body))
+        encrypt_response({"jsonrpc": "2.0", "result": {"data": data}, "id": 1})
 
     return _put_result
 
@@ -275,13 +288,15 @@ async def test_not_acknowledge_response(
 
 async def test_get_network_status(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    response: ResponseResult,
+    encrypt_response: ResponseResult,
 ) -> None:
     controller = await rainbird_controller()
-    payload = json.dumps(
-        {"jsonrpc": "2.0", "result": {"networkUp": True, "internetUp": True}, "id": 0}
-    )
-    response(aiohttp.web.Response(body=encrypt(payload, PASSWORD)))
+    payload = {
+        "jsonrpc": "2.0",
+        "result": {"networkUp": True, "internetUp": True},
+        "id": 0,
+    }
+    encrypt_response(payload)
     result = await controller.get_network_status()
     assert result
     assert result.network_up
@@ -290,30 +305,28 @@ async def test_get_network_status(
 
 async def test_get_wifi_params(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    response: ResponseResult,
+    encrypt_response: ResponseResult,
 ) -> None:
     controller = await rainbird_controller()
-    payload = json.dumps(
-        {
-            "jsonrpc": "2.0",
-            "result": {
-                "macAddress": "11:22:33:44:55:66",
-                "localIpAddress": "192.168.1.10",
-                "localNetmask": "255.255.255.0",
-                "localGateway": "192.168.1.1",
-                "rssi": -59,
-                "wifiSsid": "some-ssid",
-                "wifiPassword": "some-pass",
-                "wifiSecurity": "wpa2-aes",
-                "apTimeoutNoLan": 20,
-                "apTimeoutIdle": 20,
-                "apSecurity": "unknown",
-                "stickVersion": "Rain Bird Stick Rev C/1.63",
-            },
-            "id": 1234,
-        }
-    )
-    response(aiohttp.web.Response(body=encrypt(payload, PASSWORD)))
+    payload = {
+        "jsonrpc": "2.0",
+        "result": {
+            "macAddress": "11:22:33:44:55:66",
+            "localIpAddress": "192.168.1.10",
+            "localNetmask": "255.255.255.0",
+            "localGateway": "192.168.1.1",
+            "rssi": -59,
+            "wifiSsid": "some-ssid",
+            "wifiPassword": "some-pass",
+            "wifiSecurity": "wpa2-aes",
+            "apTimeoutNoLan": 20,
+            "apTimeoutIdle": 20,
+            "apSecurity": "unknown",
+            "stickVersion": "Rain Bird Stick Rev C/1.63",
+        },
+        "id": 1234,
+    }
+    encrypt_response(payload)
     params = await controller.get_wifi_params()
     assert params.dict() == {
         "ap_security": "unknown",
@@ -401,7 +414,7 @@ async def test_get_schedule_and_settings(
 
 async def test_get_server_mode(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    response: ResponseResult,
+    encrypt_response: ResponseResult,
 ) -> None:
     """Test the get server mode rpc."""
     controller = await rainbird_controller()
@@ -416,7 +429,7 @@ async def test_get_server_mode(
         },
         "id": 0,
     }
-    response(aiohttp.web.Response(body=encrypt(json.dumps(payload), PASSWORD)))
+    encrypt_response(payload)
     result = await controller.get_server_mode()
     assert result.server_mode
     assert result.check_in_interval == 10
@@ -427,7 +440,7 @@ async def test_get_server_mode(
 
 async def test_get_settings(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    response: ResponseResult,
+    encrypt_response: ResponseResult,
 ) -> None:
     """Test getting the settings."""
     controller = await rainbird_controller()
@@ -445,7 +458,7 @@ async def test_get_settings(
         },
         "id": 0,
     }
-    response(aiohttp.web.Response(body=encrypt(json.dumps(payload), PASSWORD)))
+    encrypt_response(payload)
     result = await controller.get_settings()
     assert result.global_disable
     assert result.num_programs == 3
@@ -459,7 +472,7 @@ async def test_get_settings(
 
 async def test_get_program_info(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    response: ResponseResult,
+    encrypt_response: ResponseResult,
 ) -> None:
     """Test getting the settings."""
     controller = await rainbird_controller()
@@ -472,7 +485,7 @@ async def test_get_program_info(
         },
         "id": 0,
     }
-    response(aiohttp.web.Response(body=encrypt(json.dumps(payload), PASSWORD)))
+    encrypt_response(payload)
     result = await controller.get_program_info()
     assert result
     assert result.soil_types == [SoilType.CLAY, SoilType.NONE, SoilType.NONE]
@@ -482,12 +495,12 @@ async def test_get_program_info(
 
 async def test_get_zip_code(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    response: ResponseResult,
+    encrypt_response: ResponseResult,
 ) -> None:
     """Test the get zip code rpc."""
     controller = await rainbird_controller()
     payload = {"jsonrpc": "2.0", "result": {"country": "US", "code": "90210"}, "id": 0}
-    response(aiohttp.web.Response(body=encrypt(json.dumps(payload), PASSWORD)))
+    encrypt_response(payload)
     result = await controller.get_zip_code()
     assert result.country == "US"
     assert result.code == "90210"
@@ -495,16 +508,20 @@ async def test_get_zip_code(
 
 async def test_get_weather_adjustment_mask(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    response: ResponseResult,
+    encrypt_response: ResponseResult,
 ) -> None:
     """Test getting the weather adjustment mask."""
     controller = await rainbird_controller()
     payload = {
         "jsonrpc": "2.0",
-        "result": {"globalDisable": True, "numPrograms": 3, "programOptOutMask": "07"},
+        "result": {
+            "globalDisable": True,
+            "numPrograms": 3,
+            "programOptOutMask": "07",
+        },
         "id": 0,
     }
-    response(aiohttp.web.Response(body=encrypt(json.dumps(payload), PASSWORD)))
+    encrypt_response(payload)
     result = await controller.get_weather_adjustment_mask()
     assert result.global_disable
     assert result.num_programs == 3
@@ -513,7 +530,7 @@ async def test_get_weather_adjustment_mask(
 
 async def test_get_combined_controller_state(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    response: ResponseResult,
+    encrypt_response: ResponseResult,
 ) -> None:
     """Test getting the combined controller state."""
     controller = await rainbird_controller()
@@ -522,7 +539,7 @@ async def test_get_combined_controller_state(
         "result": {"data": "CC140B230817E700030001FFFF000000"},
         "id": 0,
     }
-    response(aiohttp.web.Response(body=encrypt(json.dumps(payload), PASSWORD)))
+    encrypt_response(payload)
     result = await controller.get_combined_controller_state()
     assert result
     assert result.delay_setting == 3
@@ -536,7 +553,7 @@ async def test_get_combined_controller_state(
 
 async def test_get_controller_firmware_version(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    response: ResponseResult,
+    encrypt_response: ResponseResult,
 ) -> None:
     """Test getting the controller firmware version."""
     controller = await rainbird_controller()
@@ -545,7 +562,7 @@ async def test_get_controller_firmware_version(
         "result": {"length": 5, "data": "8B012F0000"},
         "id": 0,
     }
-    response(aiohttp.web.Response(body=encrypt(json.dumps(payload), PASSWORD)))
+    encrypt_response(payload)
     result = await controller.get_controller_firmware_version()
     assert result
     assert result.major == 1
@@ -555,7 +572,7 @@ async def test_get_controller_firmware_version(
 
 async def test_get_command_support(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    response: ResponseResult,
+    encrypt_response: ResponseResult,
 ) -> None:
     """Test the command for testing if a command is supported."""
     controller = await rainbird_controller()
@@ -564,13 +581,13 @@ async def test_get_command_support(
         "result": {"length": 3, "data": "840701"},
         "id": 0,
     }
-    response(aiohttp.web.Response(body=encrypt(json.dumps(payload), PASSWORD)))
+    encrypt_response(payload)
     assert await controller.test_command_support("07")
 
 
 async def test_rpc_command_support(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    response: ResponseResult,
+    encrypt_response: ResponseResult,
 ) -> None:
     """Test checking for an RPC support."""
     controller = await rainbird_controller()
@@ -579,14 +596,14 @@ async def test_rpc_command_support(
         "result": {"apSecurity": "unknown"},
         "id": 0,
     }
-    response(aiohttp.web.Response(body=encrypt(json.dumps(payload), PASSWORD)))
+    encrypt_response(payload)
     result = await controller.test_rpc_support("getWifiParams")
     assert result == {"apSecurity": "unknown"}
 
 
 async def test_error_response(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    response: ResponseResult,
+    encrypt_response: ResponseResult,
 ) -> None:
     """Test checking for an RPC support."""
     controller = await rainbird_controller()
@@ -595,14 +612,14 @@ async def test_error_response(
         "error": {"code": -32601, "message": "Method not found"},
         "id": "null",
     }
-    response(aiohttp.web.Response(body=encrypt(json.dumps(payload), PASSWORD)))
+    encrypt_response(payload)
     with pytest.raises(RainbirdApiException, match=r"Method not found"):
         await controller.test_rpc_support("invalid")
 
 
 async def test_unrecognized_response(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    response: ResponseResult,
+    encrypt_response: ResponseResult,
 ) -> None:
     """Test checking for an RPC support."""
     controller = await rainbird_controller()
@@ -611,6 +628,6 @@ async def test_unrecognized_response(
         "result": {"data": "F100000000"},
         "id": 0,
     }
-    response(aiohttp.web.Response(body=encrypt(json.dumps(payload), PASSWORD)))
+    encrypt_response(payload)
     with pytest.raises(RainbirdApiException, match=r"wrong response"):
         await controller.test_command_support("00")
