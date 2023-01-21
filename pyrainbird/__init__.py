@@ -31,7 +31,7 @@ class RainbirdController:
             server, password, retry, retry_sleep, logger
         )
         self.logger = logger
-        self.zones = States()
+        self.zones = States(mask="0000")
         self.rain_sensor = None
         self.update_delay = update_delay
         self.zone_update_time = None
