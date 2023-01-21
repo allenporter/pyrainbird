@@ -1,5 +1,7 @@
 """Test for AsyncRainbirdController."""
 
+from __future__ import annotations
+
 import datetime
 import json
 from collections.abc import Awaitable, Callable
