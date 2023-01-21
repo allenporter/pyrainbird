@@ -1,0 +1,22 @@
+data:
+- A00010060602006400
+- A00010110602006400
+decoded_data:
+- type: RetrieveScheduleResponse
+  programInfo:
+    program: 0
+    daysOfWeekMask: 6  # Monday, Tuesday
+    period: 6
+    synchro: 2
+    permanentDaysOff: 0
+    reserved: 100
+    frequency: 0
+- type: RetrieveScheduleResponse
+  programInfo:
+    program: 0
+    daysOfWeekMask: 17  # Thursday, Sunday
+    period: 6
+    synchro: 2
+    permanentDaysOff: 0
+    reserved: 100
+    frequency: 0
