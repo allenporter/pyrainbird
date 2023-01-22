@@ -9,9 +9,9 @@ from collections.abc import Awaitable, Callable
 import aiohttp
 import pytest
 
-from pyrainbird import ModelAndVersion, WaterBudget, rainbird
+from pyrainbird import rainbird
 from pyrainbird.async_client import AsyncRainbirdClient, AsyncRainbirdController
-from pyrainbird.data import SoilType
+from pyrainbird.data import SoilType, ModelAndVersion, WaterBudget
 from pyrainbird.encryption import encrypt
 from pyrainbird.exceptions import RainbirdApiException, RainbirdAuthException, RainbirdDeviceBusyException
 from pyrainbird.resources import RAINBIRD_COMMANDS_BY_ID
