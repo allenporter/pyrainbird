@@ -2,13 +2,21 @@
 
 import datetime
 import logging
+from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import IntEnum
 from typing import Any, Optional
 
 from pydantic import BaseModel, Field, root_validator, validator
 
+from .const import DayOfWeek
 from .resources import RAINBIRD_MODELS
+from .timeline import (
+    ProgramTimeline,
+    custom_recurrence,
+    cyclic_recurrence,
+    odd_even_recurrence,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -379,18 +387,6 @@ class ProgramFrequency(IntEnum):
     EVEN = 3
 
 
-class DayOfWeek(IntEnum):
-    """Day of the week."""
-
-    SUNDAY = 0
-    MONDAY = 1
-    TUESDAY = 2
-    WEDNESDAY = 3
-    THURSDAY = 4
-    FRIDAY = 5
-    SATURDAY = 6
-
-
 @dataclass
 class ZoneDuration:
     """Program runtime for a specific zone."""
@@ -439,6 +435,40 @@ class Program(BaseModel):
     """Time of day the program starts."""
 
     durations: list[ZoneDuration] = Field(default_factory=list)
+
+    @property
+    def timeline(self) -> ProgramTimeline:
+        """Return a timeline of events for the program."""
+        return ProgramTimeline(self._as_rrule())
+
+    def _as_rrule(self) -> Iterable[datetime.datetime]:
+        """Create a recurrence rule to define the program."""
+        if self.frequency == ProgramFrequency.CUSTOM:
+            return custom_recurrence(
+                self.days_of_week,
+                self.starts,
+                self.duration,
+                self.synchro,
+            )
+        if self.frequency == ProgramFrequency.CYCLIC:
+            return cyclic_recurrence(
+                self.period,
+                self.starts,
+                self.duration,
+                self.synchro,
+            )
+        if (
+            self.frequency == ProgramFrequency.ODD
+            or self.frequency == ProgramFrequency.EVEN
+        ):
+            return odd_even_recurrence(
+                (self.frequency == ProgramFrequency.ODD),
+                self.starts,
+                self.duration,
+                self.synchro,
+            )
+
+        raise ValueError(f"Cannot produce timeline for frequency {self.frequency}")
 
     @property
     def duration(self) -> datetime.timedelta:

@@ -26,6 +26,7 @@ from pyrainbird.exceptions import (
     RainbirdDeviceBusyException,
 )
 from pyrainbird.resources import RAINBIRD_COMMANDS_BY_ID
+from pyrainbird.timespan import Timespan
 
 from .conftest import LENGTH, PASSWORD, REQUEST, RESPONSE, RESULT_DATA, ResponseResult
 
@@ -755,6 +756,25 @@ async def test_cyclic_schedule(
     assert program.durations[3].duration == datetime.timedelta(minutes=20)
     assert program.durations[4].zone == 5
     assert program.durations[4].duration == datetime.timedelta(minutes=10)
+    assert list(
+        program.timeline.overlapping(
+            datetime.datetime(2023, 1, 21, 9, 32, 00),
+            datetime.datetime(2023, 2, 11, 0, 0, 0),
+        )
+    ) == [
+        Timespan.of(
+            datetime.datetime(2023, 1, 29, 4, 0, 0),
+            datetime.datetime(2023, 1, 29, 5, 22, 0),
+        ),
+        Timespan.of(
+            datetime.datetime(2023, 2, 4, 4, 0, 0),
+            datetime.datetime(2023, 2, 4, 5, 22, 0),
+        ),
+        Timespan.of(
+            datetime.datetime(2023, 2, 10, 4, 0, 0),
+            datetime.datetime(2023, 2, 10, 5, 22, 0),
+        ),
+    ]
 
     program = schedule.programs[1]
     assert program.program == 1
@@ -775,6 +795,15 @@ async def test_cyclic_schedule(
         }
     )
     assert len(program.durations) == 0
+    assert (
+        list(
+            program.timeline.overlapping(
+                datetime.datetime(2023, 1, 21, 9, 32, 00),
+                datetime.datetime(2023, 2, 11, 0, 0, 0),
+            )
+        )
+        == []
+    )
 
 
 @freeze_time("2023-01-21 09:32:00")
@@ -828,6 +857,33 @@ async def test_custom_schedule(
     assert program.durations[3].duration == datetime.timedelta(minutes=20)
     assert program.durations[4].zone == 5
     assert program.durations[4].duration == datetime.timedelta(minutes=10)
+    assert list(
+        program.timeline.overlapping(
+            datetime.datetime(2023, 1, 21, 9, 32, 00),
+            datetime.datetime(2023, 2, 11, 0, 0, 0),
+        )
+    ) == [
+        Timespan.of(
+            datetime.datetime(2023, 1, 24, 4, 0, 0),
+            datetime.datetime(2023, 1, 24, 5, 22, 0),
+        ),
+        Timespan.of(
+            datetime.datetime(2023, 1, 30, 4, 0, 0),
+            datetime.datetime(2023, 1, 30, 5, 22, 0),
+        ),
+        Timespan.of(
+            datetime.datetime(2023, 1, 31, 4, 0, 0),
+            datetime.datetime(2023, 1, 31, 5, 22, 0),
+        ),
+        Timespan.of(
+            datetime.datetime(2023, 2, 6, 4, 0, 0),
+            datetime.datetime(2023, 2, 6, 5, 22, 0),
+        ),
+        Timespan.of(
+            datetime.datetime(2023, 2, 7, 4, 0, 0),
+            datetime.datetime(2023, 2, 7, 5, 22, 0),
+        ),
+    ]
 
     program = schedule.programs[1]
     assert program.program == 1
@@ -838,3 +894,176 @@ async def test_custom_schedule(
     assert program.duration == datetime.timedelta(minutes=0)
     assert program.days_of_week == set({DayOfWeek.THURSDAY, DayOfWeek.SUNDAY})
     assert len(program.durations) == 0
+    assert (
+        list(
+            program.timeline.overlapping(
+                datetime.datetime(2023, 1, 21, 9, 32, 00),
+                datetime.datetime(2023, 2, 11, 0, 0, 0),
+            )
+        )
+        == []
+    )
+
+
+@freeze_time("2023-01-21 09:32:00")
+async def test_odd_schedule(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    api_response: Callable[[...], Awaitable[None]],
+    sip_data_responses: Callable[[list[str]], None],
+) -> None:
+    """Test checking for an RPC support."""
+    controller = await rainbird_controller()
+
+    api_response("82", modelID=0x0A, protocolRevisionMajor=1, protocolRevisionMinor=3)
+    api_response("83", pageNumber=1, setStations=0x1F000000)  # 5 stations
+    sip_data_responses(
+        [
+            "A0000000000400",
+            "A00010110602006402",
+            "A000117F0300006400",
+            "A00012000300006400",
+            "A0006000F0FFFFFFFFFFFF",
+            "A00061FFFFFFFFFFFFFFFF",
+            "A00062FFFFFFFFFFFFFFFF",
+            "A00080001900000000001400000000",
+            "A00081000700000000001400000000",
+            "A00082000A00000000000000000000",
+            "A00083000000000000000000000000",
+            "A00084000000000000000000000000",
+            "A00085000000000000000000000000",
+        ]
+    )
+
+    schedule = await controller.get_schedule()
+    assert len(schedule.programs) == 3
+
+    program = schedule.programs[0]
+    assert program.program == 0
+    assert program.frequency == ProgramFrequency.ODD
+    assert program.period is None
+    assert program.synchro == 2
+    assert program.starts == [datetime.time(4, 0, 0)]
+    assert program.duration == datetime.timedelta(minutes=(25 + 20 + 7 + 20 + 10))
+    assert program.days_of_week == set()
+    assert len(program.durations) == 5
+    assert program.durations[0].zone == 1
+    assert program.durations[0].duration == datetime.timedelta(minutes=25)
+    assert program.durations[1].zone == 2
+    assert program.durations[1].duration == datetime.timedelta(minutes=20)
+    assert program.durations[2].zone == 3
+    assert program.durations[2].duration == datetime.timedelta(minutes=7)
+    assert program.durations[3].zone == 4
+    assert program.durations[3].duration == datetime.timedelta(minutes=20)
+    assert program.durations[4].zone == 5
+    assert program.durations[4].duration == datetime.timedelta(minutes=10)
+    assert list(
+        program.timeline.overlapping(
+            datetime.datetime(2023, 1, 21, 9, 32, 00),
+            datetime.datetime(2023, 2, 4, 0, 0, 0),
+        )
+    ) == [
+        Timespan.of(
+            datetime.datetime(2023, 1, 25, 4, 0, 0),
+            datetime.datetime(2023, 1, 25, 5, 22, 0),
+        ),
+        Timespan.of(
+            datetime.datetime(2023, 1, 27, 4, 0, 0),
+            datetime.datetime(2023, 1, 27, 5, 22, 0),
+        ),
+        Timespan.of(
+            datetime.datetime(2023, 1, 29, 4, 0, 0),
+            datetime.datetime(2023, 1, 29, 5, 22, 0),
+        ),
+        Timespan.of(
+            datetime.datetime(2023, 1, 31, 4, 0, 0),
+            datetime.datetime(2023, 1, 31, 5, 22, 0),
+        ),
+        Timespan.of(
+            datetime.datetime(2023, 2, 1, 4, 0, 0),
+            datetime.datetime(2023, 2, 1, 5, 22, 0),
+        ),
+        Timespan.of(
+            datetime.datetime(2023, 2, 3, 4, 0, 0),
+            datetime.datetime(2023, 2, 3, 5, 22, 0),
+        ),
+    ]
+
+
+@freeze_time("2023-01-21 09:32:00")
+async def test_event_schedule(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    api_response: Callable[[...], Awaitable[None]],
+    sip_data_responses: Callable[[list[str]], None],
+) -> None:
+    """Test checking for an RPC support."""
+    controller = await rainbird_controller()
+
+    api_response("82", modelID=0x0A, protocolRevisionMajor=1, protocolRevisionMinor=3)
+    api_response("83", pageNumber=1, setStations=0x1F000000)  # 5 stations
+    sip_data_responses(
+        [
+            "A0000000000400",
+            "A00010110602006403",
+            "A000117F0300006400",
+            "A00012000300006400",
+            "A0006000F0FFFFFFFFFFFF",
+            "A00061FFFFFFFFFFFFFFFF",
+            "A00062FFFFFFFFFFFFFFFF",
+            "A00080001900000000001400000000",
+            "A00081000700000000001400000000",
+            "A00082000A00000000000000000000",
+            "A00083000000000000000000000000",
+            "A00084000000000000000000000000",
+            "A00085000000000000000000000000",
+        ]
+    )
+
+    schedule = await controller.get_schedule()
+    assert len(schedule.programs) == 3
+
+    program = schedule.programs[0]
+    assert program.program == 0
+    assert program.frequency == ProgramFrequency.EVEN
+    assert program.period is None
+    assert program.synchro == 2
+    assert program.starts == [datetime.time(4, 0, 0)]
+    assert program.duration == datetime.timedelta(minutes=(25 + 20 + 7 + 20 + 10))
+    assert program.days_of_week == set()
+    assert len(program.durations) == 5
+    assert program.durations[0].zone == 1
+    assert program.durations[0].duration == datetime.timedelta(minutes=25)
+    assert program.durations[1].zone == 2
+    assert program.durations[1].duration == datetime.timedelta(minutes=20)
+    assert program.durations[2].zone == 3
+    assert program.durations[2].duration == datetime.timedelta(minutes=7)
+    assert program.durations[3].zone == 4
+    assert program.durations[3].duration == datetime.timedelta(minutes=20)
+    assert program.durations[4].zone == 5
+    assert program.durations[4].duration == datetime.timedelta(minutes=10)
+    assert list(
+        program.timeline.overlapping(
+            datetime.datetime(2023, 1, 21, 9, 32, 00),
+            datetime.datetime(2023, 2, 4, 0, 0, 0),
+        )
+    ) == [
+        Timespan.of(
+            datetime.datetime(2023, 1, 24, 4, 0, 0),
+            datetime.datetime(2023, 1, 24, 5, 22, 0),
+        ),
+        Timespan.of(
+            datetime.datetime(2023, 1, 26, 4, 0, 0),
+            datetime.datetime(2023, 1, 26, 5, 22, 0),
+        ),
+        Timespan.of(
+            datetime.datetime(2023, 1, 28, 4, 0, 0),
+            datetime.datetime(2023, 1, 28, 5, 22, 0),
+        ),
+        Timespan.of(
+            datetime.datetime(2023, 1, 30, 4, 0, 0),
+            datetime.datetime(2023, 1, 30, 5, 22, 0),
+        ),
+        Timespan.of(
+            datetime.datetime(2023, 2, 2, 4, 0, 0),
+            datetime.datetime(2023, 2, 2, 5, 22, 0),
+        ),
+    ]
