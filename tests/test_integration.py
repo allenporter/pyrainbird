@@ -29,10 +29,10 @@ class TestCase(unittest.TestCase):
 
     @responses.activate
     def test_get_available_stations(self):
-        mock_response("83", pageNumber=1, setStations=0x7F000000)
+        mock_response("83", pageNumber=0, setStations=0x7F000000)
         rainbird = RainbirdController(MOCKED_RAINBIRD_URL, MOCKED_PASSWORD)
         self.assertEqual(
-            AvailableStations("7f000000", 1), rainbird.get_available_stations()
+            AvailableStations("7f000000"), rainbird.get_available_stations()
         )
 
     @responses.activate

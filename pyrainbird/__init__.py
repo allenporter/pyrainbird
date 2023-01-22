@@ -4,7 +4,6 @@ import time
 from functools import reduce
 
 from pyrainbird.data import (
-    _DEFAULT_PAGE,
     AvailableStations,
     CommandSupport,
     ModelAndVersion,
@@ -15,6 +14,8 @@ from pyrainbird.resources import RAINBIRD_COMMANDS, RAINBIRD_COMMANDS_BY_ID
 
 from . import rainbird
 from .client import RainbirdClient
+
+_DEFAULT_PAGE = 0
 
 
 class RainbirdController:
@@ -47,14 +48,14 @@ class RainbirdController:
             "ModelAndVersion",
         )
 
-    def get_available_stations(self, page=_DEFAULT_PAGE):
+    def get_available_stations(self):
         mask = "%%0%dX" % RAINBIRD_COMMANDS_BY_ID["83"]["setStations"]["length"]
         return self._process_command(
             lambda resp: AvailableStations(
-                mask % resp["setStations"], page=resp["pageNumber"]
+                mask % resp["setStations"]
             ),
             "AvailableStations",
-            page,
+            _DEFAULT_PAGE,
         )
 
     def get_command_support(self, command):

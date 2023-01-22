@@ -5,9 +5,13 @@ class RainbirdApiException(Exception):
     """Exception from rainbird api."""
 
 
-class RainbirdAuthException(Exception):
+class RainbirdDeviceBusyException(RainbirdApiException):
+    """Device is busy processing another request."""
+
+
+class RainbirdAuthException(RainbirdApiException):
     """Authentication exception from rainbird API."""
 
 
-class RainbirdCodingException(Exception):
+class RainbirdCodingException(RainbirdApiException):
     """Error while encoding or decoding objects."""

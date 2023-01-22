@@ -1,5 +1,6 @@
 """Libraries related to encoding and decoding requests."""
 
+import enum
 import json
 import logging
 import sys
@@ -10,11 +11,22 @@ from Crypto import Random
 from Crypto.Cipher import AES
 from Crypto.Hash import SHA256
 
-from .exceptions import RainbirdApiException
+from .exceptions import RainbirdApiException, RainbirdDeviceBusyException
 
 BLOCK_SIZE = 16
 INTERRUPT = "\x00"
 PAD = "\x10"
+
+
+class ErrorCode(enum.IntEnum):
+    """Error codes from the device."""
+
+    COMMAND_NOT_SUPPORTED = 0
+    BAD_LENGTH = 1
+    INCOMPATIBLE_DATA = 2
+    CHECKSUM_ERROR = 3
+    UNKNOWN = 4
+    METOD_NOT_SUPPORTED = -32601
 
 
 def _add_padding(data):
@@ -104,13 +116,15 @@ class PayloadCoder:
         if error := response.get("error"):
             msg = ["Error from controller"]
             if code := error.get("code"):
-               # COMMAND_NOT_SUPPORTED: 0
-               # BAD_LENGTH: 1
-               # INCOMPATIBLE_DATA: 2
-               # CHECKSUM_ERROR: 3
-               # UNKNOWN: 4
-               msg.append(f"Code: {code}")
+                try:
+                    value = ErrorCode(code)
+                except ValuError:
+                    value = UNKNOWN
+                msg.append(f"Code: {str(value)}({code})")
             if message := error.get("message"):
-               msg.append(f"Message: {message}")
+                msg.append(f"Message: {message}")
+            full_message = ", ".join(msg)
+            if code is not None and code == 0:
+                raise RainbirdCommandNotSupported(full_message)
             raise RainbirdApiException(", ".join(msg))
         return response["result"]
