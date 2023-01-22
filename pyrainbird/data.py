@@ -2,21 +2,15 @@
 
 import datetime
 import logging
-from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import IntEnum
 from typing import Any, Optional
 
 from pydantic import BaseModel, Field, root_validator, validator
 
-from .const import DayOfWeek
+from .const import DayOfWeek, ProgramFrequency
 from .resources import RAINBIRD_MODELS
-from .timeline import (
-    ProgramTimeline,
-    custom_recurrence,
-    cyclic_recurrence,
-    odd_even_recurrence,
-)
+from .timeline import ProgramTimeline, create_timeline
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -378,15 +372,6 @@ class ControllerState(BaseModel):
         return values
 
 
-class ProgramFrequency(IntEnum):
-    """Program frequency."""
-
-    CUSTOM = 0
-    CYCLIC = 1
-    ODD = 2
-    EVEN = 3
-
-
 @dataclass
 class ZoneDuration:
     """Program runtime for a specific zone."""
@@ -439,36 +424,14 @@ class Program(BaseModel):
     @property
     def timeline(self) -> ProgramTimeline:
         """Return a timeline of events for the program."""
-        return ProgramTimeline(self._as_rrule())
-
-    def _as_rrule(self) -> Iterable[datetime.datetime]:
-        """Create a recurrence rule to define the program."""
-        if self.frequency == ProgramFrequency.CUSTOM:
-            return custom_recurrence(
-                self.days_of_week,
-                self.starts,
-                self.duration,
-                self.synchro,
-            )
-        if self.frequency == ProgramFrequency.CYCLIC:
-            return cyclic_recurrence(
-                self.period,
-                self.starts,
-                self.duration,
-                self.synchro,
-            )
-        if (
-            self.frequency == ProgramFrequency.ODD
-            or self.frequency == ProgramFrequency.EVEN
-        ):
-            return odd_even_recurrence(
-                (self.frequency == ProgramFrequency.ODD),
-                self.starts,
-                self.duration,
-                self.synchro,
-            )
-
-        raise ValueError(f"Cannot produce timeline for frequency {self.frequency}")
+        return create_timeline(
+            self.frequency,
+            self.starts,
+            self.duration,
+            self.synchro,
+            self.days_of_week,
+            self.period,
+        )
 
     @property
     def duration(self) -> datetime.timedelta:
