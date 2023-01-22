@@ -104,7 +104,13 @@ ControllerCommands:
     parameter: 0
     response: '01'
     length: 2
-  # CurrentQueueRequest: 3B
+  CurrentQueueRequest:
+    command: 3B
+    response: 'BB'
+    length: 2
+    page:
+      position: 2
+      length: 2
   CurrentRainSensorStateRequest:
     command: 3E
     response: BE
@@ -145,6 +151,15 @@ ControllerCommands:
     parameterThree: 0
     response: '01'
     length: 4
+    page:
+      position: 2
+      length: 2
+    zone:
+      position: 4
+      length: 2
+    minutes:
+      position: 6
+      length: 2
   CombinedControllerStateRequest:
     command: 4C
     response: CC
@@ -278,7 +293,9 @@ ControllerResponses:
     delaySetting:
       position: 2
       length: 4
-  # CurrentQueueResponse BB
+  CurrentQueueResponse:
+    command: BB
+    decoder: decode_queue
   CurrentRainSensorStateResponse:
     command: 'BE'
     length: 2
