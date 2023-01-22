@@ -1,0 +1,119 @@
+data:
+- 4B000102
+- 014B
+- 4B000202
+- 014B
+- 4B000302
+- 014B
+- 3B00
+- BB000401020000
+- 3B01
+- BB01000176000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+- 3B02
+- BB02000278000000000378000000000000000000000000000000000000000000000000000000000000000000000000000000
+- 3B01
+- BB0100016B000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+- 3B02
+- BB02000278000000000378000000000000000000000000000000000000000000000000000000000000000000000000000000
+- 3B01
+- BB01000161000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+- 3B02
+- BB02000278000000000378000000000000000000000000000000000000000000000000000000000000000000000000000000
+- 3B01
+- BB01000157000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+- 3B02
+- BB02000278000000000378000000000000000000000000000000000000000000000000000000000000000000000000000000
+decoded_data:
+- type: StackManuallyRunStationRequest
+  page: 0
+  zone: 1
+  minutes: 2
+- type: AcknowledgeResponse
+  commandEcho: 75
+- type: StackManuallyRunStationRequest
+  page: 0
+  zone: 2
+  minutes: 2
+- type: AcknowledgeResponse
+  commandEcho: 75
+- type: StackManuallyRunStationRequest
+  page: 0
+  zone: 3
+  minutes: 2
+- type: AcknowledgeResponse
+  commandEcho: 75
+- type: CurrentQueueRequest
+  page: 0
+- type: CurrentQueueResponse
+  program:
+    program: 4  # Manual
+    running: True
+    zonesRemaining: 2
+- type: CurrentQueueRequest
+  page: 1
+- type: CurrentQueueResponse
+  zones:
+    - zone: 1
+      program: 0
+      seconds: 118
+- type: CurrentQueueRequest
+  page: 2
+- type: CurrentQueueResponse
+  zones:
+    - zone: 2
+      program: 0
+      seconds: 120
+    - zone: 3
+      program: 0
+      seconds: 120
+- type: CurrentQueueRequest
+  page: 1
+- type: CurrentQueueResponse
+  zones:
+    - zone: 1
+      program: 0
+      seconds: 107
+- type: CurrentQueueRequest
+  page: 2
+- type: CurrentQueueResponse
+  zones:
+    - zone: 2
+      program: 0
+      seconds: 120
+    - zone: 3
+      program: 0
+      seconds: 120
+- type: CurrentQueueRequest
+  page: 1
+- type: CurrentQueueResponse
+  zones:
+    - zone: 1
+      program: 0
+      seconds: 97
+- type: CurrentQueueRequest
+  page: 2
+- type: CurrentQueueResponse
+  zones:
+    - zone: 2
+      program: 0
+      seconds: 120
+    - zone: 3
+      program: 0
+      seconds: 120
+- type: CurrentQueueRequest
+  page: 1
+- type: CurrentQueueResponse
+  zones:
+    - zone: 1
+      program: 0
+      seconds: 87
+- type: CurrentQueueRequest
+  page: 2
+- type: CurrentQueueResponse
+  zones:
+    - zone: 2
+      program: 0
+      seconds: 120
+    - zone: 3
+      program: 0
+      seconds: 120

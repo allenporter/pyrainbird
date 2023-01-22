@@ -92,11 +92,56 @@ def decode_schedule(data: str, cmd_template: dict[str, Any]) -> dict[str, Any]:
     return {"data": data}
 
 
+def decode_queue(data: str, cmd_template: dict[str, Any]) -> dict[str, Any]:
+    """Decode a queue command."""
+    page = int(data[2:4], 16)
+    rest = data[4:]
+    if page == 0:
+        # Currently running program
+        return {
+            "program": {
+                "program": int(rest[0:2], 16),
+                "running": bool(int(rest[2:4], 16)),
+                "zonesRemaining": int(rest[4:6], 16),
+            }
+        }
+
+    if page == 1:
+        queue = []
+        for i in range(0, 8):
+            base = i * 8
+            program = int(data[base + 4 : base + 6], 16)
+            zone = int(data[base + 6 : base + 8], 16)
+            runtime = int(data[base + 8 : base + 12], 16)
+            if runtime > 0:
+                runtime = ((runtime & 0xFF00) >> 8) | ((runtime & 0xFF) << 8)
+            if zone:
+                queue.append({"program": program, "zone": zone, "seconds": runtime})
+        return {"zones": queue}
+
+    if len(data) == 100:
+        _LOGGER.debug("data=%s", data)
+        queue = []
+        for i in range(0, 8):
+            base = i * 12
+            program = int(data[base + 4 : base + 6], 16)
+            zone = int(data[base + 6 : base + 8], 16)
+            runtime = int(data[base + 8 : base + 12], 16)
+            if runtime > 0:
+                runtime = ((runtime & 0xFF00) >> 8) | ((runtime & 0xFF) << 8)
+            if zone:
+                queue.append({"program": program, "zone": zone, "seconds": runtime})
+        return {"zones": queue}
+
+    return {"data": data}
+
+
 DEFAULT_DECODER = "decode_template"
 
 DECODERS: dict[str, Callable[[str, dict[str, Any]], dict[str, Any]]] = {
     "decode_template": decode_template,
     "decode_schedule": decode_schedule,
+    "decode_queue": decode_queue,
 }
 
 
@@ -125,7 +170,9 @@ def encode_command(command_set: dict[str, Any], *args) -> str:
     """Encode a rainbird tunnelSip command request."""
     cmd_code = command_set["command"]
     if not (length := command_set[LENGTH]):
-        raise RainbirdCodingException(f"Unable to encode command missing length: {command_set}")
+        raise RainbirdCodingException(
+            f"Unable to encode command missing length: {command_set}"
+        )
     if len(args) > length:
         raise RainbirdCodingException(
             f"Too many parameters. {length} expected: {command_set}"
