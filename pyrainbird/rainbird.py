@@ -98,29 +98,51 @@ def decode_queue(data: str, cmd_template: dict[str, Any]) -> dict[str, Any]:
     rest = data[4:]
     if page == 0:
         # Currently running program
-        return {
-            "program": {
-                "program": int(rest[0:2], 16),
-                "running": bool(int(rest[2:4], 16)),
-                "zonesRemaining": int(rest[4:6], 16),
+        if len(data) == 24:  # TM2 etc
+            runtime = int(data[8:12], 16)
+            program = int(data[18:20], 16)
+            if program > 4:  # Max programs differs by device
+                program = 0
+            return {
+                "program": {
+                    "seconds": runtime,
+                    "program": program,
+                    "zone": int(data[16:18], 16),
+                    "active": (runtime > 0),
+                }
             }
-        }
+        if len(data) == 14:  # me3
+            return {
+                "program": {
+                    "program": int(rest[0:2], 16),
+                    "running": bool(int(rest[2:4], 16)),
+                    "zonesRemaining": int(rest[4:6], 16),
+                }
+            }
+        return {"data": data}
 
     if page == 1:
         queue = []
-        for i in range(0, 8):
-            base = i * 8
-            program = int(data[base + 4 : base + 6], 16)
-            zone = int(data[base + 6 : base + 8], 16)
-            runtime = int(data[base + 8 : base + 12], 16)
-            if runtime > 0:
-                runtime = ((runtime & 0xFF00) >> 8) | ((runtime & 0xFF) << 8)
-            if zone:
-                queue.append({"program": program, "zone": zone, "seconds": runtime})
+        if len(data) == 70:  # TM2
+            for i in range(0, 11):
+                base = i * 6
+                zone = int(data[base + 4 : base + 6], 16) & 31
+                runtime = int(data[base + 6 : base + 10], 16)
+                if zone:
+                    queue.append({"zone": zone, "seconds": runtime})
+        else:  # ME3
+            for i in range(0, 8):
+                base = i * 8
+                program = int(data[base + 4 : base + 6], 16)
+                zone = int(data[base + 6 : base + 8], 16)
+                runtime = int(data[base + 8 : base + 12], 16)
+                if runtime > 0:
+                    runtime = ((runtime & 0xFF00) >> 8) | ((runtime & 0xFF) << 8)
+                if zone:
+                    queue.append({"program": program, "zone": zone, "seconds": runtime})
         return {"zones": queue}
 
     if len(data) == 100:
-        _LOGGER.debug("data=%s", data)
         queue = []
         for i in range(0, 8):
             base = i * 12
@@ -169,7 +191,7 @@ def encode(command: str, *args) -> str:
 def encode_command(command_set: dict[str, Any], *args) -> str:
     """Encode a rainbird tunnelSip command request."""
     cmd_code = command_set["command"]
-    if not (length := command_set[LENGTH]):
+    if not (length := command_set.get(LENGTH)):
         raise RainbirdCodingException(
             f"Unable to encode command missing length: {command_set}"
         )
