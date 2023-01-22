@@ -1,6 +1,14 @@
-"""Client library for rainbird.
+"""An asyncio based client library for Rain Bird.
 
-This is an asyncio based client library for rainbird.
+You may create an `AsyncRainbirdController` with the `CreateController` call that
+accepts the hostname and password of the Rain Bird controller.
+
+Most API calls are fairly low level with thin response wrappers that are data classes,
+though some static data about the device may have the underlying calls cached.
+
+Note that in general the Rain Bird device can only communicate with one client at
+a time and may raise exceptions when the device is busy. Keep this in mind when polling
+and querying the device.
 """
 
 import datetime
@@ -32,6 +40,11 @@ from .data import (
 )
 from .exceptions import RainbirdApiException, RainbirdAuthException, RainbirdDeviceBusyException
 from .resources import LENGTH, RAINBIRD_COMMANDS, RESPONSE
+
+__all__ = [
+  "CreateController",
+  "AsyncRainbirdController",
+]
 
 _LOGGER = logging.getLogger(__name__)
 T = TypeVar("T")

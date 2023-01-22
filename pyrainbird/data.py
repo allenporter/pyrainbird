@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field, root_validator
 
 from .resources import RAINBIRD_MODELS
 
+
 _MAX_ZONES = 32
 
 
