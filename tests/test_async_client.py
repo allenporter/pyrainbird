@@ -648,6 +648,22 @@ async def test_error_response(
         await controller.test_rpc_support("invalid")
 
 
+async def test_unknown_error_response(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    encrypt_response: ResponseResult,
+) -> None:
+    """Test checking for an RPC support."""
+    controller = await rainbird_controller()
+    payload = {
+        "jsonrpc": "2.0",
+        "error": {"code": 9090, "message": "Some error"},
+        "id": "null",
+    }
+    encrypt_response(payload)
+    with pytest.raises(RainbirdApiException, match=r"Some error"):
+        await controller.test_rpc_support("invalid")
+
+
 async def test_unrecognized_response(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
     encrypt_response: ResponseResult,

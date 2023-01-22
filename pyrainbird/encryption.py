@@ -119,7 +119,7 @@ class PayloadCoder:
                 try:
                     value = ErrorCode(code)
                 except ValueError:
-                    value = UNKNOWN
+                    value = ErrorCode.UNKNOWN
                 msg.append(f"Code: {str(value)}({code})")
             if message := error.get("message"):
                 msg.append(f"Message: {message}")
