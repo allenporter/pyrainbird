@@ -1,14 +1,16 @@
 """Data model for rainbird client api."""
 
 import datetime
+import logging
 from dataclasses import dataclass
 from enum import IntEnum
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field, root_validator
+from pydantic import BaseModel, Field, root_validator, validator
 
 from .resources import RAINBIRD_MODELS
 
+_LOGGER = logging.getLogger(__name__)
 
 _MAX_ZONES = 32
 
@@ -365,4 +367,175 @@ class ControllerState(BaseModel):
             int(values["minute"]),
             int(values["second"]),
         )
+        return values
+
+
+class ProgramFrequency(IntEnum):
+    """Program frequency."""
+
+    CUSTOM = 0
+    CYCLIC = 1
+    ODD = 2
+    EVEN = 3
+
+
+class DayOfWeek(IntEnum):
+    """Day of the week."""
+
+    SUNDAY = 0
+    MONDAY = 1
+    TUESDAY = 2
+    WEDNESDAY = 3
+    THURSDAY = 4
+    FRIDAY = 5
+    SATURDAY = 6
+
+
+@dataclass
+class ZoneDuration:
+    """Program runtime for a specific zone."""
+
+    zone: int
+    """Zone the program irrigates."""
+
+    duration: datetime.timedelta
+    """Runtime of the program in the specified zone."""
+
+    @validator("zone", pre=True)
+    def _parse_zone(cls, value: int) -> datetime.timedelta:
+        """Parse the zone value."""
+        return value + 1
+
+    @validator("duration", pre=True)
+    def _parse_duration(cls, value: int) -> datetime.timedelta:
+        """Parse the zone duration values."""
+        return datetime.timedelta(minutes=value)
+
+
+class Program(BaseModel):
+    """Details about a program.
+
+    The frequency determines which fields of the program are relevant. A
+    CUSTOM program looks at days_of_week. A CYCLIC program looks at period.
+    ODD/EVEN are odd/even days of the month.
+    """
+
+    program: int
+    """The program number."""
+
+    frequency: ProgramFrequency
+    """Determines how often the program runs."""
+
+    days_of_week: set[DayOfWeek] = Field(alias="daysOfWeekMask", default_factory=set)
+    """For a CUSTOM program determines the days of the week."""
+
+    period: Optional[int]
+    """For a CYCLIC program determines how often to run."""
+
+    synchro: Optional[int]
+    """Days from today before starting the first day of the program."""
+
+    starts: list[datetime.time] = Field(default_factory=list)
+    """Time of day the program starts."""
+
+    durations: list[ZoneDuration] = Field(default_factory=list)
+
+    @property
+    def duration(self) -> datetime.timedelta:
+        """Total duration of the program."""
+        total = datetime.timedelta(seconds=0)
+        for delta in self.durations:
+            total += delta.duration
+        return total
+
+    @root_validator(pre=True)
+    def _clear_other_fields(cls, values: dict[str, Any]) -> set[DayOfWeek]:
+        """Clear fields unrelated to the current frequency."""
+        if ProgramFrequency.CUSTOM != values.get("frequency"):
+            if "daysOfWeekMask" in values:
+                del values["daysOfWeekMask"]
+        if ProgramFrequency.CYCLIC != values.get("frequency"):
+            if "period" in values:
+                del values["period"]
+        return values
+
+    @validator("days_of_week", pre=True)
+    def _parse_days_of_week(cls, mask: int) -> set[DayOfWeek]:
+        """Parse the days of week bitmask to a enum set."""
+        result: set[DayOfWeek] = set()
+        for day in range(0, 7):
+            if mask & (1 << day):
+                result.add(DayOfWeek(day))
+        return result
+
+    @validator("starts", pre=True)
+    def _parse_starts(cls, starts: list[int]) -> set[DayOfWeek]:
+        """Parse the days of week bitmask to a enum set."""
+        result: list[datetime.time] = []
+        for start in starts:
+            if start == 65535:
+                continue
+            result.append(datetime.time(hour=int(start / 60), minute=start % 60))
+        return result
+
+
+class Schedule(BaseModel):
+    """Details about program schedules."""
+
+    programs: list[Program] = Field(alias="programInfo")
+
+    @root_validator(pre=True)
+    def _parse_start_info(cls, values: dict[str, Any]):
+        """Parse the input values from the response into a usable format."""
+        _LOGGER.debug("_parse_start_info=%s", values)
+        programs = values.get("programStartInfo", [])
+        if not programs:
+            return values
+        for program_start_info in values.get("programStartInfo"):
+            _LOGGER.debug("program_start_info=%s", program_start_info)
+            program = program_start_info.get("program")
+            if program is None:
+                continue
+            values["programInfo"][program]["starts"] = program_start_info.get(
+                "startTime", []
+            )
+        return values
+
+    @root_validator(pre=True)
+    def _parse_durations(cls, values: dict[str, Any]):
+        """Parse the input values from the response into a usable format."""
+        _LOGGER.debug("_parse_durations=%s", values)
+        programs = values.get("programInfo", [])
+        if not programs:
+            return values
+        for program in range(0, len(programs)):
+            values["programInfo"][program]["durations"] = []
+        for zone_durations in values.get("durations", []):
+            _LOGGER.debug("zone_durations=%s", zone_durations)
+            zone = zone_durations.get("zone")
+            if zone is None:
+                continue
+            duration_values = zone_durations.get("durations", [])
+            if len(duration_values) != len(programs):
+                _LOGGER.debug(
+                    "Mismatched number of program durations: %d != %d: %s",
+                    len(duration_values),
+                    len(programs),
+                    values,
+                )
+                continue
+            for program in range(0, len(programs)):
+                duration = duration_values[program]
+                if not duration:
+                    continue
+                values["programInfo"][program]["durations"].append(
+                    {
+                        "zone": zone,
+                        "duration": duration,
+                    }
+                )
+                _LOGGER.debug(
+                    "program=%s, zone=%s, duration=%s", program, zone, duration
+                )
+
         return values

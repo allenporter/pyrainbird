@@ -8,12 +8,23 @@ from collections.abc import Awaitable, Callable
 
 import aiohttp
 import pytest
+from freezegun import freeze_time
 
 from pyrainbird import rainbird
 from pyrainbird.async_client import AsyncRainbirdClient, AsyncRainbirdController
-from pyrainbird.data import SoilType, ModelAndVersion, WaterBudget
+from pyrainbird.data import (
+    DayOfWeek,
+    ModelAndVersion,
+    ProgramFrequency,
+    SoilType,
+    WaterBudget,
+)
 from pyrainbird.encryption import encrypt
-from pyrainbird.exceptions import RainbirdApiException, RainbirdAuthException, RainbirdDeviceBusyException
+from pyrainbird.exceptions import (
+    RainbirdApiException,
+    RainbirdAuthException,
+    RainbirdDeviceBusyException,
+)
 from pyrainbird.resources import RAINBIRD_COMMANDS_BY_ID
 
 from .conftest import LENGTH, PASSWORD, REQUEST, RESPONSE, RESULT_DATA, ResponseResult
@@ -67,7 +78,7 @@ async def test_request_permission_failure(
 
 
 @pytest.fixture(name="encrypt_response")
-def mock_encrypt_response(response: ResponseResult) -> Callable[[...], Awaitable[None]]:
+def mock_encrypt_response(response: ResponseResult) -> Callable[[...], None]:
     """Fixture to encrypt API responses."""
 
     def _put_result(plaintext: str | dict) -> None:
@@ -81,14 +92,27 @@ def mock_encrypt_response(response: ResponseResult) -> Callable[[...], Awaitable
 
 @pytest.fixture(name="api_response")
 def mock_api_response(
-    encrypt_response: ResponseResult,
-) -> Callable[[...], Awaitable[None]]:
+    encrypt_response: Callable[[str | dict], None],
+) -> Callable[[...], None]:
     """Fixture to construct a fake API response."""
 
     def _put_result(command: str, **kvargs) -> None:
         command_set = RAINBIRD_COMMANDS_BY_ID[command]
         data = rainbird.encode_command(command_set, *kvargs.values())
         encrypt_response({"jsonrpc": "2.0", "result": {"data": data}, "id": 1})
+
+    return _put_result
+
+
+@pytest.fixture(name="sip_data_responses")
+def mock_sip_data_responses(
+    encrypt_response: Callable[[str | dict], None],
+) -> Callable[[list[str]], None]:
+    """Fixture to create sip data responess."""
+
+    def _put_result(datam: list[str]) -> None:
+        for data in datam:
+            encrypt_response({"jsonrpc": "2.0", "result": {"data": data}, "id": 1})
 
     return _put_result
 
@@ -678,3 +702,139 @@ async def test_unrecognized_response(
     encrypt_response(payload)
     with pytest.raises(RainbirdApiException, match=r"wrong response"):
         await controller.test_command_support("00")
+
+
+@freeze_time("2023-01-21 09:32:00")
+async def test_cyclic_schedule(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    api_response: Callable[[...], Awaitable[None]],
+    sip_data_responses: Callable[[list[str]], None],
+) -> None:
+    """Test checking for an RPC support."""
+    controller = await rainbird_controller()
+
+    api_response("82", modelID=0x0A, protocolRevisionMajor=1, protocolRevisionMinor=3)
+    api_response("83", pageNumber=1, setStations=0x1F000000)  # 5 stations
+    sip_data_responses(
+        [
+            "A0000000000400",
+            "A000106A0602006401",
+            "A000117F0300006400",
+            "A00012000300006400",
+            "A0006000F0FFFFFFFFFFFF",
+            "A00061FFFFFFFFFFFFFFFF",
+            "A00062FFFFFFFFFFFFFFFF",
+            "A00080001900000000001400000000",
+            "A00081000700000000001400000000",
+            "A00082000A00000000000000000000",
+            "A00083000000000000000000000000",
+            "A00084000000000000000000000000",
+            "A00085000000000000000000000000",
+        ]
+    )
+
+    schedule = await controller.get_schedule()
+    assert len(schedule.programs) == 3
+
+    program = schedule.programs[0]
+    assert program.program == 0
+    assert program.frequency == ProgramFrequency.CYCLIC
+    assert program.period == 6
+    assert program.synchro == 2
+    assert program.starts == [datetime.time(4, 0, 0)]
+    assert program.duration == datetime.timedelta(minutes=(25 + 20 + 7 + 20 + 10))
+    assert program.days_of_week == set()
+    assert len(program.durations) == 5
+    assert program.durations[0].zone == 1
+    assert program.durations[0].duration == datetime.timedelta(minutes=25)
+    assert program.durations[1].zone == 2
+    assert program.durations[1].duration == datetime.timedelta(minutes=20)
+    assert program.durations[2].zone == 3
+    assert program.durations[2].duration == datetime.timedelta(minutes=7)
+    assert program.durations[3].zone == 4
+    assert program.durations[3].duration == datetime.timedelta(minutes=20)
+    assert program.durations[4].zone == 5
+    assert program.durations[4].duration == datetime.timedelta(minutes=10)
+
+    program = schedule.programs[1]
+    assert program.program == 1
+    assert program.frequency == ProgramFrequency.CUSTOM
+    assert program.period is None
+    assert program.synchro == 0
+    assert program.starts == []
+    assert program.duration == datetime.timedelta(seconds=0)
+    assert program.days_of_week == set(
+        {
+            DayOfWeek.MONDAY,
+            DayOfWeek.TUESDAY,
+            DayOfWeek.WEDNESDAY,
+            DayOfWeek.THURSDAY,
+            DayOfWeek.FRIDAY,
+            DayOfWeek.SATURDAY,
+            DayOfWeek.SUNDAY,
+        }
+    )
+    assert len(program.durations) == 0
+
+
+@freeze_time("2023-01-21 09:32:00")
+async def test_custom_schedule(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    api_response: Callable[[...], Awaitable[None]],
+    sip_data_responses: Callable[[list[str]], None],
+) -> None:
+    """Test checking for an RPC support."""
+    controller = await rainbird_controller()
+
+    api_response("82", modelID=0x0A, protocolRevisionMajor=1, protocolRevisionMinor=3)
+    api_response("83", pageNumber=1, setStations=0x1F000000)  # 5 stations
+    sip_data_responses(
+        [
+            "A0000000000400",
+            "A00010060602006400",
+            "A00011110602006400",
+            "A00012000300006400",
+            "A0006000F0FFFFFFFFFFFF",
+            "A00061FFFFFFFFFFFFFFFF",
+            "A00062FFFFFFFFFFFFFFFF",
+            "A00080001900000000001400000000",
+            "A00081000700000000001400000000",
+            "A00082000A00000000000000000000",
+            "A00083000000000000000000000000",
+            "A00084000000000000000000000000",
+            "A00085000000000000000000000000",
+        ]
+    )
+
+    schedule = await controller.get_schedule()
+    assert len(schedule.programs) == 3
+
+    program = schedule.programs[0]
+    assert program.program == 0
+    assert program.frequency == ProgramFrequency.CUSTOM
+    assert program.period is None
+    assert program.synchro == 2
+    assert program.starts == [datetime.time(4, 0, 0)]
+    assert program.duration == datetime.timedelta(minutes=(25 + 20 + 7 + 20 + 10))
+    assert program.days_of_week == set({DayOfWeek.MONDAY, DayOfWeek.TUESDAY})
+    assert len(program.durations) == 5
+    assert program.durations[0].zone == 1
+    assert program.durations[0].duration == datetime.timedelta(minutes=25)
+    assert program.durations[1].zone == 2
+    assert program.durations[1].duration == datetime.timedelta(minutes=20)
+    assert program.durations[2].zone == 3
+    assert program.durations[2].duration == datetime.timedelta(minutes=7)
+    assert program.durations[3].zone == 4
+    assert program.durations[3].duration == datetime.timedelta(minutes=20)
+    assert program.durations[4].zone == 5
+    assert program.durations[4].duration == datetime.timedelta(minutes=10)
+
+    program = schedule.programs[1]
+    assert program.program == 1
+    assert program.frequency == ProgramFrequency.CUSTOM
+    assert program.period is None
+    assert program.synchro == 2
+    assert program.starts == []
+    assert program.duration == datetime.timedelta(minutes=0)
+    assert program.days_of_week == set({DayOfWeek.THURSDAY, DayOfWeek.SUNDAY})
+    assert len(program.durations) == 0

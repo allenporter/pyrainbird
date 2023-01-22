@@ -28,6 +28,7 @@ from .data import (
     ModelAndVersion,
     NetworkStatus,
     ProgramInfo,
+    Schedule,
     ScheduleAndSettings,
     ServerMode,
     Settings,
@@ -38,12 +39,16 @@ from .data import (
     WifiParams,
     ZipCode,
 )
-from .exceptions import RainbirdApiException, RainbirdAuthException, RainbirdDeviceBusyException
+from .exceptions import (
+    RainbirdApiException,
+    RainbirdAuthException,
+    RainbirdDeviceBusyException,
+)
 from .resources import LENGTH, RAINBIRD_COMMANDS, RESPONSE
 
 __all__ = [
-  "CreateController",
-  "AsyncRainbirdController",
+    "CreateController",
+    "AsyncRainbirdController",
 ]
 
 _LOGGER = logging.getLogger(__name__)
@@ -94,7 +99,7 @@ class AsyncRainbirdClient:
         except ClientResponseError as err:
             if err.status == HTTPStatus.SERVICE_UNAVAILABLE:
                 raise RainbirdDeviceBusyException(
-                    f"Device is busy; Wait 1 minute"
+                    "Device is busy; Wait 1 minute"
                 ) from err
             if err.status == HTTPStatus.FORBIDDEN:
                 raise RainbirdAuthException(
@@ -149,9 +154,7 @@ class AsyncRainbirdController:
             % RAINBIRD_COMMANDS["AvailableStationsResponse"]["setStations"][LENGTH]
         )
         return await self._cacheable_command(
-            lambda resp: AvailableStations(
-                mask % resp["setStations"]
-            ),
+            lambda resp: AvailableStations(mask % resp["setStations"]),
             "AvailableStationsRequest",
             0,
         )
@@ -350,7 +353,45 @@ class AsyncRainbirdController:
             "ControllerFirmwareVersionRequest",
         )
 
-    async def get_schedule(self, command_code: str) -> dict[str, Any]:
+    async def get_schedule(self) -> Schedule:
+        """Return the device schedule."""
+
+        model = await self.get_model_and_version()
+        max_programs = model.model_info.max_programs
+        stations = await self.get_available_stations()
+
+        commands = ["00"]
+        # Program details
+        for program in range(0, max_programs):
+            commands.append("%04x" % program)
+        # Start times
+        for program in range(0, max_programs):
+            commands.append("%04x" % (0x60 | program))
+        # Run times per zone
+        for zone in stations.stations.active_set:
+            commands.append("%04x" % (0x80 | zone))
+        # Run command serially to avoid overwhelming the controller
+        schedule_data = {
+            "programInfo": [],
+            "programStartInfo": [],
+            "durations": [],
+        }
+        for command in commands:
+            result = await self.get_schedule_command(command)
+            for key in schedule_data:
+                if (value := result.get(key)) is not None:
+                    if key == "durations":
+                        for entry in value:
+                            if (
+                                entry.get("zone", 0) + 1
+                            ) not in stations.stations.active_set:
+                                continue
+                            schedule_data[key].append(entry)
+                    else:
+                        schedule_data[key].append(value)
+        return Schedule.parse_obj(schedule_data)
+
+    async def get_schedule_command(self, command_code: str) -> dict[str, Any]:
         """Run the schedule command for the specified raw command code."""
         return await self._process_command(
             lambda resp: resp,
@@ -406,8 +447,9 @@ class AsyncRainbirdController:
     async def _cacheable_command(
         self, funct: Callable[[dict[str, Any]], T], command: str, *args
     ) -> T:
-        key = "{command}-{args}"
-        if (result := self._cache.get(key)):
+        key = f"{command}-{args}"
+        if result := self._cache.get(key):
+            _LOGGER.debug("Returned cached result for key '%s'", key)
             return result
         result = await self._process_command(funct, command, *args)
         self._cache[key] = result

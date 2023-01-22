@@ -3,6 +3,7 @@ Python module for interacting with [WiFi LNK](https://www.rainbird.com/products/
 This module communicates directly towards the IP Address of the WiFi module. You can start/stop the irrigation, get the currently active zone, and other controller settings. This library currently only has very limited cloud support. Also there are a number of Rain Bird devices with very different command APIs.
 
 See [documentation](https://allenporter.github.io/pyrainbird/) for full quickstart and API reference.
+See the [github project](https://github.com/allenporter/pyrainbird).
 
 # Quickstart
 
@@ -28,7 +29,7 @@ async with aiohttp.ClientSession() as client:
 See [examples](examples/) for additional details on how to use the APIs and an example command
 line tool for querying the device.
 
-# Compatibility 
+# Compatibility
 
 This library has been tested with the following devices:
 
