@@ -3,7 +3,7 @@ aiohttp==3.8.3
 flake8==5.0.4
 mitmproxy==9.0.1
 parameterized==0.8.1
-pdoc3==0.10.0
+pdoc==12.3.1
 pydantic==1.10.4
 pyflakes==2.5.0
 pytest==7.2.1
