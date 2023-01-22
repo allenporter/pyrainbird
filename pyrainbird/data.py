@@ -9,15 +9,7 @@ from pydantic import BaseModel, Field, root_validator
 
 from .resources import RAINBIRD_MODELS
 
-_DEFAULT_PAGE = 0
 _MAX_ZONES = 32
-
-
-@dataclass
-class Pageable:
-    """Response object that supports paging."""
-
-    page: int = _DEFAULT_PAGE
 
 
 @dataclass
@@ -134,28 +126,18 @@ class States:
         return "states: %s" % ", ".join(result)
 
 
-class AvailableStations(Pageable):
-    def __init__(self, mask, page=_DEFAULT_PAGE):
-        super(AvailableStations, self).__init__(page)
+@dataclass
+class AvailableStations:
+
+    stations: States
+
+    def __init__(self, mask: str):
         self.stations = States(mask)
 
     @property
     def active_set(self):
         """Return the set of active zones."""
         return self.stations.active_set
-
-    def __hash__(self):
-        return hash((super(AvailableStations, self).__hash__(), self.stations))
-
-    def __eq__(self, o):
-        return (
-            super(AvailableStations, self).__eq__(o)
-            and isinstance(o, AvailableStations)
-            and self.stations == o.stations
-        )
-
-    def __ne__(self, o):
-        return not self.__eq__(o)
 
     def __str__(self):
         return "available stations: %X, %s" % (
@@ -164,29 +146,10 @@ class AvailableStations(Pageable):
         )
 
 
-class WaterBudget(object):
-    def __init__(self, program, adjust):
-        self.program = program
-        self.adjust = adjust
-
-    def __hash__(self):
-        return hash((self.program, self.adjust))
-
-    def __eq__(self, o):
-        return (
-            isinstance(o, WaterBudget)
-            and self.program == o.program
-            and self.adjust == o.adjust
-        )
-
-    def __ne__(self, o):
-        return not self.__eq__(o)
-
-    def __str__(self):
-        return "water budget: program: %d, adjust: %s" % (
-            self.program,
-            self.adjust,
-        )
+@dataclass
+class WaterBudget:
+    program: int
+    adjust: int
 
 
 class WifiParams(BaseModel):

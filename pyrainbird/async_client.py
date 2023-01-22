@@ -14,7 +14,6 @@ from aiohttp.client_exceptions import ClientError, ClientResponseError
 
 from . import encryption, rainbird
 from .data import (
-    _DEFAULT_PAGE,
     AvailableStations,
     ControllerFirmwareVersion,
     ControllerState,
@@ -31,7 +30,7 @@ from .data import (
     WifiParams,
     ZipCode,
 )
-from .exceptions import RainbirdApiException, RainbirdAuthException
+from .exceptions import RainbirdApiException, RainbirdAuthException, RainbirdDeviceBusyException
 from .resources import LENGTH, RAINBIRD_COMMANDS, RESPONSE
 
 _LOGGER = logging.getLogger(__name__)
@@ -51,7 +50,10 @@ CLOUD_API_URL = "http://rdz-rbcloud.rainbird.com/phone-api"
 
 
 class AsyncRainbirdClient:
-    """An asyncio rainbird client."""
+    """An asyncio rainbird client.
+
+    This is used by the controller and not expected to be used directly.
+    """
 
     def __init__(
         self,
@@ -77,6 +79,10 @@ class AsyncRainbirdClient:
             )
             resp.raise_for_status()
         except ClientResponseError as err:
+            if err.status == HTTPStatus.SERVICE_UNAVAILABLE:
+                raise RainbirdDeviceBusyException(
+                    f"Device is busy; Wait 1 minute"
+                ) from err
             if err.status == HTTPStatus.FORBIDDEN:
                 raise RainbirdAuthException(
                     f"Error authenticating with Device: {err}"
@@ -93,13 +99,14 @@ class AsyncRainbirdClient:
 def CreateController(
     websession: aiohttp.ClientSession, host: str, password: str
 ) -> "AsyncRainbirdController":
+    """Create an AsyncRainbirdController."""
     local_client = AsyncRainbirdClient(websession, host, password)
     cloud_client = AsyncRainbirdClient(websession, CLOUD_API_URL, None)
     return AsyncRainbirdController(local_client, cloud_client)
 
 
 class AsyncRainbirdController:
-    """Rainbord controller that uses asyncio."""
+    """Rainbird controller that uses asyncio."""
 
     def __init__(
         self,
@@ -109,10 +116,11 @@ class AsyncRainbirdController:
         """Initialize AsyncRainbirdController."""
         self._local_client = local_client
         self._cloud_client = cloud_client
+        self._cache: dict[str, Any] = {}
 
     async def get_model_and_version(self) -> ModelAndVersion:
         """Return the model and version."""
-        return await self._process_command(
+        return await self._cacheable_command(
             lambda response: ModelAndVersion(
                 response["modelID"],
                 response["protocolRevisionMajor"],
@@ -121,23 +129,23 @@ class AsyncRainbirdController:
             "ModelAndVersionRequest",
         )
 
-    async def get_available_stations(self, page=_DEFAULT_PAGE) -> AvailableStations:
+    async def get_available_stations(self) -> AvailableStations:
         """Get the available stations."""
         mask = (
             "%%0%dX"
             % RAINBIRD_COMMANDS["AvailableStationsResponse"]["setStations"][LENGTH]
         )
-        return await self._process_command(
+        return await self._cacheable_command(
             lambda resp: AvailableStations(
-                mask % resp["setStations"], page=resp["pageNumber"]
+                mask % resp["setStations"]
             ),
             "AvailableStationsRequest",
-            page,
+            0,
         )
 
     async def get_serial_number(self) -> str:
         """Get the device serial number."""
-        return await self._process_command(
+        return await self._cacheable_command(
             lambda resp: resp["serialNumber"], "SerialNumberRequest"
         )
 
@@ -225,8 +233,8 @@ class AsyncRainbirdController:
             "CurrentRainSensorStateRequest",
         )
 
-    async def get_zone_states(self, page=_DEFAULT_PAGE) -> States:
-        """Return the current state of the zone."""
+    async def get_zone_states(self) -> States:
+        """Return the current state of all zones."""
         mask = (
             "%%0%dX"
             % RAINBIRD_COMMANDS["CurrentStationsActiveResponse"]["activeStations"][
@@ -236,7 +244,7 @@ class AsyncRainbirdController:
         return await self._process_command(
             lambda resp: States((mask % resp["activeStations"])[:6]),
             "CurrentStationsActiveRequest",
-            page,
+            0,
         )
 
     async def get_zone_state(self, zone: int) -> bool:
@@ -275,7 +283,7 @@ class AsyncRainbirdController:
         await self._process_command(lambda resp: True, "RainDelaySetRequest", days)
 
     async def advance_zone(self, param: int) -> None:
-        """Advance to the zone with the specified param."""
+        """Advance to the specified zone."""
         await self._process_command(lambda resp: True, "AdvanceStationRequest", param)
 
     async def get_current_irrigation(self) -> bool:
@@ -381,3 +389,13 @@ class AsyncRainbirdController:
     ) -> T:
         response = await self._command(command, *args)
         return funct(response)
+
+    async def _cacheable_command(
+        self, funct: Callable[[dict[str, Any]], T], command: str, *args
+    ) -> T:
+        key = "{command}-{args}"
+        if (result := self._cache.get(key)):
+            return result
+        result = await self._process_command(funct, command, *args)
+        self._cache[key] = result
+        return result

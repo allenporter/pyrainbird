@@ -13,7 +13,7 @@ from pyrainbird import ModelAndVersion, WaterBudget, rainbird
 from pyrainbird.async_client import AsyncRainbirdClient, AsyncRainbirdController
 from pyrainbird.data import SoilType
 from pyrainbird.encryption import encrypt
-from pyrainbird.exceptions import RainbirdApiException, RainbirdAuthException
+from pyrainbird.exceptions import RainbirdApiException, RainbirdAuthException, RainbirdDeviceBusyException
 from pyrainbird.resources import RAINBIRD_COMMANDS_BY_ID
 
 from .conftest import LENGTH, PASSWORD, REQUEST, RESPONSE, RESULT_DATA, ResponseResult
@@ -39,6 +39,18 @@ async def test_request_failure(
     response(aiohttp.web.Response(status=500))
     client = await rainbird_client()
     with pytest.raises(RainbirdApiException):
+        await client.request(REQUEST, LENGTH)
+
+
+async def test_device_busy_failure(
+    rainbird_client: Callable[[], Awaitable[AsyncRainbirdClient]],
+    response: ResponseResult,
+) -> None:
+    """Test a basic request failure handling."""
+
+    response(aiohttp.web.Response(status=503))
+    client = await rainbird_client()
+    with pytest.raises(RainbirdDeviceBusyException):
         await client.request(REQUEST, LENGTH)
 
 
@@ -115,6 +127,10 @@ async def test_get_serial_number(
 ) -> None:
     controller = await rainbird_controller()
     api_response("85", serialNumber=0x12635436566)
+    assert await controller.get_serial_number() == 0x12635436566
+    # Result is cached
+    assert await controller.get_serial_number() == 0x12635436566
+    assert await controller.get_serial_number() == 0x12635436566
     assert await controller.get_serial_number() == 0x12635436566
 
 
@@ -629,6 +645,22 @@ async def test_error_response(
     }
     encrypt_response(payload)
     with pytest.raises(RainbirdApiException, match=r"Method not found"):
+        await controller.test_rpc_support("invalid")
+
+
+async def test_unknown_error_response(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    encrypt_response: ResponseResult,
+) -> None:
+    """Test checking for an RPC support."""
+    controller = await rainbird_controller()
+    payload = {
+        "jsonrpc": "2.0",
+        "error": {"code": 9090, "message": "Some error"},
+        "id": "null",
+    }
+    encrypt_response(payload)
+    with pytest.raises(RainbirdApiException, match=r"Some error"):
         await controller.test_rpc_support("invalid")
 
 
