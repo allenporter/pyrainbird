@@ -118,13 +118,11 @@ class PayloadCoder:
             if code := error.get("code"):
                 try:
                     value = ErrorCode(code)
-                except ValuError:
+                except ValueError:
                     value = UNKNOWN
                 msg.append(f"Code: {str(value)}({code})")
             if message := error.get("message"):
                 msg.append(f"Message: {message}")
             full_message = ", ".join(msg)
-            if code is not None and code == 0:
-                raise RainbirdCommandNotSupported(full_message)
             raise RainbirdApiException(", ".join(msg))
         return response["result"]
