@@ -93,6 +93,9 @@ ControllerCommands:
     parameter: 0
     response: '01'
     length: 2
+    program:
+      position: 2
+      length: 2
   ManuallyRunStationRequest:
     command: '39'
     parameterOne: 0

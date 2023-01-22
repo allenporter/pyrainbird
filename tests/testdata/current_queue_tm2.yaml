@@ -1,0 +1,83 @@
+data:
+- "3800"
+- 3B00
+- BB00050005D0000001000001
+- 3B01
+- BB012105D02204B02301A42404B0250258000000000000000000000000000000000000
+- 3B00
+- BB00050005C1000001000001
+- 3B01
+- BB012105C12204B02301A42404B0250258000000000000000000000000000000000000
+- 3B00
+- BB00050005A3000001000001
+- 3B01
+- BB012105A32204B02301A42404B0250258000000000000000000000000000000000000
+decoded_data:
+- type: ManuallyRunProgramRequest
+  program: 0
+- type: CurrentQueueRequest
+  page: 0
+- type: CurrentQueueResponse
+  program:
+    program: 0
+    zone: 1
+    seconds: 1488
+    active: true
+- type: CurrentQueueRequest
+  page: 1
+- type: CurrentQueueResponse
+  zones:
+    - zone: 1
+      seconds: 1488
+    - zone: 2
+      seconds: 1200
+    - zone: 3
+      seconds: 420
+    - zone: 4
+      seconds: 1200
+    - zone: 5
+      seconds: 600
+- type: CurrentQueueRequest
+  page: 0
+- type: CurrentQueueResponse
+  program:
+    program: 0
+    zone: 1
+    seconds: 1473
+    active: true
+- type: CurrentQueueRequest
+  page: 1
+- type: CurrentQueueResponse
+  zones:
+    - zone: 1
+      seconds: 1473
+    - zone: 2
+      seconds: 1200
+    - zone: 3
+      seconds: 420
+    - zone: 4
+      seconds: 1200
+    - zone: 5
+      seconds: 600
+- type: CurrentQueueRequest
+  page: 0
+- type: CurrentQueueResponse
+  program:
+    program: 0
+    zone: 1
+    seconds: 1443
+    active: true
+- type: CurrentQueueRequest
+  page: 1
+- type: CurrentQueueResponse
+  zones:
+    - zone: 1
+      seconds: 1443
+    - zone: 2
+      seconds: 1200
+    - zone: 3
+      seconds: 420
+    - zone: 4
+      seconds: 1200
+    - zone: 5
+      seconds: 600
