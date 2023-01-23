@@ -13,3 +13,12 @@ class DayOfWeek(IntEnum):
     THURSDAY = 4
     FRIDAY = 5
     SATURDAY = 6
+
+
+class ProgramFrequency(IntEnum):
+    """Program frequency."""
+
+    CUSTOM = 0
+    CYCLIC = 1
+    ODD = 2
+    EVEN = 3

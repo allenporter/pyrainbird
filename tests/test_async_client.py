@@ -26,7 +26,6 @@ from pyrainbird.exceptions import (
     RainbirdDeviceBusyException,
 )
 from pyrainbird.resources import RAINBIRD_COMMANDS_BY_ID
-from pyrainbird.timespan import Timespan
 
 from .conftest import LENGTH, PASSWORD, REQUEST, RESPONSE, RESULT_DATA, ResponseResult
 
@@ -756,24 +755,16 @@ async def test_cyclic_schedule(
     assert program.durations[3].duration == datetime.timedelta(minutes=20)
     assert program.durations[4].zone == 5
     assert program.durations[4].duration == datetime.timedelta(minutes=10)
-    assert list(
-        program.timeline.overlapping(
+    assert [
+        val.start
+        for val in program.timeline.overlapping(
             datetime.datetime(2023, 1, 21, 9, 32, 00),
             datetime.datetime(2023, 2, 11, 0, 0, 0),
         )
-    ) == [
-        Timespan.of(
-            datetime.datetime(2023, 1, 29, 4, 0, 0),
-            datetime.datetime(2023, 1, 29, 5, 22, 0),
-        ),
-        Timespan.of(
-            datetime.datetime(2023, 2, 4, 4, 0, 0),
-            datetime.datetime(2023, 2, 4, 5, 22, 0),
-        ),
-        Timespan.of(
-            datetime.datetime(2023, 2, 10, 4, 0, 0),
-            datetime.datetime(2023, 2, 10, 5, 22, 0),
-        ),
+    ] == [
+        datetime.datetime(2023, 1, 29, 4, 0, 0),
+        datetime.datetime(2023, 2, 4, 4, 0, 0),
+        datetime.datetime(2023, 2, 10, 4, 0, 0),
     ]
 
     program = schedule.programs[1]
@@ -857,32 +848,18 @@ async def test_custom_schedule(
     assert program.durations[3].duration == datetime.timedelta(minutes=20)
     assert program.durations[4].zone == 5
     assert program.durations[4].duration == datetime.timedelta(minutes=10)
-    assert list(
-        program.timeline.overlapping(
+    assert [
+        val.start
+        for val in program.timeline.overlapping(
             datetime.datetime(2023, 1, 21, 9, 32, 00),
             datetime.datetime(2023, 2, 11, 0, 0, 0),
         )
-    ) == [
-        Timespan.of(
-            datetime.datetime(2023, 1, 24, 4, 0, 0),
-            datetime.datetime(2023, 1, 24, 5, 22, 0),
-        ),
-        Timespan.of(
-            datetime.datetime(2023, 1, 30, 4, 0, 0),
-            datetime.datetime(2023, 1, 30, 5, 22, 0),
-        ),
-        Timespan.of(
-            datetime.datetime(2023, 1, 31, 4, 0, 0),
-            datetime.datetime(2023, 1, 31, 5, 22, 0),
-        ),
-        Timespan.of(
-            datetime.datetime(2023, 2, 6, 4, 0, 0),
-            datetime.datetime(2023, 2, 6, 5, 22, 0),
-        ),
-        Timespan.of(
-            datetime.datetime(2023, 2, 7, 4, 0, 0),
-            datetime.datetime(2023, 2, 7, 5, 22, 0),
-        ),
+    ] == [
+        datetime.datetime(2023, 1, 24, 4, 0, 0),
+        datetime.datetime(2023, 1, 30, 4, 0, 0),
+        datetime.datetime(2023, 1, 31, 4, 0, 0),
+        datetime.datetime(2023, 2, 6, 4, 0, 0),
+        datetime.datetime(2023, 2, 7, 4, 0, 0),
     ]
 
     program = schedule.programs[1]
@@ -956,36 +933,19 @@ async def test_odd_schedule(
     assert program.durations[3].duration == datetime.timedelta(minutes=20)
     assert program.durations[4].zone == 5
     assert program.durations[4].duration == datetime.timedelta(minutes=10)
-    assert list(
-        program.timeline.overlapping(
+    assert [
+        val.start
+        for val in program.timeline.overlapping(
             datetime.datetime(2023, 1, 21, 9, 32, 00),
             datetime.datetime(2023, 2, 4, 0, 0, 0),
         )
-    ) == [
-        Timespan.of(
-            datetime.datetime(2023, 1, 25, 4, 0, 0),
-            datetime.datetime(2023, 1, 25, 5, 22, 0),
-        ),
-        Timespan.of(
-            datetime.datetime(2023, 1, 27, 4, 0, 0),
-            datetime.datetime(2023, 1, 27, 5, 22, 0),
-        ),
-        Timespan.of(
-            datetime.datetime(2023, 1, 29, 4, 0, 0),
-            datetime.datetime(2023, 1, 29, 5, 22, 0),
-        ),
-        Timespan.of(
-            datetime.datetime(2023, 1, 31, 4, 0, 0),
-            datetime.datetime(2023, 1, 31, 5, 22, 0),
-        ),
-        Timespan.of(
-            datetime.datetime(2023, 2, 1, 4, 0, 0),
-            datetime.datetime(2023, 2, 1, 5, 22, 0),
-        ),
-        Timespan.of(
-            datetime.datetime(2023, 2, 3, 4, 0, 0),
-            datetime.datetime(2023, 2, 3, 5, 22, 0),
-        ),
+    ] == [
+        datetime.datetime(2023, 1, 25, 4, 0, 0),
+        datetime.datetime(2023, 1, 27, 4, 0, 0),
+        datetime.datetime(2023, 1, 29, 4, 0, 0),
+        datetime.datetime(2023, 1, 31, 4, 0, 0),
+        datetime.datetime(2023, 2, 1, 4, 0, 0),
+        datetime.datetime(2023, 2, 3, 4, 0, 0),
     ]
 
 
@@ -1040,30 +1000,16 @@ async def test_event_schedule(
     assert program.durations[3].duration == datetime.timedelta(minutes=20)
     assert program.durations[4].zone == 5
     assert program.durations[4].duration == datetime.timedelta(minutes=10)
-    assert list(
-        program.timeline.overlapping(
+    assert [
+        val.start
+        for val in program.timeline.overlapping(
             datetime.datetime(2023, 1, 21, 9, 32, 00),
             datetime.datetime(2023, 2, 4, 0, 0, 0),
         )
-    ) == [
-        Timespan.of(
-            datetime.datetime(2023, 1, 24, 4, 0, 0),
-            datetime.datetime(2023, 1, 24, 5, 22, 0),
-        ),
-        Timespan.of(
-            datetime.datetime(2023, 1, 26, 4, 0, 0),
-            datetime.datetime(2023, 1, 26, 5, 22, 0),
-        ),
-        Timespan.of(
-            datetime.datetime(2023, 1, 28, 4, 0, 0),
-            datetime.datetime(2023, 1, 28, 5, 22, 0),
-        ),
-        Timespan.of(
-            datetime.datetime(2023, 1, 30, 4, 0, 0),
-            datetime.datetime(2023, 1, 30, 5, 22, 0),
-        ),
-        Timespan.of(
-            datetime.datetime(2023, 2, 2, 4, 0, 0),
-            datetime.datetime(2023, 2, 2, 5, 22, 0),
-        ),
+    ] == [
+        datetime.datetime(2023, 1, 24, 4, 0, 0),
+        datetime.datetime(2023, 1, 26, 4, 0, 0),
+        datetime.datetime(2023, 1, 28, 4, 0, 0),
+        datetime.datetime(2023, 1, 30, 4, 0, 0),
+        datetime.datetime(2023, 2, 2, 4, 0, 0),
     ]
