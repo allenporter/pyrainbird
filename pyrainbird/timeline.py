@@ -9,6 +9,7 @@ from __future__ import annotations
 import datetime
 from collections.abc import Iterable
 from dataclasses import dataclass
+from typing import Optional
 
 from dateutil import rrule
 from ical.iter import (
@@ -21,7 +22,7 @@ from ical.timespan import Timespan
 
 from .const import DayOfWeek, ProgramFrequency
 
-__all__ = ["ProgramTimeline"]
+__all__ = ["ProgramTimeline", "ProgramEvent"]
 
 RRULE_WEEKDAY = {
     DayOfWeek.MONDAY: rrule.MO,
@@ -38,6 +39,7 @@ RRULE_WEEKDAY = {
 class ProgramEvent:
     """An instance of a program event."""
 
+    name: Optional[str]
     start: datetime.datetime
     end: datetime.dateetime
 
@@ -51,23 +53,29 @@ class ProgramTimeline(SortableItemTimeline[Timespan, ProgramEvent]):
         super().__init__(iterable)
 
 
-def create_timeline(
+def create_recurrence(
+    name: str,
     frequency: ProgramFrequency,
     times_of_day: list[datetime.time],
     duration: datetime.timedelta,
-    synchro: int,
+    synchro: datetime.datetime,
     days_of_week: set[DayOfWeek],
     interval: int,
-) -> ProgramTimeline:
+    time_shift: datetime.timedelta = datetime.timedelta(seconds=0),
+) -> Iterable[SortableItem[Timespan, ProgramEvent]]:
     """Create a timeline using a recurrence rule."""
 
     # Each 'times_of_day' will be its own RRULE.
     # Start counting the dates from 'synchro'
-    first_day = datetime.datetime.now() + datetime.timedelta(days=synchro)
-    dtstarts = [
-        first_day.replace(hour=time_of_day.hour, minute=time_of_day.minute, second=0)
-        for time_of_day in times_of_day
-    ]
+    first_day = synchro
+    dtstarts = []
+    for time_of_day in times_of_day:
+        dtstarts.append(
+            first_day.replace(
+                hour=time_of_day.hour, minute=time_of_day.minute, second=0
+            )
+            + time_shift
+        )
 
     # These weekday or day of month refinemens only used in specific scenarios
     byweekday = [RRULE_WEEKDAY[day_of_week] for day_of_week in days_of_week]
@@ -111,8 +119,8 @@ def create_timeline(
         dtend = dtstart + duration
 
         def build() -> ProgramEvent:
-            return ProgramEvent(dtstart, dtend)
+            return ProgramEvent(name, dtstart, dtend)
 
         return LazySortableItem(Timespan.of(dtstart, dtend), build)
 
-    return ProgramTimeline(RecurIterable(adapter, ruleset))
+    return RecurIterable(adapter, ruleset)
