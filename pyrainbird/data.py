@@ -2,15 +2,18 @@
 
 import datetime
 import logging
+from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import IntEnum
 from typing import Any, Optional
 
+from ical.iter import MergedIterable, SortableItem
+from ical.timespan import Timespan
 from pydantic import BaseModel, Field, root_validator, validator
 
 from .const import DayOfWeek, ProgramFrequency
 from .resources import RAINBIRD_MODELS
-from .timeline import ProgramTimeline, create_timeline
+from .timeline import ProgramEvent, ProgramTimeline, create_recurrence
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -382,6 +385,10 @@ class ZoneDuration:
     duration: datetime.timedelta
     """Runtime of the program in the specified zone."""
 
+    @property
+    def name(self) -> str:
+        return f"Zone {self.zone}"
+
     @validator("zone", pre=True)
     def _parse_zone(cls, value: int) -> datetime.timedelta:
         """Parse the zone value."""
@@ -422,16 +429,54 @@ class Program(BaseModel):
     durations: list[ZoneDuration] = Field(default_factory=list)
 
     @property
+    def name(self) -> str:
+        """Name of the program."""
+        letter = chr(ord("A") + self.program)
+        return f"PGM {letter}"
+
+    @property
     def timeline(self) -> ProgramTimeline:
         """Return a timeline of events for the program."""
-        return create_timeline(
-            self.frequency,
-            self.starts,
-            self.duration,
-            self.synchro,
-            self.days_of_week,
-            self.period,
+        return self.timeline_tz(datetime.datetime.now().tzinfo)
+
+    def timeline_tz(self, tzinfo: datetime.tzinfo) -> ProgramTimeline:
+        """Return a timeline of events for the program."""
+        first_day = datetime.datetime.now(tzinfo) + datetime.timedelta(
+            days=self.synchro
         )
+        return ProgramTimeline(
+            create_recurrence(
+                self.name,
+                self.frequency,
+                self.starts,
+                self.duration,
+                first_day,
+                self.days_of_week,
+                self.period,
+            ),
+        )
+
+    @property
+    def zone_timeline(self) -> ProgramTimeline:
+        """Return a timeline of events for the program."""
+        iters: list[Iterable[SortableItem[Timespan, ProgramEvent]]] = []
+        delta = datetime.timedelta(seconds=0)
+        first_day = datetime.datetime.now() + datetime.timedelta(days=self.synchro)
+        for zone_duration in self.durations:
+            iters.append(
+                create_recurrence(
+                    f"{self.name}: {zone_duration.name}",
+                    self.frequency,
+                    self.starts,
+                    zone_duration.duration,
+                    first_day,
+                    self.days_of_week,
+                    self.period,
+                    time_shift=delta,
+                )
+            )
+            delta += zone_duration.duration
+        return ProgramTimeline(MergedIterable(iters))
 
     @property
     def duration(self) -> datetime.timedelta:
@@ -476,6 +521,31 @@ class Schedule(BaseModel):
     """Details about program schedules."""
 
     programs: list[Program] = Field(alias="programInfo")
+
+    @property
+    def timeline(self) -> ProgramTimeline:
+        """Return a timeline of all programs."""
+        return self.timeline_tz(datetime.datetime.now().tzinfo)
+
+    def timeline_tz(self, tzinfo: datetime.tzinfo) -> ProgramTimeline:
+        """Return a timeline of all programs."""
+        iters: list[Iterable[SortableItem[Timespan, ProgramEvent]]] = []
+        for program in self.programs:
+            first_day = datetime.datetime.now(tzinfo) + datetime.timedelta(
+                days=program.synchro
+            )
+            iters.append(
+                create_recurrence(
+                    program.name,
+                    program.frequency,
+                    program.starts,
+                    program.duration,
+                    first_day,
+                    program.days_of_week,
+                    program.period,
+                )
+            )
+        return ProgramTimeline(MergedIterable(iters))
 
     @root_validator(pre=True)
     def _parse_start_info(cls, values: dict[str, Any]):

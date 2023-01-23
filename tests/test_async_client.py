@@ -730,6 +730,11 @@ async def test_cyclic_schedule(
             "A00083000000000000000000000000",
             "A00084000000000000000000000000",
             "A00085000000000000000000000000",
+            "A00086000000000000000000000000",
+            "A00087000000000000000000000000",
+            "A00088000000000000000000000000",
+            "A00089000000000000000000000000",
+            "A0008A000000000000000000000000",
         ]
     )
 
@@ -738,6 +743,7 @@ async def test_cyclic_schedule(
 
     program = schedule.programs[0]
     assert program.program == 0
+    assert program.name == "PGM A"
     assert program.frequency == ProgramFrequency.CYCLIC
     assert program.period == 6
     assert program.synchro == 2
@@ -747,28 +753,37 @@ async def test_cyclic_schedule(
     assert len(program.durations) == 5
     assert program.durations[0].zone == 1
     assert program.durations[0].duration == datetime.timedelta(minutes=25)
+    assert program.durations[0].name == "Zone 1"
     assert program.durations[1].zone == 2
     assert program.durations[1].duration == datetime.timedelta(minutes=20)
+    assert program.durations[1].name == "Zone 2"
     assert program.durations[2].zone == 3
     assert program.durations[2].duration == datetime.timedelta(minutes=7)
+    assert program.durations[2].name == "Zone 3"
     assert program.durations[3].zone == 4
     assert program.durations[3].duration == datetime.timedelta(minutes=20)
+    assert program.durations[3].name == "Zone 4"
     assert program.durations[4].zone == 5
     assert program.durations[4].duration == datetime.timedelta(minutes=10)
-    assert [
-        val.start
-        for val in program.timeline.overlapping(
+    assert program.durations[4].name == "Zone 5"
+    events = list(
+        program.timeline.overlapping(
             datetime.datetime(2023, 1, 21, 9, 32, 00),
             datetime.datetime(2023, 2, 11, 0, 0, 0),
         )
-    ] == [
+    )
+    assert [val.start for val in events] == [
         datetime.datetime(2023, 1, 29, 4, 0, 0),
         datetime.datetime(2023, 2, 4, 4, 0, 0),
         datetime.datetime(2023, 2, 10, 4, 0, 0),
     ]
+    assert events[0].name == "PGM A"
+    assert events[0].start == datetime.datetime(2023, 1, 29, 4, 0, 0)
+    assert events[0].end == datetime.datetime(2023, 1, 29, 5, 22, 0)
 
     program = schedule.programs[1]
     assert program.program == 1
+    assert program.name == "PGM B"
     assert program.frequency == ProgramFrequency.CUSTOM
     assert program.period is None
     assert program.synchro == 0
@@ -795,6 +810,16 @@ async def test_cyclic_schedule(
         )
         == []
     )
+
+    events = list(
+        schedule.timeline.overlapping(
+            datetime.datetime(2023, 1, 21, 9, 32, 00),
+            datetime.datetime(2023, 2, 11, 0, 0, 0),
+        )
+    )
+    assert events[0].name == "PGM A"
+    assert events[0].start == datetime.datetime(2023, 1, 29, 4, 0, 0)
+    assert events[0].end == datetime.datetime(2023, 1, 29, 5, 22, 0)
 
 
 @freeze_time("2023-01-21 09:32:00")
@@ -823,6 +848,11 @@ async def test_custom_schedule(
             "A00083000000000000000000000000",
             "A00084000000000000000000000000",
             "A00085000000000000000000000000",
+            "A00086000000000000000000000000",
+            "A00087000000000000000000000000",
+            "A00088000000000000000000000000",
+            "A00089000000000000000000000000",
+            "A0008A000000000000000000000000",
         ]
     )
 
@@ -831,6 +861,7 @@ async def test_custom_schedule(
 
     program = schedule.programs[0]
     assert program.program == 0
+    assert program.name == "PGM A"
     assert program.frequency == ProgramFrequency.CUSTOM
     assert program.period is None
     assert program.synchro == 2
@@ -864,6 +895,7 @@ async def test_custom_schedule(
 
     program = schedule.programs[1]
     assert program.program == 1
+    assert program.name == "PGM B"
     assert program.frequency == ProgramFrequency.CUSTOM
     assert program.period is None
     assert program.synchro == 2
@@ -908,6 +940,11 @@ async def test_odd_schedule(
             "A00083000000000000000000000000",
             "A00084000000000000000000000000",
             "A00085000000000000000000000000",
+            "A00086000000000000000000000000",
+            "A00087000000000000000000000000",
+            "A00088000000000000000000000000",
+            "A00089000000000000000000000000",
+            "A0008A000000000000000000000000",
         ]
     )
 
@@ -975,6 +1012,11 @@ async def test_event_schedule(
             "A00083000000000000000000000000",
             "A00084000000000000000000000000",
             "A00085000000000000000000000000",
+            "A00086000000000000000000000000",
+            "A00087000000000000000000000000",
+            "A00088000000000000000000000000",
+            "A00089000000000000000000000000",
+            "A0008A000000000000000000000000",
         ]
     )
 
@@ -1013,3 +1055,84 @@ async def test_event_schedule(
         datetime.datetime(2023, 1, 30, 4, 0, 0),
         datetime.datetime(2023, 2, 2, 4, 0, 0),
     ]
+
+
+@freeze_time("2023-01-21 09:32:00")
+async def test_custom_schedule_by_zone(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    api_response: Callable[[...], Awaitable[None]],
+    sip_data_responses: Callable[[list[str]], None],
+) -> None:
+    """Test checking for an RPC support."""
+    controller = await rainbird_controller()
+
+    api_response("82", modelID=0x0A, protocolRevisionMajor=1, protocolRevisionMinor=3)
+    api_response("83", pageNumber=1, setStations=0x1F000000)  # 5 stations
+    sip_data_responses(
+        [
+            "A0000000000400",
+            "A00010060602006400",
+            "A00011110602006400",
+            "A00012000300006400",
+            "A0006000F0FFFFFFFFFFFF",
+            "A00061FFFFFFFFFFFFFFFF",
+            "A00062FFFFFFFFFFFFFFFF",
+            "A00080001900000000001400000000",
+            "A00081000700000000001400000000",
+            "A00082000A00000000000000000000",
+            "A00083000000000000000000000000",
+            "A00084000000000000000000000000",
+            "A00085000000000000000000000000",
+            "A00086000000000000000000000000",
+            "A00087000000000000000000000000",
+            "A00088000000000000000000000000",
+            "A00089000000000000000000000000",
+            "A0008A000000000000000000000000",
+        ]
+    )
+
+    schedule = await controller.get_schedule()
+    assert len(schedule.programs) == 3
+
+    program = schedule.programs[0]
+    assert program.program == 0
+    assert program.name == "PGM A"
+    assert program.frequency == ProgramFrequency.CUSTOM
+    assert len(program.durations) == 5
+    assert program.durations[0].zone == 1
+    assert program.durations[0].duration == datetime.timedelta(minutes=25)
+    assert program.durations[1].zone == 2
+    assert program.durations[1].duration == datetime.timedelta(minutes=20)
+    assert program.durations[2].zone == 3
+    assert program.durations[2].duration == datetime.timedelta(minutes=7)
+    assert program.durations[3].zone == 4
+    assert program.durations[3].duration == datetime.timedelta(minutes=20)
+    assert program.durations[4].zone == 5
+    assert program.durations[4].duration == datetime.timedelta(minutes=10)
+    events = list(
+        program.zone_timeline.overlapping(
+            datetime.datetime(2023, 1, 21, 9, 32, 00),
+            datetime.datetime(2023, 2, 11, 0, 0, 0),
+        )
+    )
+    assert events
+    # First date
+    assert events[0].name == "PGM A: Zone 1"
+    assert events[0].start == datetime.datetime(2023, 1, 24, 4, 0, 0)
+    assert events[0].end == datetime.datetime(2023, 1, 24, 4, 25, 0)
+    assert events[1].name == "PGM A: Zone 2"
+    assert events[1].start == datetime.datetime(2023, 1, 24, 4, 25, 0)
+    assert events[1].end == datetime.datetime(2023, 1, 24, 4, 45, 0)
+    assert events[2].name == "PGM A: Zone 3"
+    assert events[2].start == datetime.datetime(2023, 1, 24, 4, 45, 0)
+    assert events[2].end == datetime.datetime(2023, 1, 24, 4, 52, 0)
+    assert events[3].name == "PGM A: Zone 4"
+    assert events[3].start == datetime.datetime(2023, 1, 24, 4, 52, 0)
+    assert events[3].end == datetime.datetime(2023, 1, 24, 5, 12, 0)
+    assert events[4].name == "PGM A: Zone 5"
+    assert events[4].start == datetime.datetime(2023, 1, 24, 5, 12, 0)
+    assert events[4].end == datetime.datetime(2023, 1, 24, 5, 22, 0)
+    # Continues to next date
+    assert events[5].name == "PGM A: Zone 1"
+    assert events[5].start == datetime.datetime(2023, 1, 30, 4, 0, 0)
+    assert events[5].end == datetime.datetime(2023, 1, 30, 4, 25, 0)

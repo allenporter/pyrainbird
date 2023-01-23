@@ -359,17 +359,20 @@ class AsyncRainbirdController:
         model = await self.get_model_and_version()
         max_programs = model.model_info.max_programs
         stations = await self.get_available_stations()
+        max_stations = min(stations.stations.count, 22)
 
         commands = ["00"]
         # Program details
         for program in range(0, max_programs):
-            commands.append("%04x" % program)
+            commands.append("%04x" % (0x10 | program))
         # Start times
         for program in range(0, max_programs):
             commands.append("%04x" % (0x60 | program))
         # Run times per zone
-        for zone in stations.stations.active_set:
-            commands.append("%04x" % (0x80 | zone))
+        _LOGGER.debug("Loading schedule for %d zones", max_stations)
+        for zone_page in range(0, int(round(max_stations / 2, 0))):
+            commands.append("%04x" % (0x80 | zone_page))
+        _LOGGER.debug("Sending schedule commands: %s", commands)
         # Run command serially to avoid overwhelming the controller
         schedule_data = {
             "programInfo": [],
@@ -377,7 +380,11 @@ class AsyncRainbirdController:
             "durations": [],
         }
         for command in commands:
-            result = await self.get_schedule_command(command)
+            result = await self._process_command(
+                None, "RetrieveScheduleRequest", int(command, 16)  # Disable validation
+            )
+            if not isinstance(result, dict):
+                continue
             for key in schedule_data:
                 if (value := result.get(key)) is not None:
                     if key == "durations":
@@ -418,9 +425,11 @@ class AsyncRainbirdController:
             raise RainbirdApiException("Missing 'data' in tunnelSip response")
         return result[DATA]
 
-    async def _command(self, command: str, *args) -> dict[str, Any]:
+    async def _process_command(
+        self, funct: Callable[[dict[str, Any]], T], command: str, *args
+    ) -> T:
         data = rainbird.encode(command, *args)
-        _LOGGER.debug("Request to line: " + str(data))
+        _LOGGER.debug("Request (%s): %s", command, str(data))
         command_data = RAINBIRD_COMMANDS[command]
         decrypted_data = await self._tunnelSip(
             data,
@@ -428,21 +437,17 @@ class AsyncRainbirdController:
         )
         _LOGGER.debug("Response from line: " + str(decrypted_data))
         decoded = rainbird.decode(decrypted_data)
-        response_code = decrypted_data[:2]
-        expected_response_code = command_data[RESPONSE]
-        if response_code != expected_response_code:
-            raise RainbirdApiException(
-                "Status request failed with wrong response! Requested %s but got %s:\n%s"
-                % (expected_response_code, response_code, decoded)
-            )
         _LOGGER.debug("Response: %s" % decoded)
-        return decoded
-
-    async def _process_command(
-        self, funct: Callable[[dict[str, Any]], T], command: str, *args
-    ) -> T:
-        response = await self._command(command, *args)
-        return funct(response)
+        response_code = decrypted_data[:2]
+        allowed = set([command_data[RESPONSE]])
+        if funct is None:
+            allowed.add("00")  # Allow NACK
+        if response_code not in allowed:
+            raise RainbirdApiException(
+                "Request (%s) failed with wrong response! Requested (%s) but got %s:\n%s"
+                % (command, allowed, response_code, decoded)
+            )
+        return funct(decoded) if funct is not None else decoded
 
     async def _cacheable_command(
         self, funct: Callable[[dict[str, Any]], T], command: str, *args
