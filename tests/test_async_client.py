@@ -768,18 +768,19 @@ async def test_cyclic_schedule(
     assert program.durations[4].name == "Zone 5"
     events = list(
         program.timeline.overlapping(
-            datetime.datetime(2023, 1, 21, 9, 32, 00),
+            datetime.datetime(2023, 1, 1, 9, 32, 00),
             datetime.datetime(2023, 2, 11, 0, 0, 0),
         )
     )
     assert [val.start for val in events] == [
+        datetime.datetime(2023, 1, 17, 4, 0, 0),
         datetime.datetime(2023, 1, 29, 4, 0, 0),
         datetime.datetime(2023, 2, 4, 4, 0, 0),
         datetime.datetime(2023, 2, 10, 4, 0, 0),
     ]
     assert events[0].name == "PGM A"
-    assert events[0].start == datetime.datetime(2023, 1, 29, 4, 0, 0)
-    assert events[0].end == datetime.datetime(2023, 1, 29, 5, 22, 0)
+    assert events[0].start == datetime.datetime(2023, 1, 17, 4, 0, 0)
+    assert events[0].end == datetime.datetime(2023, 1, 17, 5, 22, 0)
 
     program = schedule.programs[1]
     assert program.program == 1
@@ -886,7 +887,6 @@ async def test_custom_schedule(
             datetime.datetime(2023, 2, 11, 0, 0, 0),
         )
     ] == [
-        datetime.datetime(2023, 1, 24, 4, 0, 0),
         datetime.datetime(2023, 1, 30, 4, 0, 0),
         datetime.datetime(2023, 1, 31, 4, 0, 0),
         datetime.datetime(2023, 2, 6, 4, 0, 0),
@@ -987,7 +987,7 @@ async def test_odd_schedule(
 
 
 @freeze_time("2023-01-21 09:32:00")
-async def test_event_schedule(
+async def test_even_schedule(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
     api_response: Callable[[...], Awaitable[None]],
     sip_data_responses: Callable[[list[str]], None],
@@ -1045,11 +1045,14 @@ async def test_event_schedule(
     assert [
         val.start
         for val in program.timeline.overlapping(
-            datetime.datetime(2023, 1, 21, 9, 32, 00),
+            datetime.datetime(2023, 1, 1, 9, 32, 00),
             datetime.datetime(2023, 2, 4, 0, 0, 0),
         )
     ] == [
-        datetime.datetime(2023, 1, 24, 4, 0, 0),
+        datetime.datetime(2023, 1, 14, 4, 0, 0),
+        datetime.datetime(2023, 1, 16, 4, 0, 0),
+        datetime.datetime(2023, 1, 18, 4, 0, 0),
+        datetime.datetime(2023, 1, 20, 4, 0, 0),
         datetime.datetime(2023, 1, 26, 4, 0, 0),
         datetime.datetime(2023, 1, 28, 4, 0, 0),
         datetime.datetime(2023, 1, 30, 4, 0, 0),
@@ -1070,7 +1073,7 @@ async def test_custom_schedule_by_zone(
     api_response("83", pageNumber=1, setStations=0x1F000000)  # 5 stations
     sip_data_responses(
         [
-            "A0000000000400",
+            "A0000000000300",
             "A00010060602006400",
             "A00011110602006400",
             "A00012000300006400",
@@ -1092,12 +1095,13 @@ async def test_custom_schedule_by_zone(
     )
 
     schedule = await controller.get_schedule()
+    assert schedule.controller_info.rain_delay == 3
     assert len(schedule.programs) == 3
-
     program = schedule.programs[0]
     assert program.program == 0
     assert program.name == "PGM A"
     assert program.frequency == ProgramFrequency.CUSTOM
+    assert program.days_of_week == set({DayOfWeek.MONDAY, DayOfWeek.TUESDAY})
     assert len(program.durations) == 5
     assert program.durations[0].zone == 1
     assert program.durations[0].duration == datetime.timedelta(minutes=25)
@@ -1136,3 +1140,61 @@ async def test_custom_schedule_by_zone(
     assert events[5].name == "PGM A: Zone 1"
     assert events[5].start == datetime.datetime(2023, 1, 30, 4, 0, 0)
     assert events[5].end == datetime.datetime(2023, 1, 30, 4, 25, 0)
+
+
+@freeze_time("2023-01-25 20:00:00")
+async def test_custom_schedule_in_past(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    api_response: Callable[[...], Awaitable[None]],
+    sip_data_responses: Callable[[list[str]], None],
+) -> None:
+    """Test checking for an RPC support."""
+    controller = await rainbird_controller()
+
+    api_response("82", modelID=0x0A, protocolRevisionMajor=1, protocolRevisionMinor=3)
+    api_response("83", pageNumber=1, setStations=0x1F000000)  # 5 stations
+    sip_data_responses(
+        [
+            "A0000000000000",
+            "A00010110605006401",
+            "A000117F0300006400",
+            "A00012000300006400",
+            "A0006000F0FFFFFFFFFFFF",
+            "A00061FFFFFFFFFFFFFFFF",
+            "A00062FFFFFFFFFFFFFFFF",
+            "A00080001900000000001400000000",
+            "A00081000700000000001400000000",
+            "A00082000A00000000000000000000",
+            "A00083000000000000000000000000",
+            "A00084000000000000000000000000",
+            "A00085000000000000000000000000",
+            "A00086000000000000000000000000",
+            "A00087000000000000000000000000",
+            "A00088000000000000000000000000",
+            "A00089000000000000000000000000",
+            "A0008A000000000000000000000000",
+        ]
+    )
+
+    schedule = await controller.get_schedule()
+    assert len(schedule.programs) == 3
+
+    program = schedule.programs[0]
+    assert program.program == 0
+    assert program.name == "PGM A"
+    assert program.frequency == ProgramFrequency.CYCLIC
+    assert program.synchro == 5
+    assert program.period == 6
+    assert len(program.durations) == 5
+    events = list(
+        schedule.timeline.overlapping(
+            datetime.datetime(2023, 1, 1, 0, 0, 00),
+            datetime.datetime(2023, 2, 6, 0, 0, 0),
+        )
+    )
+    assert events
+    assert [event.start for event in events] == [
+        datetime.datetime(2023, 1, 24, 4, 0, 0),
+        datetime.datetime(2023, 1, 30, 4, 0, 0),
+        datetime.datetime(2023, 2, 5, 4, 0, 0),
+    ]

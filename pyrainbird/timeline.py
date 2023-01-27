@@ -7,6 +7,7 @@ the logic for interpreting recurring events for the Rain Bird controller.
 from __future__ import annotations
 
 import datetime
+import logging
 from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Optional
@@ -23,6 +24,8 @@ from ical.timespan import Timespan
 from .const import DayOfWeek, ProgramFrequency
 
 __all__ = ["ProgramTimeline", "ProgramEvent"]
+
+_LOGGER = logging.getLogger(__name__)
 
 RRULE_WEEKDAY = {
     DayOfWeek.MONDAY: rrule.MO,
@@ -58,22 +61,21 @@ def create_recurrence(
     frequency: ProgramFrequency,
     times_of_day: list[datetime.time],
     duration: datetime.timedelta,
-    synchro: datetime.datetime,
+    tzinfo: datetime.tzinfo,
+    synchro: int,
     days_of_week: set[DayOfWeek],
     interval: int,
     time_shift: datetime.timedelta = datetime.timedelta(seconds=0),
+    delay_days: int = 0,
 ) -> Iterable[SortableItem[Timespan, ProgramEvent]]:
     """Create a timeline using a recurrence rule."""
+    now = datetime.datetime.now(tzinfo)
 
     # Each 'times_of_day' will be its own RRULE.
-    # Start counting the dates from 'synchro'
-    first_day = synchro
     dtstarts = []
     for time_of_day in times_of_day:
         dtstarts.append(
-            first_day.replace(
-                hour=time_of_day.hour, minute=time_of_day.minute, second=0
-            )
+            now.replace(hour=time_of_day.hour, minute=time_of_day.minute, second=0)
             + time_shift
         )
 
@@ -84,8 +86,16 @@ def create_recurrence(
 
     ruleset = rrule.rruleset()
     for dtstart in dtstarts:
-        # Exclude the first instance
-        ruleset.exdate(dtstart)
+        # Rain delay just excludes the next days from the schedule
+        for i in range(0, delay_days):
+            _LOGGER.debug("d=%s", dtstart + datetime.timedelta(days=i))
+            ruleset.exdate(dtstart + datetime.timedelta(days=i))
+
+        # Start the schedule from the previous week/cycle
+        if frequency == ProgramFrequency.CYCLIC:
+            dtstart += datetime.timedelta(days=synchro - interval)
+        else:
+            dtstart += datetime.timedelta(days=-7)
 
         rule: rrule.rrule
         if frequency == ProgramFrequency.CYCLIC:
