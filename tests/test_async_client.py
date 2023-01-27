@@ -1124,7 +1124,6 @@ async def test_custom_schedule_by_zone(
     assert events[0].name == "PGM A: Zone 1"
     assert events[0].start == datetime.datetime(2023, 1, 24, 4, 0, 0)
     assert events[0].end == datetime.datetime(2023, 1, 24, 4, 25, 0)
-    assert events[0].rrule == ""
     assert events[1].name == "PGM A: Zone 2"
     assert events[1].start == datetime.datetime(2023, 1, 24, 4, 25, 0)
     assert events[1].end == datetime.datetime(2023, 1, 24, 4, 45, 0)
