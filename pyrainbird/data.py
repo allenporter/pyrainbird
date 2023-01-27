@@ -375,8 +375,20 @@ class ControllerState(BaseModel):
         return values
 
 
-@dataclass
-class ZoneDuration:
+class ControllerInfo(BaseModel):
+    """Data about the controller settings."""
+
+    station_delay: int = Field(alias="stationDelay", default=0)
+    rain_delay: int = Field(alias="rainDelay", default=0)
+    rain_sensor: bool = Field(alias="rainSensor", default=False)
+
+    @property
+    def delay_days(self) -> int:
+        """Return the amount of delay before starting the schedule."""
+        return max(self.station_delay, self.rain_delay)
+
+
+class ZoneDuration(BaseModel):
     """Program runtime for a specific zone."""
 
     zone: int
@@ -428,6 +440,8 @@ class Program(BaseModel):
 
     durations: list[ZoneDuration] = Field(default_factory=list)
 
+    controller_info: Optional[ControllerInfo] = Field(alias="controllerInfo")
+
     @property
     def name(self) -> str:
         """Name of the program."""
@@ -441,18 +455,17 @@ class Program(BaseModel):
 
     def timeline_tz(self, tzinfo: datetime.tzinfo) -> ProgramTimeline:
         """Return a timeline of events for the program."""
-        first_day = datetime.datetime.now(tzinfo) + datetime.timedelta(
-            days=self.synchro
-        )
         return ProgramTimeline(
             create_recurrence(
                 self.name,
                 self.frequency,
                 self.starts,
                 self.duration,
-                first_day,
+                tzinfo,
+                self.synchro,
                 self.days_of_week,
                 self.period,
+                delay_days=self.delay_days,
             ),
         )
 
@@ -461,7 +474,6 @@ class Program(BaseModel):
         """Return a timeline of events for the program."""
         iters: list[Iterable[SortableItem[Timespan, ProgramEvent]]] = []
         delta = datetime.timedelta(seconds=0)
-        first_day = datetime.datetime.now() + datetime.timedelta(days=self.synchro)
         for zone_duration in self.durations:
             iters.append(
                 create_recurrence(
@@ -469,10 +481,12 @@ class Program(BaseModel):
                     self.frequency,
                     self.starts,
                     zone_duration.duration,
-                    first_day,
+                    datetime.datetime.now().tzinfo,
+                    self.synchro,
                     self.days_of_week,
                     self.period,
                     time_shift=delta,
+                    delay_days=self.delay_days,
                 )
             )
             delta += zone_duration.duration
@@ -485,6 +499,11 @@ class Program(BaseModel):
         for delta in self.durations:
             total += delta.duration
         return total
+
+    @property
+    def delay_days(self) -> int:
+        """Return the number of delays programs are delayed."""
+        return self.controller_info.delay_days if self.controller_info else 0
 
     @root_validator(pre=True)
     def _clear_other_fields(cls, values: dict[str, Any]) -> set[DayOfWeek]:
@@ -520,6 +539,7 @@ class Program(BaseModel):
 class Schedule(BaseModel):
     """Details about program schedules."""
 
+    controller_info: Optional[ControllerInfo] = Field(alias="controllerInfo")
     programs: list[Program] = Field(alias="programInfo")
 
     @property
@@ -531,50 +551,53 @@ class Schedule(BaseModel):
         """Return a timeline of all programs."""
         iters: list[Iterable[SortableItem[Timespan, ProgramEvent]]] = []
         for program in self.programs:
-            first_day = datetime.datetime.now(tzinfo) + datetime.timedelta(
-                days=program.synchro
-            )
             iters.append(
                 create_recurrence(
                     program.name,
                     program.frequency,
                     program.starts,
                     program.duration,
-                    first_day,
+                    tzinfo,
+                    program.synchro,
                     program.days_of_week,
                     program.period,
+                    delay_days=self.delay_days,
                 )
             )
         return ProgramTimeline(MergedIterable(iters))
 
+    @property
+    def delay_days(self) -> int:
+        """Return the number of delays programs are delayed."""
+        return self.controller_info.delay_days if self.controller_info else 0
+
     @root_validator(pre=True)
     def _parse_start_info(cls, values: dict[str, Any]):
         """Parse the input values from the response into a usable format."""
-        _LOGGER.debug("_parse_start_info=%s", values)
         programs = values.get("programStartInfo", [])
         if not programs:
             return values
         for program_start_info in values.get("programStartInfo"):
-            _LOGGER.debug("program_start_info=%s", program_start_info)
             program = program_start_info.get("program")
             if program is None:
                 continue
             values["programInfo"][program]["starts"] = program_start_info.get(
                 "startTime", []
             )
+            values["programInfo"][program]["controllerInfo"] = values.get(
+                "controllerInfo"
+            )
         return values
 
     @root_validator(pre=True)
     def _parse_durations(cls, values: dict[str, Any]):
         """Parse the input values from the response into a usable format."""
-        _LOGGER.debug("_parse_durations=%s", values)
         programs = values.get("programInfo", [])
         if not programs:
             return values
         for program in range(0, len(programs)):
             values["programInfo"][program]["durations"] = []
         for zone_durations in values.get("durations", []):
-            _LOGGER.debug("zone_durations=%s", zone_durations)
             zone = zone_durations.get("zone")
             if zone is None:
                 continue
@@ -596,9 +619,6 @@ class Schedule(BaseModel):
                         "zone": zone,
                         "duration": duration,
                     }
-                )
-                _LOGGER.debug(
-                    "program=%s, zone=%s, duration=%s", program, zone, duration
                 )
 
         return values

@@ -375,6 +375,7 @@ class AsyncRainbirdController:
         _LOGGER.debug("Sending schedule commands: %s", commands)
         # Run command serially to avoid overwhelming the controller
         schedule_data = {
+            "controllerInfo": {},
             "programInfo": [],
             "programStartInfo": [],
             "durations": [],
@@ -394,6 +395,8 @@ class AsyncRainbirdController:
                             ) not in stations.stations.active_set:
                                 continue
                             schedule_data[key].append(entry)
+                    elif key == "controllerInfo":
+                        schedule_data[key].update(value)
                     else:
                         schedule_data[key].append(value)
         return Schedule.parse_obj(schedule_data)
