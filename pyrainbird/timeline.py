@@ -59,70 +59,57 @@ class ProgramTimeline(SortableItemTimeline[Timespan, ProgramEvent]):
 def create_recurrence(
     name: str,
     frequency: ProgramFrequency,
-    times_of_day: list[datetime.time],
+    dtstart: datetime.datetime,
     duration: datetime.timedelta,
-    tzinfo: datetime.tzinfo,
     synchro: int,
     days_of_week: set[DayOfWeek],
     interval: int,
-    time_shift: datetime.timedelta = datetime.timedelta(seconds=0),
     delay_days: int = 0,
 ) -> Iterable[SortableItem[Timespan, ProgramEvent]]:
     """Create a timeline using a recurrence rule."""
-    now = datetime.datetime.now(tzinfo)
-
-    # Each 'times_of_day' will be its own RRULE.
-    dtstarts = []
-    for time_of_day in times_of_day:
-        dtstarts.append(
-            now.replace(hour=time_of_day.hour, minute=time_of_day.minute, second=0)
-            + time_shift
-        )
-
     # These weekday or day of month refinemens ared used in specific scenarios
     byweekday = [RRULE_WEEKDAY[day_of_week] for day_of_week in days_of_week]
     odd_days = frequency == ProgramFrequency.ODD
     bymonthday = [i for i in range(1, 32) if ((i % 2) == 1) == odd_days]
 
     ruleset = rrule.rruleset()
-    for dtstart in dtstarts:
-        # Rain delay excludes upcoming days from the schedule
-        for i in range(0, delay_days):
-            ruleset.exdate(dtstart + datetime.timedelta(days=i))
+    # Rain delay excludes upcoming days from the schedule
+    for i in range(0, delay_days):
+        ruleset.exdate(dtstart + datetime.timedelta(days=i))
 
-        # Start the schedule from the previous week/cycle
-        if frequency == ProgramFrequency.CYCLIC:
-            dtstart += datetime.timedelta(days=synchro - interval)
-        else:
-            dtstart += datetime.timedelta(days=-7)
+    # Start the schedule from the previous week/cycle
+    if frequency == ProgramFrequency.CYCLIC:
+        dtstart += datetime.timedelta(days=synchro - interval)
+    else:
+        dtstart += datetime.timedelta(days=-7)
 
-        rule: rrule.rrule
-        if frequency == ProgramFrequency.CYCLIC:
-            # Create a RRULE that is FREQ=DAILY with an `interval` between dates
-            rule = rrule.rrule(
-                freq=rrule.DAILY,
-                interval=interval,
-                dtstart=dtstart,
-                cache=True,
-            )
-        elif frequency == ProgramFrequency.CUSTOM:
-            # Create a RRULE that is FREQ=WEEKLY with every `days_of_week` as the
-            # instances within the week.
-            rule = rrule.rrule(
-                freq=rrule.WEEKLY,
-                byweekday=byweekday,
-                dtstart=dtstart,
-                cache=True,
-            )
-        else:
-            # Create a RRULE that is FREQ=MONTHLY with all odd/even days of the month
-            rule = rrule.rrule(
-                freq=rrule.MONTHLY,
-                bymonthday=bymonthday,
-                dtstart=dtstart,
-                cache=True,
-            )
-        ruleset.rrule(rule)
+    rule: rrule.rrule
+    if frequency == ProgramFrequency.CYCLIC:
+        # Create a RRULE that is FREQ=DAILY with an `interval` between dates
+        rule = rrule.rrule(
+            freq=rrule.DAILY,
+            interval=interval,
+            dtstart=dtstart,
+            cache=True,
+        )
+    elif frequency == ProgramFrequency.CUSTOM:
+        # Create a RRULE that is FREQ=WEEKLY with every `days_of_week` as the
+        # instances within the week.
+        rule = rrule.rrule(
+            freq=rrule.WEEKLY,
+            byweekday=byweekday,
+            dtstart=dtstart,
+            cache=True,
+        )
+    else:
+        # Create a RRULE that is FREQ=MONTHLY with all odd/even days of the month
+        rule = rrule.rrule(
+            freq=rrule.MONTHLY,
+            bymonthday=bymonthday,
+            dtstart=dtstart,
+            cache=True,
+        )
+    ruleset.rrule(rule)
 
     def adapter(dtstart: datetime.datetime) -> SortableItem[Timespan, ProgramEvent]:
         dtend = dtstart + duration

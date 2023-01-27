@@ -455,41 +455,45 @@ class Program(BaseModel):
 
     def timeline_tz(self, tzinfo: datetime.tzinfo) -> ProgramTimeline:
         """Return a timeline of events for the program."""
-        return ProgramTimeline(
-            create_recurrence(
-                self.name,
-                self.frequency,
-                self.starts,
-                self.duration,
-                tzinfo,
-                self.synchro,
-                self.days_of_week,
-                self.period,
-                delay_days=self.delay_days,
-            ),
-        )
+        iters: list[Iterable[SortableItem[Timespan, ProgramEvent]]] = []
+        now = datetime.datetime.now(tzinfo)
+        for start in self.starts:
+            dtstart = now.replace(hour=start.hour, minute=start.minute, second=0)
+            iters.append(
+                create_recurrence(
+                    self.name,
+                    self.frequency,
+                    dtstart,
+                    self.duration,
+                    self.synchro,
+                    self.days_of_week,
+                    self.period,
+                    delay_days=self.delay_days,
+                ),
+            )
+        return ProgramTimeline(MergedIterable(iters))
 
     @property
     def zone_timeline(self) -> ProgramTimeline:
         """Return a timeline of events for the program."""
         iters: list[Iterable[SortableItem[Timespan, ProgramEvent]]] = []
-        delta = datetime.timedelta(seconds=0)
-        for zone_duration in self.durations:
-            iters.append(
-                create_recurrence(
-                    f"{self.name}: {zone_duration.name}",
-                    self.frequency,
-                    self.starts,
-                    zone_duration.duration,
-                    datetime.datetime.now().tzinfo,
-                    self.synchro,
-                    self.days_of_week,
-                    self.period,
-                    time_shift=delta,
-                    delay_days=self.delay_days,
+        now = datetime.datetime.now()
+        for start in self.starts:
+            dtstart = now.replace(hour=start.hour, minute=start.minute, second=0)
+            for zone_duration in self.durations:
+                iters.append(
+                    create_recurrence(
+                        f"{self.name}: {zone_duration.name}",
+                        self.frequency,
+                        dtstart,
+                        zone_duration.duration,
+                        self.synchro,
+                        self.days_of_week,
+                        self.period,
+                        delay_days=self.delay_days,
+                    )
                 )
-            )
-            delta += zone_duration.duration
+                dtstart += zone_duration.duration
         return ProgramTimeline(MergedIterable(iters))
 
     @property
@@ -550,20 +554,22 @@ class Schedule(BaseModel):
     def timeline_tz(self, tzinfo: datetime.tzinfo) -> ProgramTimeline:
         """Return a timeline of all programs."""
         iters: list[Iterable[SortableItem[Timespan, ProgramEvent]]] = []
+        now = datetime.datetime.now(tzinfo)
         for program in self.programs:
-            iters.append(
-                create_recurrence(
-                    program.name,
-                    program.frequency,
-                    program.starts,
-                    program.duration,
-                    tzinfo,
-                    program.synchro,
-                    program.days_of_week,
-                    program.period,
-                    delay_days=self.delay_days,
+            for start in program.starts:
+                dtstart = now.replace(hour=start.hour, minute=start.minute, second=0)
+                iters.append(
+                    create_recurrence(
+                        program.name,
+                        program.frequency,
+                        dtstart,
+                        program.duration,
+                        program.synchro,
+                        program.days_of_week,
+                        program.period,
+                        delay_days=self.delay_days,
+                    )
                 )
-            )
         return ProgramTimeline(MergedIterable(iters))
 
     @property
