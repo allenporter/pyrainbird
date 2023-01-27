@@ -79,16 +79,15 @@ def create_recurrence(
             + time_shift
         )
 
-    # These weekday or day of month refinemens only used in specific scenarios
+    # These weekday or day of month refinemens ared used in specific scenarios
     byweekday = [RRULE_WEEKDAY[day_of_week] for day_of_week in days_of_week]
     odd_days = frequency == ProgramFrequency.ODD
     bymonthday = [i for i in range(1, 32) if ((i % 2) == 1) == odd_days]
 
     ruleset = rrule.rruleset()
     for dtstart in dtstarts:
-        # Rain delay just excludes the next days from the schedule
+        # Rain delay excludes upcoming days from the schedule
         for i in range(0, delay_days):
-            _LOGGER.debug("d=%s", dtstart + datetime.timedelta(days=i))
             ruleset.exdate(dtstart + datetime.timedelta(days=i))
 
         # Start the schedule from the previous week/cycle
