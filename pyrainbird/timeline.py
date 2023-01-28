@@ -23,7 +23,7 @@ from ical.timespan import Timespan
 
 from .const import DayOfWeek, ProgramFrequency
 
-__all__ = ["ProgramTimeline", "ProgramEvent"]
+__all__ = ["ProgramTimeline", "ProgramEvent", "ProgramId"]
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -39,10 +39,27 @@ RRULE_WEEKDAY = {
 
 
 @dataclass
+class ProgramId:
+    """An instance of a program event or zone."""
+    program: int
+    zone: int | None = None
+
+    @property
+    def name(self) -> str:
+        """Name of the program."""
+        letter = chr(ord("A") + self.program)
+        name = f"PGM {letter}"
+        zone_name = ""
+        if self.zone:
+            zone_name = f": Zone {self.zone}"
+        return f"{name}{zone_name}"
+
+
+@dataclass
 class ProgramEvent:
     """An instance of a program event."""
 
-    name: Optional[str]
+    program_id: ProgramId
     start: datetime.datetime
     end: datetime.dateetime
 
@@ -50,14 +67,9 @@ class ProgramEvent:
 class ProgramTimeline(SortableItemTimeline[Timespan, ProgramEvent]):
     """A timeline of events in an irrigation program."""
 
-    def __init__(
-        self, iterable: Iterable[SortableItem[Timespan, ProgramEvent]]
-    ) -> None:
-        super().__init__(iterable)
-
 
 def create_recurrence(
-    name: str,
+    program_id: ProgramId,
     frequency: ProgramFrequency,
     dtstart: datetime.datetime,
     duration: datetime.timedelta,
@@ -115,7 +127,7 @@ def create_recurrence(
         dtend = dtstart + duration
 
         def build() -> ProgramEvent:
-            return ProgramEvent(name, dtstart, dtend)
+            return ProgramEvent(program_id, dtstart, dtend)
 
         return LazySortableItem(Timespan.of(dtstart, dtend), build)
 

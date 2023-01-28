@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field, root_validator, validator
 
 from .const import DayOfWeek, ProgramFrequency
 from .resources import RAINBIRD_MODELS
-from .timeline import ProgramEvent, ProgramTimeline, create_recurrence
+from .timeline import ProgramEvent, ProgramTimeline, create_recurrence, ProgramId
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -461,7 +461,7 @@ class Program(BaseModel):
             dtstart = now.replace(hour=start.hour, minute=start.minute, second=0)
             iters.append(
                 create_recurrence(
-                    self.name,
+                    ProgramId(self.program),
                     self.frequency,
                     dtstart,
                     self.duration,
@@ -483,7 +483,7 @@ class Program(BaseModel):
             for zone_duration in self.durations:
                 iters.append(
                     create_recurrence(
-                        f"{self.name}: {zone_duration.name}",
+                        ProgramId(self.program, zone_duration.zone),
                         self.frequency,
                         dtstart,
                         zone_duration.duration,
@@ -560,7 +560,7 @@ class Schedule(BaseModel):
                 dtstart = now.replace(hour=start.hour, minute=start.minute, second=0)
                 iters.append(
                     create_recurrence(
-                        program.name,
+                        ProgramId(program.program),
                         program.frequency,
                         dtstart,
                         program.duration,
