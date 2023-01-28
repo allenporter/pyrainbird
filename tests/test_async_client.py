@@ -781,6 +781,7 @@ async def test_cyclic_schedule(
     assert events[0].program_id.name == "PGM A"
     assert events[0].start == datetime.datetime(2023, 1, 17, 4, 0, 0)
     assert events[0].end == datetime.datetime(2023, 1, 17, 5, 22, 0)
+    assert events[0].rrule_str == "FREQ=DAILY;INTERVAL=6"
 
     program = schedule.programs[1]
     assert program.program == 1
@@ -1124,9 +1125,11 @@ async def test_custom_schedule_by_zone(
     assert events[0].program_id.name == "PGM A: Zone 1"
     assert events[0].start == datetime.datetime(2023, 1, 24, 4, 0, 0)
     assert events[0].end == datetime.datetime(2023, 1, 24, 4, 25, 0)
+    assert events[0].rrule_str == "FREQ=WEEKLY;BYDAY=MO,TU"
     assert events[1].program_id.name == "PGM A: Zone 2"
     assert events[1].start == datetime.datetime(2023, 1, 24, 4, 25, 0)
     assert events[1].end == datetime.datetime(2023, 1, 24, 4, 45, 0)
+    assert events[1].rrule_str == "FREQ=WEEKLY;BYDAY=MO,TU"
     assert events[2].program_id.name == "PGM A: Zone 3"
     assert events[2].start == datetime.datetime(2023, 1, 24, 4, 45, 0)
     assert events[2].end == datetime.datetime(2023, 1, 24, 4, 52, 0)

@@ -62,6 +62,18 @@ class ProgramEvent:
     program_id: ProgramId
     start: datetime.datetime
     end: datetime.dateetime
+    rule: rrule.rrule | None = None
+
+    @property
+    def rrule_str(self) -> str | None:
+        """Return the recurrence rule string."""
+        rule_str = str(self.rule)
+        if not self.rule or "DTSTART:" not in rule_str or "RRULE:" not in rule_str:
+           return None
+        parts = str(self.rule).split("\n")
+        if len(parts) != 2:
+           return None
+        return parts[1].lstrip("RRULE:")
 
 
 class ProgramTimeline(SortableItemTimeline[Timespan, ProgramEvent]):
@@ -127,7 +139,7 @@ def create_recurrence(
         dtend = dtstart + duration
 
         def build() -> ProgramEvent:
-            return ProgramEvent(program_id, dtstart, dtend)
+            return ProgramEvent(program_id, dtstart, dtend, rule)
 
         return LazySortableItem(Timespan.of(dtstart, dtend), build)
 
