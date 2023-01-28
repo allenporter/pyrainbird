@@ -25,6 +25,7 @@ class Echo:
     """Echo response from the API."""
 
     echo: int
+    """Return the input command."""
 
     def __str__(self):
         return "echo: %02X" % self.echo
@@ -35,7 +36,11 @@ class CommandSupport:
     """Command support response from the API."""
 
     support: int
+    """Return if the command is supported."""
+
+
     echo: int
+    """Return the input command."""
 
     def __str__(self):
         return "command support: %02X, echo: %s" % (self.support, self.echo)
@@ -46,11 +51,22 @@ class ModelInfo:
     """Details about capabilities of a specific model."""
 
     device_id: str
+    """The device identifier string."""
+
     code: str
+    """The model code string."""
+
     name: str
+    """The human readable model name."""
+
     supports_water_budget: bool
+    """If the mode supports seasonal adjustment/water budgets."""
+
     max_programs: int
+    """The maximum number of programs supported by the device."""
+
     max_run_times: int
+    """The maximum number of run times supported by the device."""
 
 
 @dataclass
@@ -61,7 +77,10 @@ class ModelAndVersion:
     """The device model number hex code."""
 
     major: str
+    """The major version string."""
+
     minor: str
+    """The minor version string."""
 
     @property
     def model_code(self) -> str:
@@ -92,8 +111,13 @@ class ControllerFirmwareVersion:
     """Controller firmware version."""
 
     major: str
+    """The controller firmware major version."""
+
     minor: str
+    """The controller firmware minor version."""
+
     patch: str
+    """The controller firmware patch version."""
 
 
 @dataclass
@@ -136,8 +160,10 @@ class States:
 
 @dataclass
 class AvailableStations:
+    """Information about stations available in a controller."""
 
     stations: States
+    """Return information about available stations."""
 
     def __init__(self, mask: str):
         self.stations = States(mask)
@@ -439,8 +465,10 @@ class Program(BaseModel):
     """Time of day the program starts."""
 
     durations: list[ZoneDuration] = Field(default_factory=list)
+    """Durations for run times for each zone."""
 
     controller_info: Optional[ControllerInfo] = Field(alias="controllerInfo")
+    """Information about the controller as input into the programs."""
 
     @property
     def name(self) -> str:
@@ -544,7 +572,10 @@ class Schedule(BaseModel):
     """Details about program schedules."""
 
     controller_info: Optional[ControllerInfo] = Field(alias="controllerInfo")
+    """Information about the controller used in the schedule."""
+
     programs: list[Program] = Field(alias="programInfo")
+    """Details about the currently scheduled programs."""
 
     @property
     def timeline(self) -> ProgramTimeline:
