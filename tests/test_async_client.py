@@ -778,9 +778,10 @@ async def test_cyclic_schedule(
         datetime.datetime(2023, 2, 4, 4, 0, 0),
         datetime.datetime(2023, 2, 10, 4, 0, 0),
     ]
-    assert events[0].name == "PGM A"
+    assert events[0].program_id.name == "PGM A"
     assert events[0].start == datetime.datetime(2023, 1, 17, 4, 0, 0)
     assert events[0].end == datetime.datetime(2023, 1, 17, 5, 22, 0)
+    assert events[0].rrule_str == "FREQ=DAILY;INTERVAL=6"
 
     program = schedule.programs[1]
     assert program.program == 1
@@ -818,7 +819,7 @@ async def test_cyclic_schedule(
             datetime.datetime(2023, 2, 11, 0, 0, 0),
         )
     )
-    assert events[0].name == "PGM A"
+    assert events[0].program_id.name == "PGM A"
     assert events[0].start == datetime.datetime(2023, 1, 29, 4, 0, 0)
     assert events[0].end == datetime.datetime(2023, 1, 29, 5, 22, 0)
 
@@ -1121,23 +1122,25 @@ async def test_custom_schedule_by_zone(
     )
     assert events
     # First date
-    assert events[0].name == "PGM A: Zone 1"
+    assert events[0].program_id.name == "PGM A: Zone 1"
     assert events[0].start == datetime.datetime(2023, 1, 24, 4, 0, 0)
     assert events[0].end == datetime.datetime(2023, 1, 24, 4, 25, 0)
-    assert events[1].name == "PGM A: Zone 2"
+    assert events[0].rrule_str == "FREQ=WEEKLY;BYDAY=MO,TU"
+    assert events[1].program_id.name == "PGM A: Zone 2"
     assert events[1].start == datetime.datetime(2023, 1, 24, 4, 25, 0)
     assert events[1].end == datetime.datetime(2023, 1, 24, 4, 45, 0)
-    assert events[2].name == "PGM A: Zone 3"
+    assert events[1].rrule_str == "FREQ=WEEKLY;BYDAY=MO,TU"
+    assert events[2].program_id.name == "PGM A: Zone 3"
     assert events[2].start == datetime.datetime(2023, 1, 24, 4, 45, 0)
     assert events[2].end == datetime.datetime(2023, 1, 24, 4, 52, 0)
-    assert events[3].name == "PGM A: Zone 4"
+    assert events[3].program_id.name == "PGM A: Zone 4"
     assert events[3].start == datetime.datetime(2023, 1, 24, 4, 52, 0)
     assert events[3].end == datetime.datetime(2023, 1, 24, 5, 12, 0)
-    assert events[4].name == "PGM A: Zone 5"
+    assert events[4].program_id.name == "PGM A: Zone 5"
     assert events[4].start == datetime.datetime(2023, 1, 24, 5, 12, 0)
     assert events[4].end == datetime.datetime(2023, 1, 24, 5, 22, 0)
     # Continues to next date
-    assert events[5].name == "PGM A: Zone 1"
+    assert events[5].program_id.name == "PGM A: Zone 1"
     assert events[5].start == datetime.datetime(2023, 1, 30, 4, 0, 0)
     assert events[5].end == datetime.datetime(2023, 1, 30, 4, 25, 0)
 

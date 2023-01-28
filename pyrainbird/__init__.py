@@ -4,6 +4,8 @@
 
 __all__ = [
   "async_client",
-  "exceptions",
+  "const",
   "data",
+  "exceptions",
+  "timeline",
 ]
