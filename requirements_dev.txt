@@ -5,7 +5,7 @@ freezegun==1.2.2
 mitmproxy==9.0.1
 parameterized==0.8.1
 pdoc==12.3.1
-pydantic==1.10.4
+pydantic==1.10.5
 pyflakes==2.5.0
 pytest==7.2.1
 pytest-aiohttp==1.0.4
