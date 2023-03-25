@@ -10,7 +10,6 @@ import datetime
 import logging
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Optional
 
 from dateutil import rrule
 from ical.iter import (
@@ -41,6 +40,7 @@ RRULE_WEEKDAY = {
 @dataclass
 class ProgramId:
     """An instance of a program event or zone."""
+
     program: int
     zone: int | None = None
 
@@ -69,10 +69,10 @@ class ProgramEvent:
         """Return the recurrence rule string."""
         rule_str = str(self.rule)
         if not self.rule or "DTSTART:" not in rule_str or "RRULE:" not in rule_str:
-           return None
+            return None
         parts = str(self.rule).split("\n")
         if len(parts) != 2:
-           return None
+            return None
         return parts[1].lstrip("RRULE:")
 
 

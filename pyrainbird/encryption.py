@@ -11,7 +11,7 @@ from Crypto import Random
 from Crypto.Cipher import AES
 from Crypto.Hash import SHA256
 
-from .exceptions import RainbirdApiException, RainbirdDeviceBusyException
+from .exceptions import RainbirdApiException
 
 BLOCK_SIZE = 16
 INTERRUPT = "\x00"
@@ -123,6 +123,6 @@ class PayloadCoder:
                 msg.append(f"Code: {str(value)}({code})")
             if message := error.get("message"):
                 msg.append(f"Message: {message}")
-            full_message = ", ".join(msg)
+            ", ".join(msg)
             raise RainbirdApiException(", ".join(msg))
         return response["result"]

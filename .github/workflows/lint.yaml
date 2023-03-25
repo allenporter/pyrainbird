@@ -1,5 +1,5 @@
 ---
-name: Python application
+name: Lint
 
 on:
   push:
@@ -9,26 +9,30 @@ on:
     branches:
     - main
 
-permissions:
-  contents: read
-
 jobs:
   build:
 
     runs-on: ubuntu-latest
     strategy:
-      matrix:
-        python-version: ['3.9', '3.10', '3.11']
+      fail-fast: false
+
     steps:
     - uses: actions/checkout@v3
-    - name: Set up Python ${{ matrix.python-version }}
+    - uses: codespell-project/actions-codespell@master
+    - name: Run yamllint
+      uses: ibiqlik/action-yamllint@v3
+      with:
+        file_or_dir: "./"
+        config_file: "./.yaml-lint.yaml"
+        strict: true
+    - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: "3.10"
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements_dev.txt
-    - name: Test with pytest
+    - name: Lint with ruff
       run: |
-        pytest
+        ruff check --format=github .

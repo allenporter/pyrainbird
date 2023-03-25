@@ -1,3 +1,4 @@
+---
 repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
   rev: v4.0.1
@@ -6,20 +7,26 @@ repos:
   - id: end-of-file-fixer
   - id: check-yaml
   - id: check-added-large-files
-- repo: https://github.com/pycqa/isort
-  rev: 5.9.3
-  hooks:
-    - id: isort
-      args: ["--profile", "black"]
 - repo: https://github.com/psf/black
   rev: 22.3.0
   hooks:
   - id: black
-- repo: https://gitlab.com/pycqa/flake8
-  rev: 4.0.1
+- repo: https://github.com/charliermarsh/ruff-pre-commit
+  rev: v0.0.259
   hooks:
-  - id: flake8
+  - id: ruff
+    args:
+    - --fix
+    - --exit-non-zero-on-fix
 - repo: https://github.com/codespell-project/codespell
   rev: v2.1.0
   hooks:
-    - id: codespell
+  - id: codespell
+- repo: https://github.com/adrienverge/yamllint.git
+  rev: v1.29.0
+  hooks:
+  - id: yamllint
+    exclude: '^tests/tool/testdata/.*\.yaml$'
+    args:
+    - -c
+    - ".yaml-lint.yaml"
