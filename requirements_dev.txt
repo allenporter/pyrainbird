@@ -1,6 +1,6 @@
 -e .
 aiohttp==3.8.4
-flake8==5.0.4
+flake8==6.0.0
 freezegun==1.2.2
 mitmproxy==9.0.1
 parameterized==0.8.1
