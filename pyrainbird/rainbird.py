@@ -183,7 +183,7 @@ def encode(command: str, *args) -> str:
     """Encode a rainbird tunnelSip command request."""
     if not (command_set := RAINBIRD_COMMANDS.get(command)):
         raise RainbirdCodingException(
-            f"Command {command} not available. Existing commands: {RAINBIRD_COMMANDS.keys()}"
+            f"Command {command} not available. Supported: {RAINBIRD_COMMANDS.keys()}"
         )
     return encode_command(command_set, *args)
 

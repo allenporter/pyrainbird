@@ -416,7 +416,7 @@ class AsyncRainbirdController:
         )
 
     async def test_rpc_support(self, rpc: str) -> dict[str, Any]:
-        """Debugging command to see if the device supports the specified json RPC method."""
+        """Debugging command to test device support for a json RPC method."""
         return await self._local_client.request(rpc)
 
     async def _tunnelSip(self, data: str, length: int) -> str:
@@ -447,7 +447,7 @@ class AsyncRainbirdController:
             allowed.add("00")  # Allow NACK
         if response_code not in allowed:
             raise RainbirdApiException(
-                "Request (%s) failed with wrong response! Requested (%s) but got %s:\n%s"
+                "Request (%s) failed with wrong response! Requested (%s), got %s:\n%s"
                 % (command, allowed, response_code, decoded)
             )
         return funct(decoded) if funct is not None else decoded
