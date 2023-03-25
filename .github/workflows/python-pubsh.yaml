@@ -1,9 +1,10 @@
+---
 name: Upload Python Package
 
 on:
   release:
     types:
-      - published
+    - published
 
 permissions:
   contents: read

@@ -26,6 +26,7 @@ repos:
   rev: v1.29.0
   hooks:
   - id: yamllint
+    exclude: '^tests/tool/testdata/.*\.yaml$'
     args:
     - -c
     - ".yaml-lint.yaml"

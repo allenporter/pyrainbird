@@ -1,6 +1,7 @@
 ---
 ignore: |
   venv
+  tests/testdata
 extends: default
 rules:
   truthy:

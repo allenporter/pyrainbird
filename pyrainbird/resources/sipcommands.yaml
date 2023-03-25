@@ -13,7 +13,7 @@ ControllerCommands:
       length: 2
   CommandSupportRequest:
     command: '04'
-    parameter: '02'  #commandToTest: '02'
+    parameter: '02'  # commandToTest: '02'
     response: '84'
     length: 2
   SerialNumberRequest:
@@ -167,14 +167,14 @@ ControllerCommands:
     command: 4C
     response: CC
     length: 1
-  # IrrigationStatisticsRequest: 4D
-  # StartLearnFlowSequenceRequest: 60
-  # CancelLearnFlowSequenceRequest: 61
-  # LearnFlowSequenceStatusRequest: 62
-  # FlowMonitorStatusRequest: 63
-  # FlowMonitorStatusSetRequest: 64
-  # FlowMonitorRateRequest: 65
-  # LogEntriesRequest: 70
+# IrrigationStatisticsRequest: 4D
+# StartLearnFlowSequenceRequest: 60
+# CancelLearnFlowSequenceRequest: 61
+# LearnFlowSequenceStatusRequest: 62
+# FlowMonitorStatusRequest: 63
+# FlowMonitorStatusSetRequest: 64
+# FlowMonitorRateRequest: 65
+# LogEntriesRequest: 70
 
 ControllerResponses:
   NotAcknowledgeResponse:
@@ -368,10 +368,10 @@ ControllerResponses:
     activeStation:
       position: 30
       length: 2
-  # IrrigationStatisticsResponse CD
-  # StartLearnFlowSequenceResponse E0
-  # CancelLearnFlowSequenceResponse E0
-  # LearnFlowSequenceStatusResponse E2
-  # FlowMonitorStatusResponse E3
-  # FlowMonitorStatusSetResponse 64
-  # FlowMonitorRateResponse E5
+# IrrigationStatisticsResponse CD
+# StartLearnFlowSequenceResponse E0
+# CancelLearnFlowSequenceResponse E0
+# LearnFlowSequenceStatusResponse E2
+# FlowMonitorStatusResponse E3
+# FlowMonitorStatusSetResponse 64
+# FlowMonitorRateResponse E5
