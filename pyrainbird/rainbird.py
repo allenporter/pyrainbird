@@ -73,9 +73,9 @@ def decode_schedule(data: str, cmd_template: dict[str, Any]) -> dict[str, Any]:
 
     if subcommand & 128 == 128:
         station = subcommand & ~128
-        numPrograms = 3
         rest = bytes(data[6:], "utf-8")
         durations = list(int(rest[i : i + 4], 16) for i in range(0, len(rest), 4))
+        numPrograms = int(len(durations) / 2)
         return {
             "durations": [
                 {

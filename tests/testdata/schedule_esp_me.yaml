@@ -1,0 +1,258 @@
+data:
+
+- A0000000000000
+- A00010290403004B01
+- A000117F0301006402
+- A00012550200006401
+- A000137D0200006401
+- A0006001B3FFFFFFFFFFFFFFFFFFFF
+- A00061FFFFFFFFFFFFFFFFFFFFFFFF
+- A00062FFFFFFFFFFFFFFFFFFFFFFFF
+- A00063FFFFFFFFFFFFFFFFFFFFFFFF
+- A000800017001E000F00000015001B000D0000
+- A00081001B00230011000000170019000E0000
+- A0008200220000001600140000000000000000
+- A0008300000000000000000000000000000000
+- A0008400000000000000000000000000000000
+- A0008500000000000000000000000000000000
+- A0008600000000000000000000000000000000
+- A0008700000000000000000000000000000000
+- A0008800000000000000000000000000000000
+- A0008900000000000000000000000000000000
+- A0008A00000000000000000000000000000000
+decoded_data:
+- type: RetrieveScheduleResponse
+  controllerInfo:
+    stationDelay: 0
+    rainDelay: 0
+    rainSensor: 0
+- type: RetrieveScheduleResponse
+  programInfo:
+    program: 0
+    daysOfWeekMask: 41
+    period: 4
+    synchro: 3
+    permanentDaysOff: 0
+    reserved: 75
+    frequency: 1
+- type: RetrieveScheduleResponse
+  programInfo:
+    program: 1
+    daysOfWeekMask: 127
+    period: 3
+    synchro: 1
+    permanentDaysOff: 0
+    reserved: 100
+    frequency: 2
+- type: RetrieveScheduleResponse
+  programInfo:
+    program: 2
+    daysOfWeekMask: 85
+    period: 2
+    synchro: 0
+    permanentDaysOff: 0
+    reserved: 100
+    frequency: 1
+- type: RetrieveScheduleResponse
+  programInfo:
+    program: 3
+    daysOfWeekMask: 125
+    period: 2
+    synchro: 0
+    permanentDaysOff: 0
+    reserved: 100
+    frequency: 1
+- type: RetrieveScheduleResponse
+  programStartInfo:
+    program: 0
+    startTime:
+    - 435
+    - 65535
+    - 65535
+    - 65535
+    - 65535
+    - 65535
+- type: RetrieveScheduleResponse
+  programStartInfo:
+    program: 1
+    startTime:
+    - 65535
+    - 65535
+    - 65535
+    - 65535
+    - 65535
+    - 65535
+- type: RetrieveScheduleResponse
+  programStartInfo:
+    program: 2
+    startTime:
+    - 65535
+    - 65535
+    - 65535
+    - 65535
+    - 65535
+    - 65535
+- type: RetrieveScheduleResponse
+  programStartInfo:
+    program: 3
+    startTime:
+    - 65535
+    - 65535
+    - 65535
+    - 65535
+    - 65535
+    - 65535
+- type: RetrieveScheduleResponse
+  durations:
+  - zone: 0
+    durations:
+    - 23
+    - 30
+    - 15
+    - 0
+  - zone: 1
+    durations:
+    - 21
+    - 27
+    - 13
+    - 0
+- type: RetrieveScheduleResponse
+  durations:
+  - zone: 2
+    durations:
+    - 27
+    - 35
+    - 17
+    - 0
+  - zone: 3
+    durations:
+    - 23
+    - 25
+    - 14
+    - 0
+- type: RetrieveScheduleResponse
+  durations:
+  - zone: 4
+    durations:
+    - 34
+    - 0
+    - 22
+    - 20
+  - zone: 5
+    durations:
+    - 0
+    - 0
+    - 0
+    - 0
+- type: RetrieveScheduleResponse
+  durations:
+  - zone: 6
+    durations:
+    - 0
+    - 0
+    - 0
+    - 0
+  - zone: 7
+    durations:
+    - 0
+    - 0
+    - 0
+    - 0
+- type: RetrieveScheduleResponse
+  durations:
+  - zone: 8
+    durations:
+    - 0
+    - 0
+    - 0
+    - 0
+  - zone: 9
+    durations:
+    - 0
+    - 0
+    - 0
+    - 0
+- type: RetrieveScheduleResponse
+  durations:
+  - zone: 10
+    durations:
+    - 0
+    - 0
+    - 0
+    - 0
+  - zone: 11
+    durations:
+    - 0
+    - 0
+    - 0
+    - 0
+- type: RetrieveScheduleResponse
+  durations:
+  - zone: 12
+    durations:
+    - 0
+    - 0
+    - 0
+    - 0
+  - zone: 13
+    durations:
+    - 0
+    - 0
+    - 0
+    - 0
+- type: RetrieveScheduleResponse
+  durations:
+  - zone: 14
+    durations:
+    - 0
+    - 0
+    - 0
+    - 0
+  - zone: 15
+    durations:
+    - 0
+    - 0
+    - 0
+    - 0
+- type: RetrieveScheduleResponse
+  durations:
+  - zone: 16
+    durations:
+    - 0
+    - 0
+    - 0
+    - 0
+  - zone: 17
+    durations:
+    - 0
+    - 0
+    - 0
+    - 0
+- type: RetrieveScheduleResponse
+  durations:
+  - zone: 18
+    durations:
+    - 0
+    - 0
+    - 0
+    - 0
+  - zone: 19
+    durations:
+    - 0
+    - 0
+    - 0
+    - 0
+- type: RetrieveScheduleResponse
+  durations:
+  - zone: 20
+    durations:
+    - 0
+    - 0
+    - 0
+    - 0
+  - zone: 21
+    durations:
+    - 0
+    - 0
+    - 0
+    - 0
