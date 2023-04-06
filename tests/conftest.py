@@ -3,7 +3,7 @@
 import asyncio
 import json
 from collections.abc import Awaitable, Callable
-from typing import Generator, cast
+from typing import cast
 
 import aiohttp
 import pytest
@@ -28,12 +28,6 @@ RESPONSE = json.dumps(
     }
 )
 RESPONSE = encryption.encrypt(RESPONSE, PASSWORD)
-
-
-@pytest.fixture(name="event_loop")
-def create_event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
-    """Fixture for producing event loop."""
-    yield asyncio.get_event_loop()
 
 
 async def handler(request: aiohttp.web.Request) -> aiohttp.web.Response:
