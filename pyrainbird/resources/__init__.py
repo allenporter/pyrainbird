@@ -1,9 +1,10 @@
 """Resources related to rainbird devices."""
 
+import pkgutil
 from typing import Any
 
 import yaml
-from pkg_resources import resource_stream
+
 
 COMMAND = "command"
 TYPE = "type"
@@ -15,13 +16,13 @@ DECODER = "decoder"
 RESERVED_FIELDS = [COMMAND, TYPE, LENGTH, RESPONSE, DECODER]
 
 SIP_COMMANDS = yaml.load(
-    resource_stream("pyrainbird.resources", "sipcommands.yaml"), Loader=yaml.FullLoader
+    pkgutil.get_data(__name__, "sipcommands.yaml"), Loader=yaml.FullLoader
 )
 MODEL_INFO = yaml.load(
-    resource_stream("pyrainbird.resources", "models.yaml"), Loader=yaml.FullLoader
+    pkgutil.get_data(__name__, "models.yaml"), Loader=yaml.FullLoader
 )
 
-RAINBIRD_MODELS = { info["device_id"]: info for info in MODEL_INFO }
+RAINBIRD_MODELS = {info["device_id"]: info for info in MODEL_INFO}
 
 
 def build_id_map(commands: dict[str, Any]) -> dict[str, Any]:
