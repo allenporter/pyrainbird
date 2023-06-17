@@ -10,7 +10,7 @@ pytest-aiohttp==1.0.4
 pytest-asyncio==0.21.0
 pytest-cov==4.1.0
 pytest-golden==0.2.2
-pytest-mock==3.10.0
+pytest-mock==3.11.1
 python-dateutil==2.8.2
 requests==2.31.0
 requests-mock==1.11.0
