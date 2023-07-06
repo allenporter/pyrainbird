@@ -133,6 +133,7 @@ async def test_get_model_and_version(
     assert model_info.supports_water_budget
     assert model_info.max_programs == 3
     assert model_info.max_run_times == 4
+    assert not model_info.retries
 
 
 async def test_get_available_stations(
@@ -143,6 +144,69 @@ async def test_get_available_stations(
     api_response("83", pageNumber=1, setStations=0x7F000000)
     stations = await controller.get_available_stations()
     assert stations.active_set == {1, 2, 3, 4, 5, 6, 7}
+
+
+async def test_device_busy_retries(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    rainbird_client: Callable[[], Awaitable[AsyncRainbirdClient]],
+    api_response: Callable[[...], Awaitable[None]],
+    response: ResponseResult,
+) -> None:
+    """Test a basic request failure handling with retries."""
+    controller = await rainbird_controller()
+    api_response("82", modelID=0x09, protocolRevisionMajor=1, protocolRevisionMinor=3)
+    result = await controller.get_model_and_version()
+    assert result.model_code == "ESP_ME3"
+    assert result.model_info.retries
+
+    # Make two attempts then succeed
+    response(aiohttp.web.Response(status=503))
+    response(aiohttp.web.Response(status=503))
+    api_response("83", pageNumber=1, setStations=0x7F000000)
+
+    stations = await controller.get_available_stations()
+    assert stations.active_set == {1, 2, 3, 4, 5, 6, 7}
+
+
+async def test_non_retryable_errors(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    rainbird_client: Callable[[], Awaitable[AsyncRainbirdClient]],
+    api_response: Callable[[...], Awaitable[None]],
+    response: ResponseResult,
+) -> None:
+    """Test a basic request failure handling with retries."""
+    controller = await rainbird_controller()
+    api_response("82", modelID=0x09, protocolRevisionMajor=1, protocolRevisionMinor=3)
+    result = await controller.get_model_and_version()
+    assert result.model_code == "ESP_ME3"
+    assert result.model_info.retries
+
+    # Other types of errors are not retried
+    response(aiohttp.web.Response(status=403))
+    with pytest.raises(RainbirdAuthException):
+        await controller.get_available_stations()
+
+
+
+async def test_device_busy_retries_not_enabled(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    rainbird_client: Callable[[], Awaitable[AsyncRainbirdClient]],
+    api_response: Callable[[...], Awaitable[None]],
+    response: ResponseResult,
+) -> None:
+    """Test a basic request failure handling for device without retries."""
+    controller = await rainbird_controller()
+    api_response("82", modelID=0x0A, protocolRevisionMajor=1, protocolRevisionMinor=3)
+    result = await controller.get_model_and_version()
+    assert result == ModelAndVersion(0x0A, 1, 3)
+    assert result.model_code == "ESP_TM2v2"
+    assert result.model_name == "ESP-TM2"
+    assert not result.model_info.retries
+
+    response(aiohttp.web.Response(status=503))
+
+    with pytest.raises(RainbirdDeviceBusyException):
+        await controller.get_available_stations()
 
 
 async def test_get_serial_number(

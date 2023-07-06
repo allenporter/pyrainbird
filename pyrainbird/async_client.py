@@ -15,10 +15,12 @@ import datetime
 import logging
 from collections.abc import Callable
 from http import HTTPStatus
-from typing import Any, Optional, TypeVar
+from typing import Any, TypeVar
 
 import aiohttp
 from aiohttp.client_exceptions import ClientError, ClientResponseError
+from aiohttp_retry import RetryClient, RetryOptions, JitterRetry
+
 
 from . import encryption, rainbird
 from .data import (
@@ -66,6 +68,16 @@ HEAD = {
 DATA = "data"
 CLOUD_API_URL = "http://rdz-rbcloud.rainbird.com/phone-api"
 
+# In general, these devices can handle only one in flight request at a time
+# otherwise return a 503. The caller is expected to follow that, however ESP
+# ME devices also seem to return 503s more regularly than other devices so we
+# include retry behavior for them. We only retry the specific device busy error.
+DEVICE_BUSY_RETRY = JitterRetry(
+    attempts=3,
+    statuses=[HTTPStatus.SERVICE_UNAVAILABLE.value],
+    retry_all_server_errors=False,
+)
+
 
 class AsyncRainbirdClient:
     """An asyncio rainbird client.
@@ -77,17 +89,27 @@ class AsyncRainbirdClient:
         self,
         websession: aiohttp.ClientSession,
         host: str,
-        password: Optional[str],
+        password: str | None,
     ) -> None:
         self._websession = websession
+        self._host = host
         if host.startswith("/") or host.startswith("http://"):
             self._url = host
         else:
             self._url = f"http://{host}/stick"
+        self._password = password
         self._coder = encryption.PayloadCoder(password, _LOGGER)
 
+    def with_retry_options(self, retry_options: RetryOptions) -> "AsyncRainbirdClient":
+        """Create a new AsyncRainbirdClient with retry options."""
+        return AsyncRainbirdClient(
+            RetryClient(client_session=self._websession, retry_options=retry_options),
+            self._host,
+            self._password,
+        )
+
     async def request(
-        self, method: str, params: dict[str, Any] = None
+        self, method: str, params: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         """Send a request for any command."""
         payload = self._coder.encode_command(method, params or {})
@@ -118,7 +140,7 @@ def CreateController(
     websession: aiohttp.ClientSession, host: str, password: str
 ) -> "AsyncRainbirdController":
     """Create an AsyncRainbirdController."""
-    local_client = AsyncRainbirdClient(websession, host, password)
+    local_client = (AsyncRainbirdClient(websession, host, password),)
     cloud_client = AsyncRainbirdClient(websession, CLOUD_API_URL, None)
     return AsyncRainbirdController(local_client, cloud_client)
 
@@ -135,10 +157,11 @@ class AsyncRainbirdController:
         self._local_client = local_client
         self._cloud_client = cloud_client
         self._cache: dict[str, Any] = {}
+        self._model: ModelAndVersion | None = None
 
     async def get_model_and_version(self) -> ModelAndVersion:
         """Return the model and version."""
-        return await self._cacheable_command(
+        response = await self._cacheable_command(
             lambda response: ModelAndVersion(
                 response["modelID"],
                 response["protocolRevisionMajor"],
@@ -146,6 +169,13 @@ class AsyncRainbirdController:
             ),
             "ModelAndVersionRequest",
         )
+        if self._model is None:
+            self._model = response
+            if self._model.model_info.retries:
+                self._local_client = self._local_client.with_retry_options(
+                    DEVICE_BUSY_RETRY
+                )
+        return response
 
     async def get_available_stations(self) -> AvailableStations:
         """Get the available stations."""
