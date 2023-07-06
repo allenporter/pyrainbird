@@ -109,7 +109,7 @@ class AsyncRainbirdClient:
         )
 
     async def request(
-        self, method: str, params: dict[str, Any] | None = None
+        self, method: str, params: Union[dict[str, Any], None] = None
     ) -> dict[str, Any]:
         """Send a request for any command."""
         payload = self._coder.encode_command(method, params or {})
