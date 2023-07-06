@@ -15,7 +15,7 @@ import datetime
 import logging
 from collections.abc import Callable
 from http import HTTPStatus
-from typing import Any, TypeVar
+from typing import Any, TypeVar, Union
 
 import aiohttp
 from aiohttp.client_exceptions import ClientError, ClientResponseError
@@ -89,7 +89,7 @@ class AsyncRainbirdClient:
         self,
         websession: aiohttp.ClientSession,
         host: str,
-        password: str | None,
+        password: Union[str, None],
     ) -> None:
         self._websession = websession
         self._host = host
