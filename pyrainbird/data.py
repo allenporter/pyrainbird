@@ -38,7 +38,6 @@ class CommandSupport:
     support: int
     """Return if the command is supported."""
 
-
     echo: int
     """Return the input command."""
 
@@ -67,6 +66,9 @@ class ModelInfo:
 
     max_run_times: int
     """The maximum number of run times supported by the device."""
+
+    retries: bool = False
+    """If device busy errors should be retried"""
 
 
 @dataclass

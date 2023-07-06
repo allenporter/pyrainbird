@@ -12,6 +12,7 @@
   supports_water_budget: true
   max_programs: 4
   max_run_times: 6
+  retries: true
 
 - device_id: "0006"
   code: ST8X_WF
@@ -40,6 +41,7 @@
   supports_water_budget: true
   max_programs: 4
   max_run_times: 6
+  retries: true
 
 - device_id: "0010"
   code: MOCK_ESP_ME2
@@ -47,6 +49,7 @@
   supports_water_budget: true
   max_programs: 4
   max_run_times: 6
+  retries: true
 
 - device_id: "000a"
   code: ESP_TM2v2
@@ -75,6 +78,7 @@
   supports_water_budget: true
   max_programs: 4
   max_run_times: 6
+  retries: true
 
 - device_id: "0103"
   code: ESP_RZXe2
