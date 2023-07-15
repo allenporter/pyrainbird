@@ -100,7 +100,9 @@ class ModelAndVersion:
     @property
     def model_info(self) -> ModelInfo:
         """Return details about a device model capabilities."""
-        return ModelInfo(**RAINBIRD_MODELS["%04x" % self.model])
+        key = f"{self.model:04x}"
+        data = RAINBIRD_MODELS.get(key, RAINBIRD_MODELS["UNKNOWN"])
+        return ModelInfo(**data)
 
     def __str__(self):
         return "model: %04X (%s), version: %d.%d" % (

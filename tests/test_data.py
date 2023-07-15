@@ -1,8 +1,10 @@
 import unittest
+from typing import Any
 
+import pytest
 from parameterized import parameterized
 
-from pyrainbird.data import States
+from pyrainbird.data import States, ModelAndVersion
 
 
 def encode_name_func(testcase_func, param_num, param):
@@ -54,3 +56,26 @@ class TestSequence(unittest.TestCase):
             active = i in states.active_set
             assert active == bit
             i = i + 1
+
+@pytest.mark.parametrize(
+    ("response", "expected_name"),
+    [
+        (
+            {'modelID': 2067, 'protocolRevisionMajor': 2, 'protocolRevisionMinor': 12},
+            "ARC8"
+        ),
+        (
+            {'modelID': 9999, 'protocolRevisionMajor': 2, 'protocolRevisionMinor': 12},
+            "Unknown"
+        ),
+    ],
+)
+def test_model_info(response: dict[str, Any], expected_name: str) -> None:
+    """Test parsing of ModelInfo responses."""
+    mv = ModelAndVersion(
+        response["modelID"],
+        response["protocolRevisionMajor"],
+        response["protocolRevisionMinor"],
+    )
+    assert mv.model_name == expected_name
+    assert mv.model_info.name == expected_name
