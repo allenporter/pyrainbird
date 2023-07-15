@@ -52,7 +52,6 @@
   max_run_times: 6
   retries: true
 
-
 - device_id: "000a"
   code: ESP_TM2v2
   name: ESP-TM2
