@@ -52,6 +52,7 @@
   max_run_times: 6
   retries: true
 
+
 - device_id: "000a"
   code: ESP_TM2v2
   name: ESP-TM2
@@ -67,6 +68,13 @@
   max_run_times: 4
 
 - device_id: "0099"
+  code: TBOS_BT
+  name: TBOS-BT
+  supports_water_budget: true
+  max_programs: 3
+  max_run_times: 8
+
+- device_id: "0100"
   code: TBOS_BT
   name: TBOS-BT
   supports_water_budget: true
@@ -89,8 +97,23 @@
   max_run_times: 6
 
 - device_id: "0812"
+  code: RC2
+  name: RC2
+  supports_water_budget: true
+  max_programs: 3
+  max_run_times: 4
+
+- device_id: "0813"
   code: ARC8
   name: ARC8
   supports_water_budget: true
   max_programs: 3
   max_run_times: 4
+
+- device_id: "UNKNOWN"
+  code: UNKNOWN
+  name: Unknown
+  supports_water_budget: false
+  max_programs: 0
+  max_run_times: 0
+  retries: false
