@@ -5,6 +5,7 @@
   supports_water_budget: false
   max_programs: 0
   max_run_times: 6
+  retries: true
 
 - device_id: "0007"
   code: ESP_ME
