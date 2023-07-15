@@ -9,7 +9,10 @@ from typing import Any, Optional
 
 from ical.iter import MergedIterable, SortableItem
 from ical.timespan import Timespan
-from pydantic import BaseModel, Field, root_validator, validator
+try:
+    from pydantic.v1 import BaseModel, Field, root_validator, validator
+except ImportError:
+    from pydantic import BaseModel, Field, root_validator, validator
 
 from .const import DayOfWeek, ProgramFrequency
 from .resources import RAINBIRD_MODELS
