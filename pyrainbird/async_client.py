@@ -140,7 +140,7 @@ def CreateController(
     websession: aiohttp.ClientSession, host: str, password: str
 ) -> "AsyncRainbirdController":
     """Create an AsyncRainbirdController."""
-    local_client = (AsyncRainbirdClient(websession, host, password),)
+    local_client = AsyncRainbirdClient(websession, host, password)
     cloud_client = AsyncRainbirdClient(websession, CLOUD_API_URL, None)
     return AsyncRainbirdController(local_client, cloud_client)
 
