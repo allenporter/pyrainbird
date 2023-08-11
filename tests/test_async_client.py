@@ -5,6 +5,7 @@ from __future__ import annotations
 import datetime
 import json
 from collections.abc import Awaitable, Callable
+from unittest import mock
 
 import aiohttp
 import pytest
@@ -60,9 +61,13 @@ async def test_device_busy_failure(
     """Test a basic request failure handling."""
 
     response(aiohttp.web.Response(status=503))
-    client = await rainbird_client()
-    with pytest.raises(RainbirdDeviceBusyException):
-        await client.request(REQUEST, LENGTH)
+
+    with mock.patch(
+        "pyrainbird.async_client._retry_attempts", return_value=1
+    ), mock.patch("pyrainbird.async_client._retry_delay", return_value=0.01):
+        client = await rainbird_client()
+        with pytest.raises(RainbirdDeviceBusyException):
+            await client.request(REQUEST, LENGTH)
 
 
 async def test_request_permission_failure(
@@ -185,7 +190,6 @@ async def test_non_retryable_errors(
     response(aiohttp.web.Response(status=403))
     with pytest.raises(RainbirdAuthException):
         await controller.get_available_stations()
-
 
 
 async def test_device_busy_retries_not_enabled(

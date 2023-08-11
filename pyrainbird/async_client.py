@@ -72,11 +72,25 @@ CLOUD_API_URL = "http://rdz-rbcloud.rainbird.com/phone-api"
 # otherwise return a 503. The caller is expected to follow that, however ESP
 # ME devices also seem to return 503s more regularly than other devices so we
 # include retry behavior for them. We only retry the specific device busy error.
-DEVICE_BUSY_RETRY = JitterRetry(
-    attempts=3,
-    statuses=[HTTPStatus.SERVICE_UNAVAILABLE.value],
-    retry_all_server_errors=False,
-)
+START_TIMEOUT = 1.0
+ATTEMPTS = 3
+
+
+def _retry_delay() -> float:
+    return START_TIMEOUT
+
+
+def _retry_attempts() -> int:
+    return ATTEMPTS
+
+
+def _device_busy_retry() -> JitterRetry:
+    return JitterRetry(
+        attempts=_retry_attempts(),
+        start_timeout=_retry_delay(),
+        statuses=[HTTPStatus.SERVICE_UNAVAILABLE.value],
+        retry_all_server_errors=False,
+    )
 
 
 class AsyncRainbirdClient:
@@ -173,7 +187,7 @@ class AsyncRainbirdController:
             self._model = response
             if self._model.model_info.retries:
                 self._local_client = self._local_client.with_retry_options(
-                    DEVICE_BUSY_RETRY
+                    _device_busy_retry()
                 )
         return response
 
