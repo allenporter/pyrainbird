@@ -13,6 +13,7 @@ from Crypto.Hash import SHA256
 
 from .exceptions import RainbirdApiException
 
+
 BLOCK_SIZE = 16
 INTERRUPT = "\x00"
 PAD = "\x10"
@@ -124,5 +125,6 @@ class PayloadCoder:
             if message := error.get("message"):
                 msg.append(f"Message: {message}")
             ", ".join(msg)
-            raise RainbirdApiException(", ".join(msg))
+            self._logger.debug("Error from controller: %s", msg)
+            raise RainbirdApiException(f"Rain Bird responded with an error: {message}")
         return response["result"]

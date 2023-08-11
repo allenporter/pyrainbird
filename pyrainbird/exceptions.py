@@ -13,5 +13,5 @@ class RainbirdAuthException(RainbirdApiException):
     """Authentication exception from rainbird API."""
 
 
-class RainbirdCodingException(RainbirdApiException):
-    """Error while encoding or decoding objects."""
+class RainbirdCodingException(Exception):
+    """Error while encoding or decoding objects indicating a bug."""

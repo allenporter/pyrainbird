@@ -768,7 +768,9 @@ async def test_unrecognized_response(
         "id": 0,
     }
     encrypt_response(payload)
-    with pytest.raises(RainbirdApiException, match=r"wrong response"):
+    with pytest.raises(
+        RainbirdApiException, match=r"Unexpected response from Rain Bird device"
+    ):
         await controller.test_command_support("00")
 
 
