@@ -135,16 +135,16 @@ class AsyncRainbirdClient:
         except ClientResponseError as err:
             if err.status == HTTPStatus.SERVICE_UNAVAILABLE:
                 raise RainbirdDeviceBusyException(
-                    "Device is busy; Wait 1 minute"
+                    "Rain Bird device is busy; Wait and try again"
                 ) from err
             if err.status == HTTPStatus.FORBIDDEN:
                 raise RainbirdAuthException(
-                    f"Error authenticating with Device: {err}"
+                    "Rain Bird device denied authentication; Incorrect Password?"
                 ) from err
-            raise RainbirdApiException(f"Error from API: {str(err)}") from err
+            raise RainbirdApiException("Rain Bird responded with an error")
         except ClientError as err:
             raise RainbirdApiException(
-                f"Error communicating with device: {str(err)}"
+                "Error communicating with Rain Bird device"
             ) from err
         content = await resp.read()
         return self._coder.decode_command(content)
@@ -469,7 +469,10 @@ class AsyncRainbirdController:
             "tunnelSip", {DATA: data, LENGTH: length}
         )
         if DATA not in result:
-            raise RainbirdApiException("Missing 'data' in tunnelSip response")
+            _LOGGER.error(
+                "Rain Bird device reply missing required 'data' field in tunnelSip"
+            )
+            raise RainbirdApiException("Unexpected response from Rain Bird device")
         return result[DATA]
 
     async def _process_command(
@@ -490,10 +493,11 @@ class AsyncRainbirdController:
         if funct is None:
             allowed.add("00")  # Allow NACK
         if response_code not in allowed:
-            raise RainbirdApiException(
+            _LOGGER.error(
                 "Request (%s) failed with wrong response! Requested (%s), got %s:\n%s"
                 % (command, allowed, response_code, decoded)
             )
+            raise RainbirdApiException("Unexpected response from Rain Bird device")
         return funct(decoded) if funct is not None else decoded
 
     async def _cacheable_command(
