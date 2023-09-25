@@ -16,6 +16,6 @@ python-dateutil==2.8.2
 requests==2.31.0
 requests-mock==1.11.0
 responses==0.23.3
-types-PyYAML==6.0.12.11
+types-PyYAML==6.0.12.12
 types-requests==2.31.0.3
 ruff==0.0.291
