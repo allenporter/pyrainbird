@@ -1,6 +1,6 @@
 """A timeline is a set of events on a calendar.
 
-This timeline is used to iterate over program runtime events, manging
+This timeline is used to iterate over program runtime events, managing
 the logic for interpreting recurring events for the Rain Bird controller.
 """
 
