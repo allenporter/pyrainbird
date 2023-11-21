@@ -36,6 +36,8 @@ def decode_schedule(data: str, cmd_template: dict[str, Any]) -> dict[str, Any]:
     subcommand = int(data[4:6], 16)
     rest = data[6:]
     if subcommand == 0:
+        if len(rest) < 8:
+            return {}
         # Delay, Snooze, Rainsensor
         return {
             "controllerInfo": {
@@ -46,6 +48,8 @@ def decode_schedule(data: str, cmd_template: dict[str, Any]) -> dict[str, Any]:
         }
 
     if subcommand & 16 == 16:
+        if len(rest) < 10:
+            return {}
         program = subcommand & ~16
         fields = list(int(rest[i : i + 2], 16) for i in range(0, len(rest), 2))
         return {
@@ -61,6 +65,8 @@ def decode_schedule(data: str, cmd_template: dict[str, Any]) -> dict[str, Any]:
         }
 
     if subcommand & 96 == 96:
+        if len(rest) < 4:
+            return {}
         program = subcommand & ~96
         # Note: 65535 is disabled
         entries = list(int(rest[i : i + 4], 16) for i in range(0, len(rest), 4))
@@ -72,6 +78,8 @@ def decode_schedule(data: str, cmd_template: dict[str, Any]) -> dict[str, Any]:
         }
 
     if subcommand & 128 == 128:
+        if len(rest) < 4:
+            return {}
         station = subcommand & ~128
         rest = bytes(data[6:], "utf-8")
         durations = list(int(rest[i : i + 4], 16) for i in range(0, len(rest), 4))
