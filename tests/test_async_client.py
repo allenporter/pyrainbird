@@ -1271,3 +1271,43 @@ async def test_custom_schedule_in_past(
         datetime.datetime(2023, 1, 30, 4, 0, 0),
         datetime.datetime(2023, 2, 5, 4, 0, 0),
     ]
+
+
+
+@freeze_time("2023-01-25 20:00:00")
+async def test_get_schedule_parse_failure(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    api_response: Callable[[...], Awaitable[None]],
+    sip_data_responses: Callable[[list[str]], None],
+) -> None:
+    """Test a schedule that fails to parse."""
+    controller = await rainbird_controller()
+
+    api_response("82", modelID=0x0A, protocolRevisionMajor=1, protocolRevisionMinor=3)
+    api_response("83", pageNumber=1, setStations=0x1F000000)  # 5 stations
+    sip_data_responses(
+        [
+            "A0000080",
+            "A00010",
+            "A00011",
+            "A00012",
+            "A00060",
+            "A00061",
+            "A00062",
+            "A00080",
+            "A00081",
+            "A00082",
+            "A00083",
+            "A00084",
+            "A00085",
+            "A00086",
+            "A00087",
+            "A00088",
+            "A00089",
+            "A00080",
+            "A0008A",
+        ]
+    )
+
+    schedule = await controller.get_schedule()
+    assert len(schedule.programs) == 0
