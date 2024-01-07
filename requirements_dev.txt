@@ -2,7 +2,7 @@
 aiohttp==3.9.1
 aiohttp_retry==2.8.3
 freezegun==1.4.0
-mitmproxy==10.2.0
+mitmproxy==10.2.1
 parameterized==0.9.0
 pdoc==14.3.0
 pydantic==2.5.3
