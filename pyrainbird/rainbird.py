@@ -41,9 +41,9 @@ def decode_schedule(data: str, cmd_template: dict[str, Any]) -> dict[str, Any]:
         # Delay, Snooze, Rainsensor
         return {
             "controllerInfo": {
-                "stationDelay": int(rest[0:4]),
-                "rainDelay": int(rest[4:6]),
-                "rainSensor": int(rest[6:8]),
+                "stationDelay": int(rest[0:4], 16),
+                "rainDelay": int(rest[4:6], 16),
+                "rainSensor": int(rest[6:8], 16),
             }
         }
 

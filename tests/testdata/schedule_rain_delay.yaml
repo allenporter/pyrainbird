@@ -1,0 +1,14 @@
+data:
+  - A0000000000400
+  - A0000000000E00
+decoded_data:
+  - type: RetrieveScheduleResponse
+    controllerInfo:
+      stationDelay: 0
+      rainSensor: 0
+      rainDelay: 4
+  - type: RetrieveScheduleResponse
+    controllerInfo:
+      stationDelay: 0
+      rainSensor: 0
+      rainDelay: 14
