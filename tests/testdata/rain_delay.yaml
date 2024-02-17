@@ -1,5 +1,8 @@
 data:
   - "B60003"
+  - "B6000E"
 decoded_data:
   - type: RainDelaySettingResponse
     delaySetting: 3
+  - type: RainDelaySettingResponse
+    delaySetting: 14
