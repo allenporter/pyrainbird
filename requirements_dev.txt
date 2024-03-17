@@ -18,4 +18,4 @@ requests-mock==1.11.0
 responses==0.25.0
 types-PyYAML==6.0.12.20240311
 types-requests==2.31.0.20240311
-ruff==0.3.2
+ruff==0.3.3
