@@ -9,9 +9,7 @@ from typing import Any, Optional
 
 from ical.iter import MergedIterable, SortableItem
 from ical.timespan import Timespan
-from mashumaro.codecs.yaml import yaml_decode, yaml_encode
 from mashumaro import DataClassDictMixin, field_options
-from mashumaro.config import BaseConfig
 from mashumaro.types import SerializationStrategy
 
 from .const import DayOfWeek, ProgramFrequency
@@ -388,9 +386,9 @@ class DeviceTime(SerializationStrategy):
 
     def deserialize(self, values: dict[str, Any]) -> datetime.datetime:
         """Deserialize the device time fields."""
-        for field in {"year", "month", "day", "hour", "minute", "second"}:
-            if field not in values:
-                raise ValueError(f"Missing field '{field}' in values")
+        for f in {"year", "month", "day", "hour", "minute", "second"}:
+            if f not in values:
+                raise ValueError(f"Missing field '{f}' in values")
         return datetime.datetime(
             int(values["year"]),
             int(values["month"]),
