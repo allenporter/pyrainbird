@@ -3,16 +3,16 @@
 import datetime
 import logging
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import IntEnum
 from typing import Any, Optional
 
 from ical.iter import MergedIterable, SortableItem
 from ical.timespan import Timespan
-try:
-    from pydantic.v1 import BaseModel, Field, root_validator, validator
-except ImportError:
-    from pydantic import BaseModel, Field, root_validator, validator
+from mashumaro.codecs.yaml import yaml_decode, yaml_encode
+from mashumaro import DataClassDictMixin, field_options
+from mashumaro.config import BaseConfig
+from mashumaro.types import SerializationStrategy
 
 from .const import DayOfWeek, ProgramFrequency
 from .resources import RAINBIRD_MODELS
@@ -193,23 +193,24 @@ class WaterBudget:
     adjust: int
 
 
-class WifiParams(BaseModel):
+@dataclass
+class WifiParams(DataClassDictMixin):
     """Wifi parameters for the device."""
 
-    mac_address: Optional[str] = Field(alias="macAddress")
+    mac_address: Optional[str] = field(metadata=field_options(alias="macAddress"))
     """The mac address for the device, also referred to as the stick id."""
 
-    local_ip_address: Optional[str] = Field(alias="localIpAddress")
-    local_netmask: Optional[str] = Field(alias="localNetmask")
-    local_gateway: Optional[str] = Field(alias="localGateway")
+    local_ip_address: Optional[str] = field(metadata=field_options(alias="localIpAddress"))
+    local_netmask: Optional[str] = field(metadata=field_options(alias="localNetmask"))
+    local_gateway: Optional[str] = field(metadata=field_options(alias="localGateway"))
     rssi: Optional[int]
-    wifi_ssid: Optional[str] = Field(alias="wifiSsid")
-    wifi_password: Optional[str] = Field(alias="wifiPassword")
-    wifi_security: Optional[str] = Field(alias="wifiSecurity")
-    ap_timeout_no_lan: Optional[int] = Field(alias="apTimeoutNoLan")
-    ap_timeout_idle: Optional[int] = Field(alias="apTimeoutIdle")
-    ap_security: Optional[str] = Field(alias="apSecurity")
-    sick_version: Optional[str] = Field(alias="stickVersion")
+    wifi_ssid: Optional[str] = field(metadata=field_options(alias="wifiSsid"))
+    wifi_password: Optional[str] = field(metadata=field_options(alias="wifiPassword"))
+    wifi_security: Optional[str] = field(metadata=field_options(alias="wifiSecurity"))
+    ap_timeout_no_lan: Optional[int] = field(metadata=field_options(alias="apTimeoutNoLan"))
+    ap_timeout_idle: Optional[int] = field(metadata=field_options(alias="apTimeoutIdle"))
+    ap_security: Optional[str] = field(metadata=field_options(alias="apSecurity"))
+    sick_version: Optional[str] = field(metadata=field_options(alias="stickVersion"))
 
 
 class SoilType(IntEnum):
@@ -221,30 +222,31 @@ class SoilType(IntEnum):
     OTHER = 3
 
 
-class ProgramInfo(BaseModel):
+@dataclass
+class ProgramInfo(DataClassDictMixin):
     """Program information for the device.
 
     The values are repeated once for each program.
     """
 
-    soil_types: list[SoilType] = Field(default_factory=list, alias="SoilTypes")
-    flow_rates: list[int] = Field(default_factory=list, alias="FlowRates")
-    flow_units: list[int] = Field(default_factory=list, alias="FlowUnits")
+    soil_types: list[SoilType] = field(default_factory=list, metadata=field_options(alias="SoilTypes"))
+    flow_rates: list[int] = field(default_factory=list, metadata=field_options(alias="FlowRates"))
+    flow_units: list[int] = field(default_factory=list, metadata=field_options(alias="FlowUnits"))
 
-    @root_validator(pre=True)
-    def _soil_type(cls, values: dict[str, Any]):
-        """Validate different ways the SoilTypes parameter is handled."""
+    @classmethod
+    def __pre_deserialize__(cls, values: dict[Any, Any]) -> dict[Any, Any]:
         if soil_type := values.get("soilTypes"):
             values["SoilTypes"] = soil_type
         return values
 
 
-class Settings(BaseModel):
+@dataclass
+class Settings(DataClassDictMixin):
     """Settings for the device."""
 
-    num_programs: int = Field(alias="numPrograms")
-    program_opt_out_mask: str = Field(alias="programOptOutMask")
-    global_disable: bool = Field(alias="globalDisable")
+    num_programs: int = field(metadata=field_options(alias="numPrograms"))
+    program_opt_out_mask: str = field(metadata=field_options(alias="programOptOutMask"))
+    global_disable: bool = field(metadata=field_options(alias="globalDisable"))
 
     code: Optional[str]
     """Zip code for the device."""
@@ -253,27 +255,28 @@ class Settings(BaseModel):
     """Country location of the device."""
 
     # Program information
-    soil_types: list[SoilType] = Field(default_factory=list, alias="SoilTypes")
-    flow_rates: list[int] = Field(default_factory=list, alias="FlowRates")
-    flow_units: list[int] = Field(default_factory=list, alias="FlowUnits")
+    soil_types: list[SoilType] = field(default_factory=list, metadata=field_options(alias="SoilTypes"))
+    flow_rates: list[int] = field(default_factory=list, metadata=field_options(alias="FlowRates"))
+    flow_units: list[int] = field(default_factory=list, metadata=field_options(alias="FlowUnits"))
 
-    @root_validator(pre=True)
-    def _soil_type(cls, values: dict[str, Any]):
-        """Validate different ways the SoilTypes parameter is handled."""
+    @classmethod
+    def __pre_deserialize__(cls, values: dict[Any, Any]) -> dict[Any, Any]:
         if soil_type := values.get("soilTypes"):
             values["SoilTypes"] = soil_type
         return values
 
 
-class WeatherAdjustmentMask(BaseModel):
+@dataclass
+class WeatherAdjustmentMask(DataClassDictMixin):
     """Weather adjustment mask response."""
 
-    num_programs: int = Field(alias="numPrograms")
-    program_opt_out_mask: str = Field(alias="programOptOutMask")
-    global_disable: bool = Field(alias="globalDisable")
+    num_programs: int = field(metadata=field_options(alias="numPrograms"))
+    program_opt_out_mask: str = field(metadata=field_options(alias="programOptOutMask"))
+    global_disable: bool = field(metadata=field_options(alias="globalDisable"))
 
 
-class ZipCode(BaseModel):
+@dataclass
+class ZipCode(DataClassDictMixin):
     """Get the zip code of the device."""
 
     code: Optional[str]
@@ -301,32 +304,34 @@ class ScheduleAndSettings:
         return self._settings
 
     @classmethod
-    def parse_obj(cls, data: dict[str, Any]):
+    def from_dict(cls, data: dict[str, Any]):
         """Parse a ScheduleAndSettings from an API response."""
         status = data.get("status", None)
-        settings = Settings.parse_obj(data["settings"]) if "settings" in data else None
+        settings = Settings.from_dict(data["settings"]) if "settings" in data else None
         return ScheduleAndSettings(status, settings)
 
 
-class Controller(BaseModel):
+@dataclass
+class Controller(DataClassDictMixin):
     """Settings for the controller."""
 
-    available_stations: list[int] = Field(
-        alias="availableStations", default_factory=list
+    available_stations: list[int] = field(
+        metadata=field_options(alias="availableStations"), default_factory=list
     )
-    custom_name: Optional[str] = Field(alias="customName")
-    custom_program_names: dict[str, str] = Field(
-        alias="customProgramNames", default_factory=dict
+    custom_name: Optional[str] = field(metadata=field_options(alias="customName"), default=None)
+    custom_program_names: dict[str, str] = field(
+        metadata=field_options(alias="customProgramNames"), default_factory=dict
     )
-    custom_station_names: dict[str, str] = Field(
-        alias="customStationNames", default_factory=dict
+    custom_station_names: dict[str, str] = field(
+        metadata=field_options(alias="customStationNames"), default_factory=dict
     )
 
 
-class Forecast(BaseModel):
+@dataclass
+class Forecast(DataClassDictMixin):
     """Weather forecast data from the cloud API."""
 
-    date_time: Optional[int] = Field(alias="dateTime")
+    date_time: Optional[int] = field(metadata=field_options(alias="dateTime"))
     icon: Optional[str]
     description: Optional[str]
     high: Optional[int]
@@ -335,69 +340,58 @@ class Forecast(BaseModel):
     precip: Optional[float]
 
 
-class Weather(BaseModel):
+@dataclass
+class Weather(DataClassDictMixin):
     """Weather settings from the cloud API."""
 
     city: Optional[str]
-    forecast: list[Forecast] = Field(default_factory=list)
-    location: Optional[str]
-    time_zone_id: Optional[str] = Field(alias="timeZoneId")
-    time_zone_raw_offset: Optional[str] = Field(alias="timeZoneRawOffset")
+    forecast: list[Forecast] = field(default_factory=list)
+    location: Optional[str] = None
+    time_zone_id: Optional[str] = field(metadata=field_options(alias="timeZoneId"), default=None)
+    time_zone_raw_offset: Optional[str] = field(metadata=field_options(alias="timeZoneRawOffset"), default=None)
 
 
-class WeatherAndStatus(BaseModel):
+@dataclass
+class WeatherAndStatus(DataClassDictMixin):
     """Weather and status from the cloud API."""
 
-    stick_id: Optional[str] = Field(alias="StickId")
-    controller: Optional[Controller] = Field(alias="Controller")
-    forecasted_rain: Optional[dict[str, Any]] = Field(alias="ForecastedRain")
-    weather: Optional[Weather] = Field(alias="Weather")
+    stick_id: Optional[str] = field(metadata=field_options(alias="StickId"))
+    controller: Optional[Controller] = field(metadata=field_options(alias="Controller"))
+    forecasted_rain: Optional[dict[str, Any]] = field(metadata=field_options(alias="ForecastedRain"))
+    weather: Optional[Weather] = field(metadata=field_options(alias="Weather"))
 
 
-class NetworkStatus(BaseModel):
+@dataclass
+class NetworkStatus(DataClassDictMixin):
     """Get the device network status."""
 
-    network_up: bool = Field(alias="networkUp")
-    internet_up: bool = Field(alias="internetUp")
+    network_up: bool = field(metadata=field_options(alias="networkUp"))
+    internet_up: bool = field(metadata=field_options(alias="internetUp"))
 
 
-class ServerMode(BaseModel):
+@dataclass
+class ServerMode(DataClassDictMixin):
     """Details about the device server connection."""
 
-    server_mode: bool = Field(alias="serverMode")
-    check_in_interval: int = Field(alias="checkInInterval")
-    server_url: str = Field(alias="serverUrl")
-    relay_timeout: int = Field(alias="relayTimeout")
-    missed_checkins: int = Field(alias="missedCheckins")
+    server_mode: bool = field(metadata=field_options(alias="serverMode"))
+    check_in_interval: int = field(metadata=field_options(alias="checkInInterval"))
+    server_url: str = field(metadata=field_options(alias="serverUrl"))
+    relay_timeout: int = field(metadata=field_options(alias="relayTimeout"))
+    missed_checkins: int = field(metadata=field_options(alias="missedCheckins"))
 
 
-class ControllerState(BaseModel):
-    """Details about the controller state."""
+class DeviceTime(SerializationStrategy):
+    """Validate different ways the device time parameter is handled."""
 
-    delay_setting: int = Field(alias="delaySetting")
-    """Number of days that irrigation is paused."""
+    # def serialize(self, value: datetime) -> str:
+    #     return value.strftime(self.fmt)
 
-    sensor_state: int = Field(alias="sensorState")
-    """Rain sensor status."""
-
-    irrigation_state: int = Field(alias="irrigationState")
-    """State of irrigation."""
-
-    seasonal_adjust: int = Field(alias="seasonalAdjust")
-    remaining_runtime: int = Field(alias="remainingRuntime")
-
-    # TODO: Likely need to make this a mask w/ States
-    active_station: int = Field(alias="activeStation")
-
-    device_time: datetime.datetime
-
-    @root_validator(pre=True)
-    def _device_time(cls, values: dict[str, Any]):
-        """Validate different ways the SoilTypes parameter is handled."""
+    def deserialize(self, values: dict[str, Any]) -> datetime.datetime:
+        """Deserialize the device time fields."""
         for field in {"year", "month", "day", "hour", "minute", "second"}:
             if field not in values:
                 raise ValueError(f"Missing field '{field}' in values")
-        values["device_time"] = datetime.datetime(
+        return datetime.datetime(
             int(values["year"]),
             int(values["month"]),
             int(values["day"]),
@@ -405,15 +399,44 @@ class ControllerState(BaseModel):
             int(values["minute"]),
             int(values["second"]),
         )
-        return values
+
+@dataclass
+class ControllerState(DataClassDictMixin):
+    """Details about the controller state."""
+
+    delay_setting: int = field(metadata=field_options(alias="delaySetting"))
+    """Number of days that irrigation is paused."""
+
+    sensor_state: int = field(metadata=field_options(alias="sensorState"))
+    """Rain sensor status."""
+
+    irrigation_state: int = field(metadata=field_options(alias="irrigationState"))
+    """State of irrigation."""
+
+    seasonal_adjust: int = field(metadata=field_options(alias="seasonalAdjust"))
+    remaining_runtime: int = field(metadata=field_options(alias="remainingRuntime"))
+
+    # TODO: Likely need to make this a mask w/ States
+    active_station: int = field(metadata=field_options(alias="activeStation"))
+
+    device_time: datetime.datetime = field(metadata=field_options(serialization_strategy=DeviceTime()))
+
+    @classmethod
+    def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
+        d["device_time"] = {
+            k: d[k]
+            for k in ("year", "month", "day", "hour", "minute", "second")
+        }
+        return d
 
 
-class ControllerInfo(BaseModel):
+@dataclass
+class ControllerInfo(DataClassDictMixin):
     """Data about the controller settings."""
 
-    station_delay: int = Field(alias="stationDelay", default=0)
-    rain_delay: int = Field(alias="rainDelay", default=0)
-    rain_sensor: bool = Field(alias="rainSensor", default=False)
+    station_delay: int = field(metadata=field_options(alias="stationDelay"), default=0)
+    rain_delay: int = field(metadata=field_options(alias="rainDelay"), default=0)
+    rain_sensor: bool = field(metadata=field_options(alias="rainSensor"), default=False)
 
     @property
     def delay_days(self) -> int:
@@ -421,7 +444,8 @@ class ControllerInfo(BaseModel):
         return max(self.station_delay, self.rain_delay)
 
 
-class ZoneDuration(BaseModel):
+@dataclass
+class ZoneDuration(DataClassDictMixin):
     """Program runtime for a specific zone."""
 
     zone: int
@@ -434,18 +458,49 @@ class ZoneDuration(BaseModel):
     def name(self) -> str:
         return f"Zone {self.zone}"
 
-    @validator("zone", pre=True)
-    def _parse_zone(cls, value: int) -> datetime.timedelta:
-        """Parse the zone value."""
-        return value + 1
-
-    @validator("duration", pre=True)
-    def _parse_duration(cls, value: int) -> datetime.timedelta:
-        """Parse the zone duration values."""
-        return datetime.timedelta(minutes=value)
+    @classmethod
+    def __pre_deserialize__(cls, values: dict[Any, Any]) -> dict[Any, Any]:
+        if duration := values.get("duration"):
+            values["duration"] = duration * 60  #datetime.timedelta(minutes=duration)
+        return values
 
 
-class Program(BaseModel):
+class TimeSerializationStrategy(SerializationStrategy):
+    """Validate different ways the device time parameter is handled."""
+
+    def serialize(self, value: Any) -> Any:
+        raise ValueError("Serialize not implemented")
+
+    def deserialize(self, starts: list[int]) -> list[datetime.time]:
+        """Deserialize the device time fields."""
+        result: list[datetime.time] = []
+        for start in starts:
+            if start == 65535:
+                continue
+            result.append(datetime.time(hour=int(start / 60), minute=start % 60))
+        return result
+
+
+
+
+class DayOfWeekSerializationStrategy(SerializationStrategy):
+    """Validate different ways the device time parameter is handled."""
+
+    def serialize(self, value: Any) -> str:
+        raise ValueError("Serialization not implemented")
+
+    def deserialize(self, mask: int) -> list[DayOfWeek]:
+        """Deserialize the device time fields."""
+        _LOGGER.debug("DayOfWeekSerializationStrategy=%s", mask)
+        result: set[DayOfWeek] = set()
+        for day in range(0, 7):
+            if mask & (1 << day):
+                result.add(DayOfWeek(day))
+        return result
+
+
+@dataclass
+class Program(DataClassDictMixin):
     """Details about a program.
 
     The frequency determines which fields of the program are relevant. A
@@ -459,22 +514,22 @@ class Program(BaseModel):
     frequency: ProgramFrequency
     """Determines how often the program runs."""
 
-    days_of_week: set[DayOfWeek] = Field(alias="daysOfWeekMask", default_factory=set)
+    days_of_week: set[DayOfWeek] = field(metadata=field_options(alias="daysOfWeekMask", serialization_strategy=DayOfWeekSerializationStrategy()), default_factory=set)
     """For a CUSTOM program determines the days of the week."""
 
-    period: Optional[int]
+    period: Optional[int] = None
     """For a CYCLIC program determines how often to run."""
 
-    synchro: Optional[int]
+    synchro: Optional[int] = None
     """Days from today before starting the first day of the program."""
 
-    starts: list[datetime.time] = Field(default_factory=list)
+    starts: list[datetime.time] = field(default_factory=list, metadata=field_options(serialization_strategy=TimeSerializationStrategy()))
     """Time of day the program starts."""
 
-    durations: list[ZoneDuration] = Field(default_factory=list)
+    durations: list[ZoneDuration] = field(default_factory=list)
     """Durations for run times for each zone."""
 
-    controller_info: Optional[ControllerInfo] = Field(alias="controllerInfo")
+    controller_info: Optional[ControllerInfo] = field(metadata=field_options(alias="controllerInfo"), default=None)
     """Information about the controller as input into the programs."""
 
     @property
@@ -544,44 +599,22 @@ class Program(BaseModel):
         """Return the number of delays programs are delayed."""
         return self.controller_info.delay_days if self.controller_info else 0
 
-    @root_validator(pre=True)
-    def _clear_other_fields(cls, values: dict[str, Any]) -> set[DayOfWeek]:
-        """Clear fields unrelated to the current frequency."""
-        if ProgramFrequency.CUSTOM != values.get("frequency"):
-            if "daysOfWeekMask" in values:
-                del values["daysOfWeekMask"]
-        if ProgramFrequency.CYCLIC != values.get("frequency"):
-            if "period" in values:
-                del values["period"]
-        return values
-
-    @validator("days_of_week", pre=True)
-    def _parse_days_of_week(cls, mask: int) -> set[DayOfWeek]:
-        """Parse the days of week bitmask to a enum set."""
-        result: set[DayOfWeek] = set()
-        for day in range(0, 7):
-            if mask & (1 << day):
-                result.add(DayOfWeek(day))
-        return result
-
-    @validator("starts", pre=True)
-    def _parse_starts(cls, starts: list[int]) -> set[DayOfWeek]:
-        """Parse the days of week bitmask to a enum set."""
-        result: list[datetime.time] = []
-        for start in starts:
-            if start == 65535:
-                continue
-            result.append(datetime.time(hour=int(start / 60), minute=start % 60))
-        return result
+    def __post_init__(self):
+        if self.frequency != ProgramFrequency.CUSTOM:
+            self.days_of_week = set()
+        if self.frequency != ProgramFrequency.CYCLIC:
+            self.period = None
 
 
-class Schedule(BaseModel):
+
+@dataclass
+class Schedule(DataClassDictMixin):
     """Details about program schedules."""
 
-    controller_info: Optional[ControllerInfo] = Field(alias="controllerInfo")
+    controller_info: Optional[ControllerInfo] = field(metadata=field_options(alias="controllerInfo"))
     """Information about the controller used in the schedule."""
 
-    programs: list[Program] = Field(alias="programInfo")
+    programs: list[Program] = field(metadata=field_options(alias="programInfo"))
     """Details about the currently scheduled programs."""
 
     @property
@@ -615,13 +648,13 @@ class Schedule(BaseModel):
         """Return the number of delays programs are delayed."""
         return self.controller_info.delay_days if self.controller_info else 0
 
-    @root_validator(pre=True)
-    def _parse_start_info(cls, values: dict[str, Any]):
+    @classmethod
+    def __pre_deserialize__(cls, values: dict[Any, Any]) -> dict[Any, Any]:
         """Parse the input values from the response into a usable format."""
         programs = values.get("programStartInfo", [])
         if not programs:
             return values
-        for program_start_info in values.get("programStartInfo"):
+        for program_start_info in programs:
             program = program_start_info.get("program")
             if program is None:
                 continue
@@ -631,14 +664,6 @@ class Schedule(BaseModel):
             values["programInfo"][program]["controllerInfo"] = values.get(
                 "controllerInfo"
             )
-        return values
-
-    @root_validator(pre=True)
-    def _parse_durations(cls, values: dict[str, Any]):
-        """Parse the input values from the response into a usable format."""
-        programs = values.get("programInfo", [])
-        if not programs:
-            return values
         for program in range(0, len(programs)):
             values["programInfo"][program]["durations"] = []
         for zone_durations in values.get("durations", []):
@@ -660,9 +685,8 @@ class Schedule(BaseModel):
                     continue
                 values["programInfo"][program]["durations"].append(
                     {
-                        "zone": zone,
+                        "zone": zone + 1,
                         "duration": duration,
                     }
                 )
-
         return values
