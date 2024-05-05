@@ -383,8 +383,8 @@ class ServerMode(DataClassDictMixin):
 class DeviceTime(SerializationStrategy):
     """Validate different ways the device time parameter is handled."""
 
-    # def serialize(self, value: datetime) -> str:
-    #     return value.strftime(self.fmt)
+    def serialize(self, value: Any) -> Any:
+        raise ValueError("serialize not implemented")
 
     def deserialize(self, values: dict[str, Any]) -> datetime.datetime:
         """Deserialize the device time fields."""
