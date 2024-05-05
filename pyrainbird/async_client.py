@@ -246,37 +246,37 @@ class AsyncRainbirdController:
     async def get_wifi_params(self) -> WifiParams:
         """Return wifi parameters and other settings."""
         result = await self._local_client.request("getWifiParams")
-        return WifiParams.parse_obj(result)
+        return WifiParams.from_dict(result)
 
     async def get_settings(self) -> Settings:
         """Return a combined set of device settings."""
         result = await self._local_client.request("getSettings")
-        return Settings.parse_obj(result)
+        return Settings.from_dict(result)
 
     async def get_weather_adjustment_mask(self) -> WeatherAdjustmentMask:
         """Return the weather adjustment mask, subset of the settings."""
         result = await self._local_client.request("getWeatherAdjustmentMask")
-        return WeatherAdjustmentMask.parse_obj(result)
+        return WeatherAdjustmentMask.from_dict(result)
 
     async def get_zip_code(self) -> ZipCode:
         """Return zip code and location, a subset of the settings."""
         result = await self._local_client.request("getZipCode")
-        return ZipCode.parse_obj(result)
+        return ZipCode.from_dict(result)
 
     async def get_program_info(self) -> ProgramInfo:
         """Return program information, a subset of the settings."""
         result = await self._local_client.request("getProgramInfo")
-        return ProgramInfo.parse_obj(result)
+        return ProgramInfo.from_dict(result)
 
     async def get_network_status(self) -> NetworkStatus:
         """Return the device network status."""
         result = await self._local_client.request("getNetworkStatus")
-        return NetworkStatus.parse_obj(result)
+        return NetworkStatus.from_dict(result)
 
     async def get_server_mode(self) -> ServerMode:
         """Return details about the device server setup."""
         result = await self._local_client.request("getServerMode")
-        return ServerMode.parse_obj(result)
+        return ServerMode.from_dict(result)
 
     async def water_budget(self, budget) -> WaterBudget:
         """Return the water budget."""
@@ -360,7 +360,7 @@ class AsyncRainbirdController:
         result = await self._cloud_client.request(
             "requestScheduleAndSettings", {"StickId": stick_id}
         )
-        return ScheduleAndSettings.parse_obj(result)
+        return ScheduleAndSettings.from_dict(result)
 
     async def get_weather_and_status(
         self, stick_id: str, country: str, zip_code: str
@@ -379,12 +379,12 @@ class AsyncRainbirdController:
                 "ZipCode": zip_code,
             },
         )
-        return WeatherAndStatus.parse_obj(result)
+        return WeatherAndStatus.from_dict(result)
 
     async def get_combined_controller_state(self) -> ControllerState:
         """Return the combined controller state."""
         return await self._process_command(
-            lambda resp: ControllerState.parse_obj(resp),
+            lambda resp: ControllerState.from_dict(resp),
             "CombinedControllerStateRequest",
         )
 
@@ -443,7 +443,7 @@ class AsyncRainbirdController:
                         schedule_data[key].update(value)
                     else:
                         schedule_data[key].append(value)
-        return Schedule.parse_obj(schedule_data)
+        return Schedule.from_dict(schedule_data)
 
     async def get_schedule_command(self, command_code: str) -> dict[str, Any]:
         """Run the schedule command for the specified raw command code."""

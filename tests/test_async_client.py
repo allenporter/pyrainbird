@@ -451,7 +451,7 @@ async def test_get_wifi_params(
     }
     encrypt_response(payload)
     params = await controller.get_wifi_params()
-    assert params.dict() == {
+    assert params.to_dict() == {
         "ap_security": "unknown",
         "ap_timeout_idle": 20,
         "ap_timeout_no_lan": 20,
