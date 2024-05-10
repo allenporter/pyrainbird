@@ -316,6 +316,30 @@ async def test_get_zone_state(
             assert await controller.get_zone_state(j) == (i == j)
 
 
+@pytest.mark.parametrize(
+    ("sip_data", "active_zones"),
+    [
+        ("BF0000000000", []),
+        ("BF0000010000", [9]),
+        ("BF0000000001", [25]),
+        ("BF0000000002", [26]),
+        ("BF0000000004", [27]),
+        ("BF0000381000", [12, 13, 14, 21]),
+    ],
+)
+async def test_get_zone_state_lxivm(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    sip_data_responses: Callable[[list[str]], None],
+    sip_data: str,
+    active_zones: list[int],
+) -> None:
+    controller = await rainbird_controller()
+    sip_data_responses([sip_data])
+    zone_states = await controller.get_zone_states()
+    active_states = sorted(list(zone_states.active_set))
+    assert active_states == active_zones
+
+
 async def test_set_program(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
     api_response: Callable[[...], Awaitable[None]],
@@ -1271,7 +1295,6 @@ async def test_custom_schedule_in_past(
         datetime.datetime(2023, 1, 30, 4, 0, 0),
         datetime.datetime(2023, 2, 5, 4, 0, 0),
     ]
-
 
 
 @freeze_time("2023-01-25 20:00:00")
