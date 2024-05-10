@@ -302,7 +302,7 @@ class AsyncRainbirdController:
             ]
         )
         return await self._process_command(
-            lambda resp: States((mask % resp["activeStations"])[:6]),
+            lambda resp: States((mask % resp["activeStations"])),
             "CurrentStationsActiveRequest",
             0,
         )
