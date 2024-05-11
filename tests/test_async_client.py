@@ -491,6 +491,34 @@ async def test_get_wifi_params(
     }
 
 
+async def test_get_wifi_params_optional_fields(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    encrypt_response: ResponseResult,
+) -> None:
+    controller = await rainbird_controller()
+    payload = {
+        "jsonrpc": "2.0",
+        "result": {},
+        "id": 1234,
+    }
+    encrypt_response(payload)
+    params = await controller.get_wifi_params()
+    assert params.to_dict() == {
+        "ap_security": None,
+        "ap_timeout_idle": None,
+        "ap_timeout_no_lan":None,
+        "local_gateway": None,
+        "local_ip_address": None,
+        "local_netmask": None,
+        "mac_address": None,
+        "rssi": None,
+        "sick_version": None,
+        "wifi_password": None,
+        "wifi_security": None,
+        "wifi_ssid": None,
+    }
+
+
 async def test_get_schedule_and_settings(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
     response: ResponseResult,
