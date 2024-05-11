@@ -195,20 +195,20 @@ class WaterBudget:
 class WifiParams(DataClassDictMixin):
     """Wifi parameters for the device."""
 
-    mac_address: Optional[str] = field(metadata=field_options(alias="macAddress"))
+    mac_address: Optional[str] = field(metadata=field_options(alias="macAddress"), default=None)
     """The mac address for the device, also referred to as the stick id."""
 
-    local_ip_address: Optional[str] = field(metadata=field_options(alias="localIpAddress"))
-    local_netmask: Optional[str] = field(metadata=field_options(alias="localNetmask"))
-    local_gateway: Optional[str] = field(metadata=field_options(alias="localGateway"))
-    rssi: Optional[int]
-    wifi_ssid: Optional[str] = field(metadata=field_options(alias="wifiSsid"))
-    wifi_password: Optional[str] = field(metadata=field_options(alias="wifiPassword"))
-    wifi_security: Optional[str] = field(metadata=field_options(alias="wifiSecurity"))
-    ap_timeout_no_lan: Optional[int] = field(metadata=field_options(alias="apTimeoutNoLan"))
-    ap_timeout_idle: Optional[int] = field(metadata=field_options(alias="apTimeoutIdle"))
-    ap_security: Optional[str] = field(metadata=field_options(alias="apSecurity"))
-    sick_version: Optional[str] = field(metadata=field_options(alias="stickVersion"))
+    local_ip_address: Optional[str] = field(metadata=field_options(alias="localIpAddress"), default=None)
+    local_netmask: Optional[str] = field(metadata=field_options(alias="localNetmask"), default=None)
+    local_gateway: Optional[str] = field(metadata=field_options(alias="localGateway"), default=None)
+    rssi: Optional[int] = None
+    wifi_ssid: Optional[str] = field(metadata=field_options(alias="wifiSsid"), default=None)
+    wifi_password: Optional[str] = field(metadata=field_options(alias="wifiPassword"), default=None)
+    wifi_security: Optional[str] = field(metadata=field_options(alias="wifiSecurity"), default=None)
+    ap_timeout_no_lan: Optional[int] = field(metadata=field_options(alias="apTimeoutNoLan"), default=None)
+    ap_timeout_idle: Optional[int] = field(metadata=field_options(alias="apTimeoutIdle"), default=None)
+    ap_security: Optional[str] = field(metadata=field_options(alias="apSecurity"), default=None)
+    sick_version: Optional[str] = field(metadata=field_options(alias="stickVersion"), default=None)
 
 
 class SoilType(IntEnum):
@@ -246,10 +246,10 @@ class Settings(DataClassDictMixin):
     program_opt_out_mask: str = field(metadata=field_options(alias="programOptOutMask"))
     global_disable: bool = field(metadata=field_options(alias="globalDisable"))
 
-    code: Optional[str]
+    code: Optional[str] = None
     """Zip code for the device."""
 
-    country: Optional[str]
+    country: Optional[str] = None
     """Country location of the device."""
 
     # Program information
@@ -277,10 +277,10 @@ class WeatherAdjustmentMask(DataClassDictMixin):
 class ZipCode(DataClassDictMixin):
     """Get the zip code of the device."""
 
-    code: Optional[str]
+    code: Optional[str] = None
     """Zip code for the device."""
 
-    country: Optional[str]
+    country: Optional[str] = None
     """Country location of the device."""
 
 
@@ -330,19 +330,19 @@ class Forecast(DataClassDictMixin):
     """Weather forecast data from the cloud API."""
 
     date_time: Optional[int] = field(metadata=field_options(alias="dateTime"))
-    icon: Optional[str]
-    description: Optional[str]
-    high: Optional[int]
-    low: Optional[int]
-    chance_of_rain: Optional[int]
-    precip: Optional[float]
+    icon: Optional[str] = None
+    description: Optional[str] = None
+    high: Optional[int] = None
+    low: Optional[int] = None
+    chance_of_rain: Optional[int] = None
+    precip: Optional[float] = None
 
 
 @dataclass
 class Weather(DataClassDictMixin):
     """Weather settings from the cloud API."""
 
-    city: Optional[str]
+    city: Optional[str] = None
     forecast: list[Forecast] = field(default_factory=list)
     location: Optional[str] = None
     time_zone_id: Optional[str] = field(metadata=field_options(alias="timeZoneId"), default=None)
@@ -353,10 +353,10 @@ class Weather(DataClassDictMixin):
 class WeatherAndStatus(DataClassDictMixin):
     """Weather and status from the cloud API."""
 
-    stick_id: Optional[str] = field(metadata=field_options(alias="StickId"))
-    controller: Optional[Controller] = field(metadata=field_options(alias="Controller"))
-    forecasted_rain: Optional[dict[str, Any]] = field(metadata=field_options(alias="ForecastedRain"))
-    weather: Optional[Weather] = field(metadata=field_options(alias="Weather"))
+    stick_id: Optional[str] = field(metadata=field_options(alias="StickId"), default=None)
+    controller: Optional[Controller] = field(metadata=field_options(alias="Controller"), default=None)
+    forecasted_rain: Optional[dict[str, Any]] = field(metadata=field_options(alias="ForecastedRain"), default=None)
+    weather: Optional[Weather] = field(metadata=field_options(alias="Weather"), default=None)
 
 
 @dataclass
