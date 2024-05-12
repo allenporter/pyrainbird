@@ -18,6 +18,14 @@ repos:
     args:
     - --fix
     - --exit-non-zero-on-fix
+- repo: local
+  hooks:
+    - id: mypy
+      name: mypy
+      entry: script/run-mypy
+      language: script
+      types: [python]
+      require_serial: true
 - repo: https://github.com/codespell-project/codespell
   rev: v2.2.6
   hooks:
@@ -30,3 +38,7 @@ repos:
     args:
     - -c
     - ".yaml-lint.yaml"
+- repo: https://github.com/asottile/setup-cfg-fmt
+  rev: v2.5.0
+  hooks:
+  - id: setup-cfg-fmt
