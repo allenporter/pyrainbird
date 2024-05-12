@@ -1,0 +1,6 @@
+[tool.mypy]
+exclude = [
+  "tests/",
+  "examples/",
+  "venv/",
+]
