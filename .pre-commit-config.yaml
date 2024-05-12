@@ -22,7 +22,7 @@ repos:
     hooks:
       - id: mypy
         name: mypy
-        entry: script/run-mypy
+        entry: script/run-mypy.sh
         language: script
         types: [python]
         require_serial: true
