@@ -61,7 +61,7 @@ class ProgramEvent:
 
     program_id: ProgramId
     start: datetime.datetime
-    end: datetime.dateetime
+    end: datetime.datetime
     rule: rrule.rrule | None = None
 
     @property
@@ -76,7 +76,7 @@ class ProgramEvent:
         return parts[1].lstrip("RRULE:")
 
 
-class ProgramTimeline(SortableItemTimeline[Timespan, ProgramEvent]):
+class ProgramTimeline(SortableItemTimeline[ProgramEvent]):
     """A timeline of events in an irrigation program."""
 
 
@@ -135,7 +135,11 @@ def create_recurrence(
         )
     ruleset.rrule(rule)
 
-    def adapter(dtstart: datetime.datetime) -> SortableItem[Timespan, ProgramEvent]:
+    def adapter(
+        dtstart: datetime.datetime | datetime.date,
+    ) -> SortableItem[Timespan, ProgramEvent]:
+        if not isinstance(dtstart, datetime.datetime):
+            raise ValueError("Expected datetime, got date")
         dtend = dtstart + duration
 
         def build() -> ProgramEvent:

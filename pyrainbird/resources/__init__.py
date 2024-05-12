@@ -16,10 +16,10 @@ DECODER = "decoder"
 RESERVED_FIELDS = [COMMAND, TYPE, LENGTH, RESPONSE, DECODER]
 
 SIP_COMMANDS = yaml.load(
-    pkgutil.get_data(__name__, "sipcommands.yaml"), Loader=yaml.FullLoader
+    pkgutil.get_data(__name__, "sipcommands.yaml") or b"", Loader=yaml.FullLoader
 )
 MODEL_INFO = yaml.load(
-    pkgutil.get_data(__name__, "models.yaml"), Loader=yaml.FullLoader
+    pkgutil.get_data(__name__, "models.yaml") or b"", Loader=yaml.FullLoader
 )
 
 RAINBIRD_MODELS = {info["device_id"]: info for info in MODEL_INFO}

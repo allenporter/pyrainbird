@@ -88,7 +88,7 @@ def _device_busy_retry() -> JitterRetry:
     return JitterRetry(
         attempts=_retry_attempts(),
         start_timeout=_retry_delay(),
-        statuses=[HTTPStatus.SERVICE_UNAVAILABLE.value],
+        statuses=set([HTTPStatus.SERVICE_UNAVAILABLE.value]),
         retry_all_server_errors=False,
     )
 
@@ -114,10 +114,10 @@ class AsyncRainbirdClient:
         self._password = password
         self._coder = encryption.PayloadCoder(password, _LOGGER)
 
-    def with_retry_options(self, retry_options: RetryOptions) -> "AsyncRainbirdClient":
+    def with_retry_options(self, retry_options: RetryOptions) -> "AsyncRainbirdClient":  # type: ignore[valid-type]
         """Create a new AsyncRainbirdClient with retry options."""
         return AsyncRainbirdClient(
-            RetryClient(client_session=self._websession, retry_options=retry_options),
+            RetryClient(client_session=self._websession, retry_options=retry_options),  # type: ignore[arg-type]
             self._host,
             self._password,
         )
@@ -147,7 +147,7 @@ class AsyncRainbirdClient:
                 "Error communicating with Rain Bird device"
             ) from err
         content = await resp.read()
-        return self._coder.decode_command(content)
+        return self._coder.decode_command(content)  # type: ignore
 
 
 def CreateController(
@@ -165,7 +165,7 @@ class AsyncRainbirdController:
     def __init__(
         self,
         local_client: AsyncRainbirdClient,
-        cloud_client: AsyncRainbirdClient = None,
+        cloud_client: AsyncRainbirdClient | None = None,
     ) -> None:
         """Initialize AsyncRainbirdController."""
         self._local_client = local_client
@@ -418,7 +418,7 @@ class AsyncRainbirdController:
             commands.append("%04x" % (0x80 | zone_page))
         _LOGGER.debug("Sending schedule commands: %s", commands)
         # Run command serially to avoid overwhelming the controller
-        schedule_data = {
+        schedule_data: dict[str, Any] = {
             "controllerInfo": {},
             "programInfo": [],
             "programStartInfo": [],
@@ -426,7 +426,7 @@ class AsyncRainbirdController:
         }
         for command in commands:
             result = await self._process_command(
-                None, "RetrieveScheduleRequest", int(command, 16)  # Disable validation
+                None, "RetrieveScheduleRequest", int(command, 16)  # type: ignore
             )
             if not isinstance(result, dict):
                 continue
@@ -509,4 +509,4 @@ class AsyncRainbirdController:
             return result
         result = await self._process_command(funct, command, *args)
         self._cache[key] = result
-        return result
+        return result  # type: ignore

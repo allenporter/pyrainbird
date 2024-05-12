@@ -100,7 +100,7 @@ class PayloadCoder:
             return send_data
         return encrypt(send_data, self._password)
 
-    def decode_command(self, content: bytes) -> str:
+    def decode_command(self, content: bytes) -> str | dict[str, Any]:
         """Decode a response payload."""
         if self._password is not None:
             decrypted_data = (
@@ -112,7 +112,7 @@ class PayloadCoder:
                 .rstrip()
             )
             content = decrypted_data
-        self._logger.debug("Response: %s" % content)
+        self._logger.debug("Response: %r" % content)
         response = json.loads(content)
         if error := response.get("error"):
             msg = ["Error from controller"]

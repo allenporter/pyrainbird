@@ -130,7 +130,7 @@ class States:
     """Rainbird controller response containing a bitmask string e.g. active zones."""
 
     count: int
-    mask: str
+    mask: int
     states: tuple
 
     def __init__(self, mask: str) -> None:
@@ -195,20 +195,42 @@ class WaterBudget:
 class WifiParams(DataClassDictMixin):
     """Wifi parameters for the device."""
 
-    mac_address: Optional[str] = field(metadata=field_options(alias="macAddress"), default=None)
+    mac_address: Optional[str] = field(
+        metadata=field_options(alias="macAddress"), default=None
+    )
     """The mac address for the device, also referred to as the stick id."""
 
-    local_ip_address: Optional[str] = field(metadata=field_options(alias="localIpAddress"), default=None)
-    local_netmask: Optional[str] = field(metadata=field_options(alias="localNetmask"), default=None)
-    local_gateway: Optional[str] = field(metadata=field_options(alias="localGateway"), default=None)
+    local_ip_address: Optional[str] = field(
+        metadata=field_options(alias="localIpAddress"), default=None
+    )
+    local_netmask: Optional[str] = field(
+        metadata=field_options(alias="localNetmask"), default=None
+    )
+    local_gateway: Optional[str] = field(
+        metadata=field_options(alias="localGateway"), default=None
+    )
     rssi: Optional[int] = None
-    wifi_ssid: Optional[str] = field(metadata=field_options(alias="wifiSsid"), default=None)
-    wifi_password: Optional[str] = field(metadata=field_options(alias="wifiPassword"), default=None)
-    wifi_security: Optional[str] = field(metadata=field_options(alias="wifiSecurity"), default=None)
-    ap_timeout_no_lan: Optional[int] = field(metadata=field_options(alias="apTimeoutNoLan"), default=None)
-    ap_timeout_idle: Optional[int] = field(metadata=field_options(alias="apTimeoutIdle"), default=None)
-    ap_security: Optional[str] = field(metadata=field_options(alias="apSecurity"), default=None)
-    sick_version: Optional[str] = field(metadata=field_options(alias="stickVersion"), default=None)
+    wifi_ssid: Optional[str] = field(
+        metadata=field_options(alias="wifiSsid"), default=None
+    )
+    wifi_password: Optional[str] = field(
+        metadata=field_options(alias="wifiPassword"), default=None
+    )
+    wifi_security: Optional[str] = field(
+        metadata=field_options(alias="wifiSecurity"), default=None
+    )
+    ap_timeout_no_lan: Optional[int] = field(
+        metadata=field_options(alias="apTimeoutNoLan"), default=None
+    )
+    ap_timeout_idle: Optional[int] = field(
+        metadata=field_options(alias="apTimeoutIdle"), default=None
+    )
+    ap_security: Optional[str] = field(
+        metadata=field_options(alias="apSecurity"), default=None
+    )
+    sick_version: Optional[str] = field(
+        metadata=field_options(alias="stickVersion"), default=None
+    )
 
 
 class SoilType(IntEnum):
@@ -227,9 +249,15 @@ class ProgramInfo(DataClassDictMixin):
     The values are repeated once for each program.
     """
 
-    soil_types: list[SoilType] = field(default_factory=list, metadata=field_options(alias="SoilTypes"))
-    flow_rates: list[int] = field(default_factory=list, metadata=field_options(alias="FlowRates"))
-    flow_units: list[int] = field(default_factory=list, metadata=field_options(alias="FlowUnits"))
+    soil_types: list[SoilType] = field(
+        default_factory=list, metadata=field_options(alias="SoilTypes")
+    )
+    flow_rates: list[int] = field(
+        default_factory=list, metadata=field_options(alias="FlowRates")
+    )
+    flow_units: list[int] = field(
+        default_factory=list, metadata=field_options(alias="FlowUnits")
+    )
 
     @classmethod
     def __pre_deserialize__(cls, values: dict[Any, Any]) -> dict[Any, Any]:
@@ -253,9 +281,15 @@ class Settings(DataClassDictMixin):
     """Country location of the device."""
 
     # Program information
-    soil_types: list[SoilType] = field(default_factory=list, metadata=field_options(alias="SoilTypes"))
-    flow_rates: list[int] = field(default_factory=list, metadata=field_options(alias="FlowRates"))
-    flow_units: list[int] = field(default_factory=list, metadata=field_options(alias="FlowUnits"))
+    soil_types: list[SoilType] = field(
+        default_factory=list, metadata=field_options(alias="SoilTypes")
+    )
+    flow_rates: list[int] = field(
+        default_factory=list, metadata=field_options(alias="FlowRates")
+    )
+    flow_units: list[int] = field(
+        default_factory=list, metadata=field_options(alias="FlowUnits")
+    )
 
     @classmethod
     def __pre_deserialize__(cls, values: dict[Any, Any]) -> dict[Any, Any]:
@@ -294,7 +328,7 @@ class ScheduleAndSettings:
     @property
     def status(self) -> str:
         """Return device status."""
-        return self._status
+        return self._status or "unknown"
 
     @property
     def settings(self) -> Optional[Settings]:
@@ -316,7 +350,9 @@ class Controller(DataClassDictMixin):
     available_stations: list[int] = field(
         metadata=field_options(alias="availableStations"), default_factory=list
     )
-    custom_name: Optional[str] = field(metadata=field_options(alias="customName"), default=None)
+    custom_name: Optional[str] = field(
+        metadata=field_options(alias="customName"), default=None
+    )
     custom_program_names: dict[str, str] = field(
         metadata=field_options(alias="customProgramNames"), default_factory=dict
     )
@@ -345,18 +381,30 @@ class Weather(DataClassDictMixin):
     city: Optional[str] = None
     forecast: list[Forecast] = field(default_factory=list)
     location: Optional[str] = None
-    time_zone_id: Optional[str] = field(metadata=field_options(alias="timeZoneId"), default=None)
-    time_zone_raw_offset: Optional[str] = field(metadata=field_options(alias="timeZoneRawOffset"), default=None)
+    time_zone_id: Optional[str] = field(
+        metadata=field_options(alias="timeZoneId"), default=None
+    )
+    time_zone_raw_offset: Optional[str] = field(
+        metadata=field_options(alias="timeZoneRawOffset"), default=None
+    )
 
 
 @dataclass
 class WeatherAndStatus(DataClassDictMixin):
     """Weather and status from the cloud API."""
 
-    stick_id: Optional[str] = field(metadata=field_options(alias="StickId"), default=None)
-    controller: Optional[Controller] = field(metadata=field_options(alias="Controller"), default=None)
-    forecasted_rain: Optional[dict[str, Any]] = field(metadata=field_options(alias="ForecastedRain"), default=None)
-    weather: Optional[Weather] = field(metadata=field_options(alias="Weather"), default=None)
+    stick_id: Optional[str] = field(
+        metadata=field_options(alias="StickId"), default=None
+    )
+    controller: Optional[Controller] = field(
+        metadata=field_options(alias="Controller"), default=None
+    )
+    forecasted_rain: Optional[dict[str, Any]] = field(
+        metadata=field_options(alias="ForecastedRain"), default=None
+    )
+    weather: Optional[Weather] = field(
+        metadata=field_options(alias="Weather"), default=None
+    )
 
 
 @dataclass
@@ -398,6 +446,7 @@ class DeviceTime(SerializationStrategy):
             int(values["second"]),
         )
 
+
 @dataclass
 class ControllerState(DataClassDictMixin):
     """Details about the controller state."""
@@ -417,13 +466,14 @@ class ControllerState(DataClassDictMixin):
     # TODO: Likely need to make this a mask w/ States
     active_station: int = field(metadata=field_options(alias="activeStation"))
 
-    device_time: datetime.datetime = field(metadata=field_options(serialization_strategy=DeviceTime()))
+    device_time: datetime.datetime = field(
+        metadata=field_options(serialization_strategy=DeviceTime())
+    )
 
     @classmethod
     def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
         d["device_time"] = {
-            k: d[k]
-            for k in ("year", "month", "day", "hour", "minute", "second")
+            k: d[k] for k in ("year", "month", "day", "hour", "minute", "second")
         }
         return d
 
@@ -459,7 +509,7 @@ class ZoneDuration(DataClassDictMixin):
     @classmethod
     def __pre_deserialize__(cls, values: dict[Any, Any]) -> dict[Any, Any]:
         if duration := values.get("duration"):
-            values["duration"] = duration * 60  #datetime.timedelta(minutes=duration)
+            values["duration"] = duration * 60  # datetime.timedelta(minutes=duration)
         return values
 
 
@@ -479,15 +529,13 @@ class TimeSerializationStrategy(SerializationStrategy):
         return result
 
 
-
-
 class DayOfWeekSerializationStrategy(SerializationStrategy):
     """Validate different ways the device time parameter is handled."""
 
     def serialize(self, value: Any) -> str:
         raise ValueError("Serialization not implemented")
 
-    def deserialize(self, mask: int) -> list[DayOfWeek]:
+    def deserialize(self, mask: int) -> set[DayOfWeek]:
         """Deserialize the device time fields."""
         _LOGGER.debug("DayOfWeekSerializationStrategy=%s", mask)
         result: set[DayOfWeek] = set()
@@ -512,7 +560,13 @@ class Program(DataClassDictMixin):
     frequency: ProgramFrequency
     """Determines how often the program runs."""
 
-    days_of_week: set[DayOfWeek] = field(metadata=field_options(alias="daysOfWeekMask", serialization_strategy=DayOfWeekSerializationStrategy()), default_factory=set)
+    days_of_week: set[DayOfWeek] = field(
+        metadata=field_options(
+            alias="daysOfWeekMask",
+            serialization_strategy=DayOfWeekSerializationStrategy(),
+        ),
+        default_factory=set,
+    )
     """For a CUSTOM program determines the days of the week."""
 
     period: Optional[int] = None
@@ -521,13 +575,18 @@ class Program(DataClassDictMixin):
     synchro: Optional[int] = None
     """Days from today before starting the first day of the program."""
 
-    starts: list[datetime.time] = field(default_factory=list, metadata=field_options(serialization_strategy=TimeSerializationStrategy()))
+    starts: list[datetime.time] = field(
+        default_factory=list,
+        metadata=field_options(serialization_strategy=TimeSerializationStrategy()),
+    )
     """Time of day the program starts."""
 
     durations: list[ZoneDuration] = field(default_factory=list)
     """Durations for run times for each zone."""
 
-    controller_info: Optional[ControllerInfo] = field(metadata=field_options(alias="controllerInfo"), default=None)
+    controller_info: Optional[ControllerInfo] = field(
+        metadata=field_options(alias="controllerInfo"), default=None
+    )
     """Information about the controller as input into the programs."""
 
     @property
@@ -541,7 +600,7 @@ class Program(DataClassDictMixin):
         """Return a timeline of events for the program."""
         return self.timeline_tz(datetime.datetime.now().tzinfo)
 
-    def timeline_tz(self, tzinfo: datetime.tzinfo) -> ProgramTimeline:
+    def timeline_tz(self, tzinfo: datetime.tzinfo | None) -> ProgramTimeline:
         """Return a timeline of events for the program."""
         iters: list[Iterable[SortableItem[Timespan, ProgramEvent]]] = []
         now = datetime.datetime.now(tzinfo)
@@ -553,9 +612,9 @@ class Program(DataClassDictMixin):
                     self.frequency,
                     dtstart,
                     self.duration,
-                    self.synchro,
+                    self.synchro or 0,
                     self.days_of_week,
-                    self.period,
+                    self.period or 0,
                     delay_days=self.delay_days,
                 ),
             )
@@ -575,9 +634,9 @@ class Program(DataClassDictMixin):
                         self.frequency,
                         dtstart,
                         zone_duration.duration,
-                        self.synchro,
+                        self.synchro or 0,
                         self.days_of_week,
-                        self.period,
+                        self.period or 0,
                         delay_days=self.delay_days,
                     )
                 )
@@ -604,12 +663,13 @@ class Program(DataClassDictMixin):
             self.period = None
 
 
-
 @dataclass
 class Schedule(DataClassDictMixin):
     """Details about program schedules."""
 
-    controller_info: Optional[ControllerInfo] = field(metadata=field_options(alias="controllerInfo"))
+    controller_info: Optional[ControllerInfo] = field(
+        metadata=field_options(alias="controllerInfo")
+    )
     """Information about the controller used in the schedule."""
 
     programs: list[Program] = field(metadata=field_options(alias="programInfo"))
@@ -620,7 +680,7 @@ class Schedule(DataClassDictMixin):
         """Return a timeline of all programs."""
         return self.timeline_tz(datetime.datetime.now().tzinfo)
 
-    def timeline_tz(self, tzinfo: datetime.tzinfo) -> ProgramTimeline:
+    def timeline_tz(self, tzinfo: datetime.tzinfo | None) -> ProgramTimeline:
         """Return a timeline of all programs."""
         iters: list[Iterable[SortableItem[Timespan, ProgramEvent]]] = []
         now = datetime.datetime.now(tzinfo)
@@ -633,9 +693,9 @@ class Schedule(DataClassDictMixin):
                         program.frequency,
                         dtstart,
                         program.duration,
-                        program.synchro,
+                        program.synchro or 0,
                         program.days_of_week,
-                        program.period,
+                        program.period or 0,
                         delay_days=self.delay_days,
                     )
                 )

@@ -34,7 +34,7 @@ def decode_template(data: str, cmd_template: dict[str, Any]) -> dict[str, int]:
 def decode_schedule(data: str, cmd_template: dict[str, Any]) -> dict[str, Any]:
     """Decode a schedule command."""
     subcommand = int(data[4:6], 16)
-    rest = data[6:]
+    rest: str | bytes = data[6:]
     if subcommand == 0:
         if len(rest) < 8:
             return {}
