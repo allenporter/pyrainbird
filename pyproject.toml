@@ -2,6 +2,7 @@
 exclude = [
   "tests/",
   "examples/",
+  "setup.py",
   "venv/",
 ]
 platform = "linux"
