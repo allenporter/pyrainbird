@@ -20,8 +20,5 @@ pytest-aiohttp==1.0.5
 pytest-asyncio==0.23.7
 pytest-golden==0.2.2
 python-dateutil==2.9.0.post0
-requests==2.31.0
-requests-mock==1.12.1
 responses==0.25.0
 types-PyYAML==6.0.12.20240311
-types-requests==2.32.0.20240523
