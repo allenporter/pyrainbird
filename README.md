@@ -9,21 +9,24 @@ See the [github project](https://github.com/allenporter/pyrainbird).
 
 This is an example usage to get the current irrigation state for all available
 irrigation zones:
-```
+```python
+import asyncio
 import aiohttp
 from pyrainbird import async_client
 
-async with aiohttp.ClientSession() as client:
-    controller: AsyncRainbirdController = async_client.CreateController(
-        client,
-        "192.168.1.1",
-        "password"
-    )
-    zones = await controller.get_available_stations()
-    states = await controller.get_zone_states()
-    for zone in zones:
-        if zone in states.active_set:
-            print("Sprinkler zone {zone} is active")
+async def main() -> None:
+    async with aiohttp.ClientSession() as client:
+        controller: async_client.AsyncRainbirdController = async_client.CreateController(
+            client,
+            "192.168.1.1",
+            "password"
+        )
+        zones = await controller.get_available_stations()
+        states = await controller.get_zone_states()
+        for zone in zones.active_set:
+            print(f"Sprinkler zone {zone}: {"active" if zone in states.active_set else "inactive"}")
+
+asyncio.run(main())
 ```
 
 See [examples](examples/) for additional details on how to use the APIs and an example command
