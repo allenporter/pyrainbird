@@ -13,6 +13,7 @@ from typing import Optional
 from mitmproxy import contentviews, flow, http
 
 import pyrainbird
+import pyrainbird.encryption
 from pyrainbird import rainbird
 
 
@@ -79,6 +80,7 @@ class DecodeRainbirdView(contentviews.View):
             return 0
         if content_type != "application/octet-stream":
             return 0
+        assert isinstance(flow, http.HTTPFlow)
         if flow.request:
             if "/stick" in flow.request.path:
                 return 1

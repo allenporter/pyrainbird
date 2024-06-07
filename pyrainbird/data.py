@@ -79,10 +79,10 @@ class ModelAndVersion:
     model: int
     """The device model number hex code."""
 
-    major: str
+    major: int
     """The major version string."""
 
-    minor: str
+    minor: int
     """The minor version string."""
 
     @property
