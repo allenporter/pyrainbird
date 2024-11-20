@@ -33,7 +33,7 @@ jobs:
       - name: Test with pytest
         run: |
           pytest --cov=pyrainbird --cov-report=term-missing
-      - uses: codecov/codecov-action@v5.0.4
+      - uses: codecov/codecov-action@v5.0.6
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           env_vars: OS,PYTHON
