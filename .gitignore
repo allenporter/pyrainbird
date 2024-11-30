@@ -20,10 +20,7 @@ parts/
 sdist/
 var/
 wheels/
-<<<<<<< ours
-=======
 share/python-wheels/
->>>>>>> theirs
 *.egg-info/
 .installed.cfg
 *.egg
@@ -42,25 +39,17 @@ pip-delete-this-directory.txt
 # Unit test / coverage reports
 htmlcov/
 .tox/
-<<<<<<< ours
-=======
 .nox/
->>>>>>> theirs
 .coverage
 .coverage.*
 .cache
 nosetests.xml
 coverage.xml
 *.cover
-<<<<<<< ours
-.hypothesis/
-.pytest_cache/
-=======
 *.py,cover
 .hypothesis/
 .pytest_cache/
 cover/
->>>>>>> theirs
 
 # Translations
 *.mo
@@ -70,10 +59,7 @@ cover/
 *.log
 local_settings.py
 db.sqlite3
-<<<<<<< ours
-=======
 db.sqlite3-journal
->>>>>>> theirs
 
 # Flask stuff:
 instance/
@@ -86,10 +72,7 @@ instance/
 docs/_build/
 
 # PyBuilder
-<<<<<<< ours
-=======
 .pybuilder/
->>>>>>> theirs
 target/
 
 # Jupyter Notebook
@@ -141,7 +124,6 @@ __pypackages__/
 # Celery stuff
 celerybeat-schedule
 celerybeat.pid
->>>>>>> theirs
 
 # SageMath parsed files
 *.sage.py
@@ -167,11 +149,8 @@ venv.bak/
 
 # mypy
 .mypy_cache/
-<<<<<<< ours
 /.idea/
-=======
 .dmypy.json
 dmypy.json
 
 .DS_Store
->>>>>>> theirs
