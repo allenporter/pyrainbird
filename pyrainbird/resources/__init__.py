@@ -18,6 +18,9 @@ RESERVED_FIELDS = [COMMAND, TYPE, LENGTH, RESPONSE, DECODER]
 SIP_COMMANDS = yaml.load(
     pkgutil.get_data(__name__, "sipcommands.yaml") or b"", Loader=yaml.FullLoader
 )
+UNIVERSAL_COMMANDS = yaml.load(
+    pkgutil.get_data(__name__, "universalcommands.yaml") or b"", Loader=yaml.FullLoader
+)
 MODEL_INFO = yaml.load(
     pkgutil.get_data(__name__, "models.yaml") or b"", Loader=yaml.FullLoader
 )
@@ -46,4 +49,14 @@ RAINBIRD_COMMANDS = {
 RAINBIRD_COMMANDS_BY_ID = {
     **build_id_map(SIP_COMMANDS[CONTROLLER_COMMANDS]),
     **build_id_map(SIP_COMMANDS[CONTROLLER_RESPONSES]),
+}
+
+RAINBIRD_UNIVERSAL_COMMANDS = {
+    **UNIVERSAL_COMMANDS[CONTROLLER_COMMANDS],
+    **UNIVERSAL_COMMANDS[CONTROLLER_RESPONSES],
+}
+print(UNIVERSAL_COMMANDS)
+RAINBIRD_UNIVERSAL_COMMANDS_BY_ID = {
+    **build_id_map(UNIVERSAL_COMMANDS[CONTROLLER_COMMANDS]),
+    **build_id_map(UNIVERSAL_COMMANDS[CONTROLLER_RESPONSES]),
 }

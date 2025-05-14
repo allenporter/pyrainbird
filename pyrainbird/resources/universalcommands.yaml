@@ -1,0 +1,41 @@
+---
+ControllerCommands:
+  RetrieveScheduleRequest:
+    command: '20'
+    response: 'A0'
+    param_0:
+      position: 2
+      length: 4
+    param_1:
+      position: 6
+      length: 4
+    param_2:
+      position: 10
+      length: 2
+    param_3_prefix:
+      position: 12
+      length: 8
+    param_3:
+      position: 20
+      length: 2
+    param_4_prefix:
+      position: 22
+      length: 10
+    param_4:
+      position: 32
+      length: 2
+    # program_number:
+    #   position: 2
+    #   length: 5
+    # empty:
+    #   position: 2
+    #   length: 2
+    # request_type:
+    #   position: 4
+    #   length: 1
+    # request_type_params:
+    #   position: 5
+    #   length: 1
+ControllerResponses:
+  RetrieveScheduleResponse:
+    command: 'A0'
