@@ -24,7 +24,11 @@ ControllerCommands:
     command: '0B'
     response: '8B'
     length: 1
-  # UniversalMessageRequest
+  UniversalMessageRequest:
+    command: '0C'
+    response: '8C'
+    length: 1
+    decoder: decode_universal_message
   CurrentTimeRequest:
     command: '10'
     response: '90'
@@ -63,9 +67,17 @@ ControllerCommands:
   # SetTimeZoneRequest: 2B
   RetrieveScheduleRequest:
     command: '20'
-    parameter: 0
     response: 'A0'
-    length: 3
+    # length: 10
+    empty:
+      position: 2
+      length: 2
+    request_type:
+      position: 4
+      length: 1
+    request_type_params:
+      position: 5
+      length: 1
   # SetSchedule: 21
   WaterBudgetRequest:
     command: '30'
@@ -240,7 +252,9 @@ ControllerResponses:
     patch:
       position: 6
       length: 4
-  # UniversalMessageTransportResponse 8C
+  UniversalMessageTransportResponse:
+    command: '8C'
+    decoder: decode_universal_message
   CurrentTimeResponse:
     command: '90'
     length: 4
