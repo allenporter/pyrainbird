@@ -1,0 +1,79 @@
+data:
+  - "200000"
+  - "200010"
+  - "200011"
+  - "200012"
+  - "200060"
+  - "200061"
+  - "200062"
+  - "200080"
+  - "200081"
+  - "200082"
+  - "200083"
+  - "200084"
+  - "200085"
+  # - A000106A0601006401
+  # - A000116A0300006400
+  # - A00012000300006400
+  # - A0006000F0FFFFFFFFFFFF
+  # - A00061FFFFFFFFFFFFFFFF
+  # - A00062FFFFFFFFFFFFFFFF
+  # - A00080001900000000001400000000
+  # - A00081000700000000001400000000
+  # - A00082000A00000000000000000000
+  # - A00083000000000000000000000000
+  # - A00084000000000000000000000000
+  # - A00085000000000000000000000000
+decoded_data:
+  - type: RetrieveScheduleRequest
+    empty: 0
+    request_type: 0
+    request_type_params: 0
+  - type: RetrieveScheduleRequest
+    empty: 0
+    request_type: 1
+    request_type_params: 0
+  - type: RetrieveScheduleRequest
+    empty: 0
+    request_type: 1
+    request_type_params: 1
+  - type: RetrieveScheduleRequest
+    empty: 0
+    request_type: 1
+    request_type_params: 2
+  - type: RetrieveScheduleRequest
+    empty: 0
+    request_type: 6
+    request_type_params: 0
+  - type: RetrieveScheduleRequest
+    empty: 0
+    request_type: 6
+    request_type_params: 1
+  - type: RetrieveScheduleRequest
+    empty: 0
+    request_type: 6
+    request_type_params: 2
+  - type: RetrieveScheduleRequest
+    empty: 0
+    request_type: 8
+    request_type_params: 0
+  - type: RetrieveScheduleRequest
+    empty: 0
+    request_type: 8
+    request_type_params: 1
+  - type: RetrieveScheduleRequest
+    empty: 0
+    request_type: 8
+    request_type_params: 2
+  - type: RetrieveScheduleRequest
+    empty: 0
+    request_type: 8
+    request_type_params: 3
+  - type: RetrieveScheduleRequest
+    empty: 0
+    request_type: 8
+    request_type_params: 4
+  - type: RetrieveScheduleRequest
+    empty: 0
+    request_type: 8
+    request_type_params: 5

@@ -11,6 +11,7 @@ from .resources import (
     POSITION,
     RAINBIRD_COMMANDS,
     RAINBIRD_COMMANDS_BY_ID,
+    RAINBIRD_UNIVERSAL_COMMANDS_BY_ID,
     RESERVED_FIELDS,
     TYPE,
 )
@@ -166,12 +167,33 @@ def decode_queue(data: str, cmd_template: dict[str, Any]) -> dict[str, Any]:
     return {"data": data}
 
 
+def decode_universal_message(data: str, cmd_template: dict[str, Any]) -> dict[str, Any]:
+    """Decode a universal message request."""
+    cmd = data[:2]
+    body = data[2:]
+    inner_request_command_code = data[2:4]
+    _LOGGER.debug(
+        "Decoding inner request command code '%s' from '%s'",
+        inner_request_command_code,
+        data,
+    )
+    request_template = RAINBIRD_UNIVERSAL_COMMANDS_BY_ID.get(inner_request_command_code)
+    _LOGGER.debug("Request template: %s", request_template)
+    if cmd == "8C":
+        body = request_template["response"] + body[2:]
+    return {
+        TYPE: request_template[TYPE],
+        **decode_template(body, request_template)
+    }
+
+
 DEFAULT_DECODER = "decode_template"
 
 DECODERS: dict[str, Callable[[str, dict[str, Any]], dict[str, Any]]] = {
     "decode_template": decode_template,
     "decode_schedule": decode_schedule,
     "decode_queue": decode_queue,
+    "decode_universal_message": decode_universal_message,
 }
 
 
@@ -184,6 +206,9 @@ def decode(data: str) -> dict[str, Any]:
         )
         return {"data": data}
     decoder = DECODERS[cmd_template.get(DECODER, DEFAULT_DECODER)]
+    _LOGGER.debug(
+        "Decoding command type '%s'", cmd_template[TYPE]
+    )
     return {TYPE: cmd_template[TYPE], **decoder(data, cmd_template)}
 
 
