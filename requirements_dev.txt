@@ -10,7 +10,7 @@ pytest==8.4.1
 ruff==0.12.2
 
 
-aiohttp==3.12.13
+aiohttp==3.12.14
 aiohttp_retry==2.9.1
 freezegun==1.5.2
 mitmproxy==12.1.1
