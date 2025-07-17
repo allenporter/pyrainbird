@@ -1,8 +1,39 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = ["setuptools>=77.0"]
+
+[project]
+name = "pyrainbird"
+version = "6.0.2"
+license = "MIT"
+license-files = ["LICENSE"]
+description = "Rain Bird Controller"
+readme = "README.md"
+authors = [
+  { name = "J.J.Barrancos", email = "jordy@fusion-ict.nl" },
+  { name = "Allen Porter", email = "allen.porter@gmail.com" },
+]
+requires-python = ">=3.11"
+classifiers = []
+dependencies = [
+  "pycryptodome>=3.16.0",
+  "PyYAML>=5.4",
+  "mashumaro>=3.12",
+  "python-dateutil>=2.8.2",
+  "ical>=4.2.9",
+  "aiohttp_retry>=2.8.3",
+]
+
+[project.urls]
+Source = "https://github.com/allenporter/pyrainbird"
+
+[tool.setuptools.packages.find]
+include = ["pyrainbird*"]
+
 [tool.mypy]
 exclude = [
   "tests/",
   "examples/",
-  "setup.py",
   "venv/",
 ]
 platform = "linux"
