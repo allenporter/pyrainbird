@@ -12,7 +12,7 @@ ruff==0.12.8
 
 aiohttp==3.12.15
 aiohttp_retry==2.9.1
-freezegun==1.5.4
+freezegun==1.5.5
 mitmproxy==12.1.1
 parameterized==0.9.0
 mashumaro==3.16
