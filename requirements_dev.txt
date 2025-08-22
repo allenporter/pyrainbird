@@ -21,4 +21,4 @@ pytest-asyncio==0.26.0
 pytest-golden==0.2.2
 python-dateutil==2.9.0.post0
 responses==0.25.8
-types-PyYAML==6.0.12.20250809
+types-PyYAML==6.0.12.20250822
