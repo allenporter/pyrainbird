@@ -7,7 +7,7 @@ pip==25.2
 pre-commit==4.3.0
 pytest-cov==6.3.0
 pytest==8.4.2
-ruff==0.13.2
+ruff==0.13.3
 
 
 aiohttp==3.12.15
