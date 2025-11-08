@@ -1,6 +1,5 @@
 """Test fixtures for pyrainbird."""
 
-import asyncio
 import json
 from collections.abc import Awaitable, Callable
 from typing import cast
