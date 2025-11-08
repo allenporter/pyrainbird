@@ -1,6 +1,5 @@
 """Test fixtures for pyrainbird."""
 
-import asyncio
 import json
 from collections.abc import Awaitable, Callable
 from typing import cast
@@ -49,7 +48,6 @@ def mock_app() -> aiohttp.web.Application:
 
 @pytest.fixture(name="test_client")
 def cli_cb(
-    event_loop: asyncio.AbstractEventLoop,
     app: aiohttp.web.Application,
     aiohttp_client: Callable[[aiohttp.web.Application], Awaitable[TestClient]],
 ) -> Callable[[], Awaitable[TestClient]]:
