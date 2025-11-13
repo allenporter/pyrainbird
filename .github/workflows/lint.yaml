@@ -39,6 +39,14 @@ jobs:
         run: |
           uv pip install -r requirements_dev.txt
 
+      - name: Run Ruff Check
+        run: |
+          ruff check --output-format=github .
+
+      - name: Run Ruff Format
+        run: |
+          ruff format .
+
       - name: Static typing with mypy
         run: |
           mypy --install-types --non-interactive --no-warn-unused-ignores .
