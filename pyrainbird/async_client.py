@@ -426,7 +426,9 @@ class AsyncRainbirdController:
         }
         for command in commands:
             result = await self._process_command(
-                None, "RetrieveScheduleRequest", int(command, 16)  # type: ignore
+                lambda resp: resp,
+                "RetrieveScheduleRequest",
+                int(command, 16),
             )
             if not isinstance(result, dict):
                 continue
@@ -498,7 +500,7 @@ class AsyncRainbirdController:
                 % (command, allowed, response_code, decoded)
             )
             raise RainbirdApiException("Unexpected response from Rain Bird device")
-        return funct(decoded) if funct is not None else decoded
+        return funct(decoded)
 
     async def _cacheable_command(
         self, funct: Callable[[dict[str, Any]], T], command: str, *args
