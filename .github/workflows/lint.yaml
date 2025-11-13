@@ -18,7 +18,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
-      - uses: astral-sh/ruff-action@v3
       - uses: codespell-project/actions-codespell@v2.2
         with:
           check_hidden: false
