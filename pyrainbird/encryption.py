@@ -107,7 +107,7 @@ class PayloadCoder:
                 decrypt(content, self._password)
                 .decode("UTF-8")
                 .rstrip("\x10")
-                .rstrip("\x0A")
+                .rstrip("\x0a")
                 .rstrip("\x00")
                 .rstrip()
             )

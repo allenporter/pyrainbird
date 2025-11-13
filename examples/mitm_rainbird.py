@@ -29,7 +29,6 @@ class DecodeRainbirdView(contentviews.View):
         http_message: Optional[http.Message] = None,
         **unknown_metadata,
     ) -> contentviews.TViewResult:
-
         logging.debug("raw %s", data)
         output = ["--- Raw ---", data]
         passwd = os.environ["RAINBIRD_PASSWORD"]
@@ -37,7 +36,7 @@ class DecodeRainbirdView(contentviews.View):
             pyrainbird.encryption.decrypt(data, passwd)
             .decode("UTF-8")
             .rstrip("\x10")
-            .rstrip("\x0A")
+            .rstrip("\x0a")
             .rstrip("\x00")
             .rstrip()
         )
