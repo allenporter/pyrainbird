@@ -57,16 +57,17 @@ class TestSequence(unittest.TestCase):
             assert active == bit
             i = i + 1
 
+
 @pytest.mark.parametrize(
     ("response", "expected_name"),
     [
         (
-            {'modelID': 2067, 'protocolRevisionMajor': 2, 'protocolRevisionMinor': 12},
-            "ARC8"
+            {"modelID": 2067, "protocolRevisionMajor": 2, "protocolRevisionMinor": 12},
+            "ARC8",
         ),
         (
-            {'modelID': 9999, 'protocolRevisionMajor': 2, 'protocolRevisionMinor': 12},
-            "Unknown"
+            {"modelID": 9999, "protocolRevisionMajor": 2, "protocolRevisionMinor": 12},
+            "Unknown",
         ),
     ],
 )

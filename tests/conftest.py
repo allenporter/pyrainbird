@@ -61,7 +61,7 @@ def cli_cb(
 
 @pytest.fixture(name="rainbird_client")
 def mock_rainbird_client(
-    test_client: Callable[[], Awaitable[TestClient]]
+    test_client: Callable[[], Awaitable[TestClient]],
 ) -> Callable[[], Awaitable[AsyncRainbirdClient]]:
     """Fixture to fake out the auth library."""
 
@@ -76,7 +76,7 @@ def mock_rainbird_client(
 
 @pytest.fixture(name="cloud_client")
 def mock_cloud_client(
-    test_client: Callable[[], Awaitable[TestClient]]
+    test_client: Callable[[], Awaitable[TestClient]],
 ) -> Callable[[], Awaitable[AsyncRainbirdClient]]:
     """Fixture to fake out the auth library."""
 

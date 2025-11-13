@@ -62,9 +62,10 @@ async def test_device_busy_failure(
 
     response(aiohttp.web.Response(status=503))
 
-    with mock.patch(
-        "pyrainbird.async_client._retry_attempts", return_value=1
-    ), mock.patch("pyrainbird.async_client._retry_delay", return_value=0.01):
+    with (
+        mock.patch("pyrainbird.async_client._retry_attempts", return_value=1),
+        mock.patch("pyrainbird.async_client._retry_delay", return_value=0.01),
+    ):
         client = await rainbird_client()
         with pytest.raises(RainbirdDeviceBusyException):
             await client.request(REQUEST, LENGTH)
@@ -647,7 +648,12 @@ async def test_get_schedule_and_settings_me3(
     assert settings.global_disable
     assert settings.num_programs == 4
     assert settings.program_opt_out_mask == "F"
-    assert settings.soil_types == [SoilType.NONE, SoilType.NONE, SoilType.NONE, SoilType.NONE]
+    assert settings.soil_types == [
+        SoilType.NONE,
+        SoilType.NONE,
+        SoilType.NONE,
+        SoilType.NONE,
+    ]
     assert result.status == "good"
 
 
