@@ -476,7 +476,7 @@ class AsyncRainbirdController:
         return result[DATA]
 
     async def _process_command(
-        self, funct: Callable[[dict[str, Any]], T], command: str, *args
+        self, funct: Callable[[dict[str, Any]], T] | None, command: str, *args
     ) -> T:
         data = rainbird.encode(command, *args)
         _LOGGER.debug("Request (%s): %s", command, str(data))
