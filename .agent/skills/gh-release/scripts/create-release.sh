@@ -7,6 +7,12 @@ if [ -z "$VERSION" ]; then
   exit 1
 fi
 
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+if [[ "$BRANCH" != "main" ]]; then
+  echo "Error: You must be on the main branch to create a release."
+  exit 1
+fi
+
 if ! command -v gh &> /dev/null; then
     echo "gh command could not be found, please install it first"
     exit 1
@@ -30,4 +36,5 @@ fi
 
 git add "$FILE_PATH"
 git commit -m "chore(release): $VERSION"
+git push
 gh release create "$VERSION" --generate-notes
