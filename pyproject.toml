@@ -30,6 +30,9 @@ Source = "https://github.com/allenporter/pyrainbird"
 [tool.setuptools.packages.find]
 include = ["pyrainbird*"]
 
+[tool.setuptools.package-data]
+"pyrainbird.resources" = ["*.yaml"]
+
 [tool.mypy]
 exclude = [
   "tests/",
