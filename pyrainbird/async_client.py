@@ -133,6 +133,7 @@ class AsyncRainbirdClient:
             )
             resp.raise_for_status()
         except ClientResponseError as err:
+            _LOGGER.debug("Error response from Rain Bird device: %s", err)
             if err.status == HTTPStatus.SERVICE_UNAVAILABLE:
                 raise RainbirdDeviceBusyException(
                     "Rain Bird device is busy; Wait and try again"
@@ -143,6 +144,7 @@ class AsyncRainbirdClient:
                 ) from err
             raise RainbirdApiException("Rain Bird responded with an error")
         except ClientError as err:
+            _LOGGER.debug("Error communicating with Rain Bird device: %s", err)
             raise RainbirdApiException(
                 "Error communicating with Rain Bird device"
             ) from err
@@ -205,9 +207,13 @@ class AsyncRainbirdController:
 
     async def get_serial_number(self) -> str:
         """Get the device serial number."""
-        return await self._cacheable_command(
-            lambda resp: resp["serialNumber"], "SerialNumberRequest"
-        )
+        try:
+            return await self._cacheable_command(
+                lambda resp: resp["serialNumber"], "SerialNumberRequest"
+            )
+        except RainbirdApiException as err:
+            _LOGGER.debug("Error while fetching serial number: %s", err)
+            raise
 
     async def get_current_time(self) -> datetime.time:
         """Get the device current time."""
@@ -245,7 +251,11 @@ class AsyncRainbirdController:
 
     async def get_wifi_params(self) -> WifiParams:
         """Return wifi parameters and other settings."""
-        result = await self._local_client.request("getWifiParams")
+        try:
+            result = await self._local_client.request("getWifiParams")
+        except RainbirdApiException as err:
+            _LOGGER.debug("Error while fetching get_wifi_params: %s", err)
+            raise
         return WifiParams.from_dict(result)
 
     async def get_settings(self) -> Settings:
