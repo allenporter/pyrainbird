@@ -16,6 +16,7 @@ import logging
 from collections.abc import Callable
 from http import HTTPStatus
 from typing import Any, TypeVar, Union
+from urllib.parse import urlparse
 
 import aiohttp
 from aiohttp.client_exceptions import ClientError, ClientResponseError
@@ -107,7 +108,13 @@ class AsyncRainbirdClient:
     ) -> None:
         self._websession = websession
         self._host = host
-        if host.startswith("/") or host.startswith("http://"):
+        parsed = urlparse(host)
+        if parsed.scheme in {"http", "https"}:
+            if parsed.path:
+                self._url = host
+            else:
+                self._url = f"{host}/stick"
+        elif host.startswith("/"):
             self._url = host
         else:
             self._url = f"http://{host}/stick"
