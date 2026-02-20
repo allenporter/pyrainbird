@@ -110,14 +110,15 @@ class AsyncRainbirdClient:
         self._host = host
         parsed = urlparse(host)
         if parsed.scheme in {"http", "https"}:
-            if parsed.path:
+            if parsed.path and parsed.path != "/":
                 self._url = host
             else:
-                self._url = f"{host}/stick"
+                self._url = f"{host.rstrip('/')}/stick"
         elif host.startswith("/"):
             self._url = host
         else:
-            self._url = f"http://{host}/stick"
+            self._url = f"http://{host.rstrip('/')}/stick"
+        _LOGGER.debug("Using Rain Bird API endpoint: %s", self._url)
         self._password = password
         self._coder = encryption.PayloadCoder(password, _LOGGER)
 
