@@ -13,13 +13,19 @@ and querying the device.
 
 import datetime
 import logging
+import ssl
 from collections.abc import Callable
 from http import HTTPStatus
 from typing import Any, TypeVar, Union
-from urllib.parse import urlparse
 
 import aiohttp
-from aiohttp.client_exceptions import ClientError, ClientResponseError
+from aiohttp.client_exceptions import (
+    ClientConnectorCertificateError,
+    ClientConnectorError,
+    ClientConnectorSSLError,
+    ClientError,
+    ClientResponseError,
+)
 from aiohttp_retry import RetryClient, RetryOptions, JitterRetry
 
 
@@ -51,6 +57,7 @@ from .resources import LENGTH, RAINBIRD_COMMANDS, RESPONSE
 
 __all__ = [
     "CreateController",
+    "create_controller",
     "AsyncRainbirdController",
 ]
 
@@ -105,19 +112,20 @@ class AsyncRainbirdClient:
         websession: aiohttp.ClientSession,
         host: str,
         password: Union[str, None],
+        *,
+        scheme: str = "http",
+        ssl_context: ssl.SSLContext | bool | None = None,
     ) -> None:
         self._websession = websession
         self._host = host
-        parsed = urlparse(host)
-        if parsed.scheme in {"http", "https"}:
-            if parsed.path and parsed.path != "/":
-                self._url = host
-            else:
-                self._url = f"{host.rstrip('/')}/stick"
-        elif host.startswith("/"):
+        self._scheme = scheme
+        self._ssl_context = ssl_context
+        if host.startswith("/"):
+            self._url = host
+        elif host.startswith("http://") or host.startswith("https://"):
             self._url = host
         else:
-            self._url = f"http://{host.rstrip('/')}/stick"
+            self._url = f"{scheme}://{host.rstrip('/')}/stick"
         _LOGGER.debug("Using Rain Bird API endpoint: %s", self._url)
         self._password = password
         self._coder = encryption.PayloadCoder(password, _LOGGER)
@@ -128,6 +136,8 @@ class AsyncRainbirdClient:
             RetryClient(client_session=self._websession, retry_options=retry_options),  # type: ignore[arg-type]
             self._host,
             self._password,
+            scheme=self._scheme,
+            ssl_context=self._ssl_context,
         )
 
     async def request(
@@ -136,8 +146,11 @@ class AsyncRainbirdClient:
         """Send a request for any command."""
         payload = self._coder.encode_command(method, params or {})
         try:
+            request_kwargs: dict[str, Any] = {}
+            if self._ssl_context is not None:
+                request_kwargs["ssl"] = self._ssl_context
             resp = await self._websession.request(
-                "post", self._url, data=payload, headers=HEAD
+                "post", self._url, data=payload, headers=HEAD, **request_kwargs
             )
             resp.raise_for_status()
         except ClientResponseError as err:
@@ -167,6 +180,71 @@ def CreateController(
     local_client = AsyncRainbirdClient(websession, host, password)
     cloud_client = AsyncRainbirdClient(websession, CLOUD_API_URL, None)
     return AsyncRainbirdController(local_client, cloud_client)
+
+
+def _is_certificate_error(err: RainbirdApiException) -> bool:
+    """Return True if the underlying error is a certificate verification failure."""
+    return isinstance(err.__cause__, ClientConnectorCertificateError)
+
+
+def _is_connection_error(err: RainbirdApiException) -> bool:
+    """Return True for transport-level connection failures."""
+    return isinstance(err.__cause__, (ClientConnectorError, ClientConnectorSSLError))
+
+
+async def create_controller(
+    websession: aiohttp.ClientSession, host: str, password: str
+) -> "AsyncRainbirdController":
+    """Create an AsyncRainbirdController with local HTTP/HTTPS discovery.
+
+    The local Rain Bird controller API appears to vary by firmware. Some devices
+    accept HTTP on port 80, while others require HTTPS (commonly with a
+    self-signed certificate). This factory probes the controller to determine
+    the correct scheme while keeping the public API hostname-based.
+
+    Notes:
+    - The cloud client keeps its default behavior (no TLS relaxation).
+    - If `host` is a path (e.g. `/stick`) or a full URL, discovery is skipped.
+    """
+    host = host.strip()
+    if (
+        host.startswith("/")
+        or host.startswith("http://")
+        or host.startswith("https://")
+    ):
+        local_client = AsyncRainbirdClient(websession, host, password)
+        cloud_client = AsyncRainbirdClient(websession, CLOUD_API_URL, None)
+        return AsyncRainbirdController(local_client, cloud_client)
+
+    host = host.rstrip("/")
+    cloud_client = AsyncRainbirdClient(websession, CLOUD_API_URL, None)
+
+    async def _probe(
+        *, scheme: str, ssl_context: ssl.SSLContext | bool | None
+    ) -> AsyncRainbirdController:
+        local_client = AsyncRainbirdClient(
+            websession,
+            host,
+            password,
+            scheme=scheme,
+            ssl_context=ssl_context,
+        )
+        controller = AsyncRainbirdController(local_client, cloud_client)
+        await controller.get_model_and_version()
+        return controller
+
+    try:
+        return await _probe(scheme="https", ssl_context=None)
+    except RainbirdAuthException:
+        raise
+    except RainbirdApiException as err:
+        if _is_certificate_error(err):
+            # Retry HTTPS with local-only relaxed certificate validation.
+            return await _probe(scheme="https", ssl_context=False)
+        if _is_connection_error(err):
+            # Likely wrong scheme (device doesn't speak TLS); fall back to HTTP.
+            return await _probe(scheme="http", ssl_context=None)
+        raise
 
 
 class AsyncRainbirdController:

@@ -15,16 +15,18 @@ import aiohttp
 from pyrainbird import async_client
 
 async def main() -> None:
-    async with aiohttp.ClientSession() as client:
-        controller: async_client.AsyncRainbirdController = async_client.CreateController(
-            client,
+    async with aiohttp.ClientSession() as session:
+        controller: async_client.AsyncRainbirdController = await async_client.create_controller(
+            session,
             "192.168.1.1",
-            "password"
+            "password",
         )
         zones = await controller.get_available_stations()
         states = await controller.get_zone_states()
         for zone in zones.active_set:
-            print(f"Sprinkler zone {zone}: {"active" if zone in states.active_set else "inactive"}")
+            print(
+                f"Sprinkler zone {zone}: {'active' if zone in states.active_set else 'inactive'}"
+            )
 
 asyncio.run(main())
 ```
