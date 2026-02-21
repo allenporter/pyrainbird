@@ -1,7 +1,11 @@
 """An asyncio based client library for Rain Bird.
 
-You may create an `AsyncRainbirdController` with the `CreateController` call that
-accepts the hostname and password of the Rain Bird controller.
+For asyncio usage, prefer creating an `AsyncRainbirdController` via
+`await create_controller(...)`, which accepts the hostname/IP address and
+password of the Rain Bird controller and performs local HTTP/HTTPS discovery.
+
+`CreateController` is a legacy factory that does not perform discovery and may
+not work with HTTPS-only controllers.
 
 Most API calls are fairly low level with thin response wrappers that are data classes,
 though some static data about the device may have the underlying calls cached.
@@ -204,17 +208,42 @@ async def create_controller(
 
     Notes:
     - The cloud client keeps its default behavior (no TLS relaxation).
-    - If `host` is a path (e.g. `/stick`) or a full URL, discovery is skipped.
+    - If `host` is a path (e.g. `/stick`) or an explicit HTTP URL, discovery is
+      skipped.
+    - If `host` is an explicit HTTPS URL, certificate verification failures are
+      retried once with local-only relaxed certificate validation.
     """
     host = host.strip()
-    if (
-        host.startswith("/")
-        or host.startswith("http://")
-        or host.startswith("https://")
-    ):
+    if host.startswith("/") or host.startswith("http://"):
         local_client = AsyncRainbirdClient(websession, host, password)
         cloud_client = AsyncRainbirdClient(websession, CLOUD_API_URL, None)
         return AsyncRainbirdController(local_client, cloud_client)
+
+    if host.startswith("https://"):
+        cloud_client = AsyncRainbirdClient(websession, CLOUD_API_URL, None)
+
+        async def _probe_url(
+            *, ssl_context: ssl.SSLContext | bool | None
+        ) -> AsyncRainbirdController:
+            local_client = AsyncRainbirdClient(
+                websession,
+                host,
+                password,
+                ssl_context=ssl_context,
+            )
+            controller = AsyncRainbirdController(local_client, cloud_client)
+            await controller.get_model_and_version()
+            return controller
+
+        try:
+            return await _probe_url(ssl_context=None)
+        except RainbirdAuthException:
+            raise
+        except RainbirdApiException as err:
+            if _is_certificate_error(err):
+                # Retry HTTPS with local-only relaxed certificate validation.
+                return await _probe_url(ssl_context=False)
+            raise
 
     host = host.rstrip("/")
     cloud_client = AsyncRainbirdClient(websession, CLOUD_API_URL, None)
