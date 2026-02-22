@@ -488,7 +488,7 @@ wheels = [
 
 [[package]]
 name = "pyrainbird"
-version = "6.0.4"
+version = "6.0.5"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp-retry" },
