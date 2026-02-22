@@ -187,8 +187,6 @@ def CreateController(
 ) -> "AsyncRainbirdController":
     """Create an AsyncRainbirdController."""
     host = host.strip()
-    if "://" in host or host.startswith("/") or "/" in host:
-        raise ValueError("host must be a hostname or IP address, not a URL/path")
     host = host.rstrip("/")
     local_url = f"http://{host}/stick"
     local_client = AsyncRainbirdClient(websession, local_url, password)
@@ -208,28 +206,22 @@ async def create_controller(
 
     Notes:
     - The cloud client keeps its default behavior (no TLS relaxation).
-    - The local client is probed for HTTPS first, then falls back to HTTP on
-      transport-level errors (e.g., connection refused / TLS handshake).
-    - HTTPS certificate verification failures are retried once with local-only
-      relaxed certificate validation.
+    - The local client is probed for HTTPS first using relaxed certificate
+      validation, then falls back to HTTP on transport-level errors (e.g.,
+      connection refused / TLS handshake).
     """
     host = host.strip()
-    if "://" in host or host.startswith("/") or "/" in host:
-        raise ValueError("host must be a hostname or IP address, not a URL/path")
     host = host.rstrip("/")
     cloud_client = AsyncRainbirdClient(websession, CLOUD_API_URL, None)
 
     async def _probe(
         *, url: str, ssl_context: ssl.SSLContext | bool | None
     ) -> AsyncRainbirdController:
-        client_kwargs: dict[str, Any] = {}
-        if ssl_context is not None:
-            client_kwargs["ssl_context"] = ssl_context
         local_client = AsyncRainbirdClient(
             websession,
             url,
             password,
-            **client_kwargs,
+            ssl_context=ssl_context,
         )
         controller = AsyncRainbirdController(local_client, cloud_client)
         await controller.get_model_and_version()
@@ -238,11 +230,6 @@ async def create_controller(
     https_url = f"https://{host}/stick"
     http_url = f"http://{host}/stick"
     try:
-        return await _probe(url=https_url, ssl_context=None)
-    except RainbirdAuthException:
-        raise
-    except RainbirdCertificateError:
-        # Retry HTTPS with local-only relaxed certificate validation.
         return await _probe(url=https_url, ssl_context=False)
     except RainbirdConnectionError:
         # Likely wrong scheme (device doesn't speak TLS); fall back to HTTP.
