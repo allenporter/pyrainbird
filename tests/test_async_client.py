@@ -12,7 +12,11 @@ import pytest
 from freezegun import freeze_time
 
 from pyrainbird import rainbird
-from pyrainbird.async_client import AsyncRainbirdClient, AsyncRainbirdController
+from pyrainbird.async_client import (
+    AsyncRainbirdClient,
+    AsyncRainbirdController,
+    create_controller,
+)
 from pyrainbird.data import (
     DayOfWeek,
     ModelAndVersion,
@@ -24,6 +28,7 @@ from pyrainbird.encryption import encrypt
 from pyrainbird.exceptions import (
     RainbirdApiException,
     RainbirdAuthException,
+    RainbirdConnectionError,
     RainbirdDeviceBusyException,
 )
 from pyrainbird.resources import RAINBIRD_COMMANDS_BY_ID
@@ -81,6 +86,102 @@ async def test_request_permission_failure(
     client = await rainbird_client()
     with pytest.raises(RainbirdAuthException):
         await client.request(REQUEST, LENGTH)
+
+
+async def test_create_controller_tries_insecure_https_first() -> None:
+    session = mock.AsyncMock(spec=aiohttp.ClientSession)
+
+    with (
+        mock.patch("pyrainbird.async_client.AsyncRainbirdClient") as client_cls,
+        mock.patch(
+            "pyrainbird.async_client.AsyncRainbirdController.get_model_and_version",
+            new=mock.AsyncMock(return_value=ModelAndVersion(0x0A, 1, 3)),
+        ),
+    ):
+        await create_controller(session, "example.com", "password")
+
+    assert client_cls.call_args_list == [
+        mock.call(session, mock.ANY, None),
+        mock.call(session, "https://example.com/stick", "password", ssl_context=False),
+    ]
+
+
+async def test_create_controller_tries_https_then_http_on_connection_error() -> None:
+    session = mock.AsyncMock(spec=aiohttp.ClientSession)
+
+    with (
+        mock.patch("pyrainbird.async_client.AsyncRainbirdClient") as client_cls,
+        mock.patch(
+            "pyrainbird.async_client.AsyncRainbirdController.get_model_and_version",
+            new=mock.AsyncMock(
+                side_effect=[
+                    RainbirdConnectionError("connect error"),
+                    ModelAndVersion(0x0A, 1, 3),
+                ]
+            ),
+        ),
+    ):
+        await create_controller(session, "example.com", "password")
+
+    assert client_cls.call_args_list == [
+        mock.call(session, mock.ANY, None),
+        mock.call(session, "https://example.com/stick", "password", ssl_context=False),
+        mock.call(session, "http://example.com/stick", "password", ssl_context=None),
+    ]
+
+
+async def test_create_controller_does_not_fallback_on_auth_error() -> None:
+    session = mock.AsyncMock(spec=aiohttp.ClientSession)
+
+    with (
+        mock.patch("pyrainbird.async_client.AsyncRainbirdClient") as client_cls,
+        mock.patch(
+            "pyrainbird.async_client.AsyncRainbirdController.get_model_and_version",
+            new=mock.AsyncMock(side_effect=RainbirdAuthException("bad password")),
+        ),
+    ):
+        with pytest.raises(RainbirdAuthException):
+            await create_controller(session, "example.com", "password")
+
+    assert client_cls.call_args_list == [
+        mock.call(session, mock.ANY, None),
+        mock.call(session, "https://example.com/stick", "password", ssl_context=False),
+    ]
+
+
+async def test_rainbird_client_only_passes_ssl_kwarg_when_configured() -> None:
+    session = mock.AsyncMock(spec=aiohttp.ClientSession)
+
+    response = mock.Mock()
+    response.raise_for_status = mock.Mock()
+    response.read = mock.AsyncMock(return_value=b"raw")
+
+    session.request = mock.AsyncMock(return_value=response)
+
+    coder = mock.Mock()
+    coder.encode_command.return_value = b"payload"
+    coder.decode_command.return_value = {}
+
+    with mock.patch(
+        "pyrainbird.async_client.encryption.PayloadCoder",
+        return_value=coder,
+    ):
+        client = AsyncRainbirdClient(session, "https://example.com/stick", "password")
+        await client.request("getModelAndVersion")
+        _, request_kwargs = session.request.call_args
+        assert "ssl" not in request_kwargs
+
+        session.request.reset_mock()
+
+        insecure_client = AsyncRainbirdClient(
+            session,
+            "https://example.com/stick",
+            "password",
+            ssl_context=False,
+        )
+        await insecure_client.request("getModelAndVersion")
+        _, request_kwargs = session.request.call_args
+        assert request_kwargs["ssl"] is False
 
 
 @pytest.fixture(name="encrypt_response")

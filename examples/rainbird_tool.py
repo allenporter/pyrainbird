@@ -94,13 +94,13 @@ async def main():
     password = os.environ["RAINBIRD_PASSWORD"]
 
     async with aiohttp.ClientSession() as session:
-        client = async_client.CreateController(session, host, password)
+        controller = await async_client.create_controller(session, host, password)
         method_args = {
             k: parse_value(v)
             for k, v in vars(args).items()
             if k != "func" and k != "command" and k != "log_level"
         }
-        result = await args.func(client, **method_args)
+        result = await args.func(controller, **method_args)
         print(result)
 
 
