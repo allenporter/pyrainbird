@@ -97,6 +97,19 @@ def decode_schedule(data: str, cmd_template: dict[str, Any]) -> dict[str, Any]:
             ],
         }
 
+    if subcommand > 0:
+        # Single-zone based durations (e.g. ESP-RZXe)
+        rest = bytes(data[6:], "utf-8")
+        durations = list(int(rest[i : i + 4], 16) for i in range(0, len(rest), 4))
+        return {
+            "durations": [
+                {
+                    "zone": subcommand - 1,
+                    "durations": durations,
+                }
+            ]
+        }
+
     return {"data": data}
 
 

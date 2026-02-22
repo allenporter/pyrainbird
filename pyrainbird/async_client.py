@@ -488,7 +488,6 @@ class AsyncRainbirdController:
         model = await self.get_model_and_version()
         max_programs = model.model_info.max_programs
         stations = await self.get_available_stations()
-        max_stations = min(stations.stations.count, 22)
 
         commands = ["00"]
         # Program details
@@ -498,9 +497,19 @@ class AsyncRainbirdController:
         for program in range(0, max_programs):
             commands.append("%04x" % (0x60 | program))
         # Run times per zone
-        _LOGGER.debug("Loading schedule for %d zones", max_stations)
-        for zone_page in range(0, int(round(max_stations / 2, 0))):
-            commands.append("%04x" % (0x80 | zone_page))
+        if max_programs > 0:
+            # Modular/Program-based architecture (ESP-Me, ESP-TM2, RC2, etc)
+            # Fetch zone-runtime pages (0x80=zones 1-2, 0x81=3-4, etc).
+            # The app uses a fixed page count: 11 for 4-program models (22 zones max)
+            # and 6 for 3-program models (12 zones max).
+            page_limit = 11 if max_programs >= 4 else 6
+            for zone_page in range(0, page_limit):
+                commands.append("%04x" % (0x80 | zone_page))
+        else:
+            # Non-modular architecture (ESP-RZXe, ST8x, etc) fetches by zone directly.
+            for station_num in sorted(stations.stations.active_set):
+                commands.append("%04x" % station_num)
+
         _LOGGER.debug("Sending schedule commands: %s", commands)
         # Run command serially to avoid overwhelming the controller
         schedule_data: dict[str, Any] = {

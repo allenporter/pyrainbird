@@ -1533,3 +1533,107 @@ async def test_get_schedule_parse_failure(
 
     schedule = await controller.get_schedule()
     assert len(schedule.programs) == 0
+
+
+async def test_get_schedule_esp_me_8_zones(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    api_response: Callable[..., Awaitable[None]],
+    sip_data_responses: Callable[[list[str]], None],
+    app: aiohttp.web.Application,
+) -> None:
+    """Test get_schedule for ESP-Me with 8-zone capability."""
+    controller = await rainbird_controller()
+
+    # ESP_Me: max_programs=4
+    api_response("82", modelID=0x07, protocolRevisionMajor=1, protocolRevisionMinor=3)
+    # 8 zones
+    api_response("83", pageNumber=0, setStations="FF000000")
+
+    # Responses: 1 (0x00) + 4 (0x1x) + 4 (0x6x) + 4 (0x80-0x83 for 8 zones) = 13
+    responses = [
+        "A0000000000400",  # state: delay=0, snooze=0, rain=4 (disabled/unknown)
+    ]
+    # Program data for 4 programs (0x10 to 0x13)
+    responses.extend(
+        [
+            "A00010000000000000",  # PGM A
+            "A00011000000000000",  # PGM B
+            "A00012000000000000",  # PGM C
+            "A00013000000000000",  # PGM D
+        ]
+    )
+    # Start times for 4 programs (0x60 to 0x63)
+    responses.extend(
+        [
+            "A00060FFFFFFFF",  # No starts
+            "A00061FFFFFFFF",
+            "A00062FFFFFFFF",
+            "A00063FFFFFFFF",
+        ]
+    )
+    # Zone runtimes for 11 pages (0x80 to 0x8A)
+    # Page data format: A0 <page> <zone1_4_programs> <zone2_4_programs>
+    # 4 programs * 4 chars = 16 chars per zone.
+    # We provide data for all 11 pages as defined by the ESP-Me model family.
+    responses.extend(
+        [
+            "A00080" + "000A000000000000" + "0005000000000000",  # Z1:P1=10, Z2:P1=5
+            "A00081" + "0014000000000000" + "0000000000000000",  # Z3:P1=20, Z4:0
+            "A00082" + "0000000000000000" + "0000000000000000",  # Z5:0, Z6:0
+            "A00083" + "000F000000000000" + "000A000000000000",  # Z7:P1=15, Z8:P1=10
+        ]
+    )
+    # Add empty responses for pages 0x84 to 0x8A (total 11 pages)
+    for page in range(0x84, 0x8B):
+        responses.append("A000" + ("%02X" % page) + ("00" * 16))
+
+    sip_data_responses(responses)
+
+    schedule = await controller.get_schedule()
+
+    # Verify we requested 20 schedule commands in total
+    # 1 (state) + 4 (program details) + 4 (start times) + 11 (zone pages) = 20
+    # Plus discovery: 82, 83 = 22 total requests.
+    assert len(app["request"]) == 22
+
+    assert len(schedule.programs) == 4
+    # Check durations for PGM A (program 0)
+    durations = {d.zone: d.duration for d in schedule.programs[0].durations}
+    assert durations[1] == datetime.timedelta(minutes=10)
+    assert durations[2] == datetime.timedelta(minutes=5)
+    assert durations[3] == datetime.timedelta(minutes=20)
+    assert durations[7] == datetime.timedelta(minutes=15)
+    assert durations[8] == datetime.timedelta(minutes=10)
+
+
+async def test_get_schedule_non_program_based(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    api_response: Callable[..., Awaitable[None]],
+    sip_data_responses: Callable[[list[str]], None],
+    app: aiohttp.web.Application,
+) -> None:
+    """Test get_schedule for a non-program based device (ESP-RZXe)."""
+    controller = await rainbird_controller()
+
+    # ESP_RZXe: max_programs=0
+    api_response("82", modelID=0x03, protocolRevisionMajor=1, protocolRevisionMinor=3)
+    # Active zones: 1, 3, 5 (mask 0x15 = 00010101)
+    api_response("83", pageNumber=0, setStations="15000000")
+
+    # Responses: 1 (0x00) + 3 (zone commands: 0x01, 0x03, 0x05) = 4
+    # Note: 0x00 might not be needed but the code adds it.
+    responses = [
+        "A0000000000000",  # state
+        "A00001000A",  # Z1: 10m
+        "A000030014",  # Z3: 20m
+        "A00005001E",  # Z5: 30m
+    ]
+    sip_data_responses(responses)
+
+    schedule = await controller.get_schedule()
+
+    # Requests: 82, 83 + 4 commands = 6
+    assert len(app["request"]) == 6
+
+    # Let's check the result
+    assert len(schedule.programs) == 0
