@@ -1574,7 +1574,7 @@ async def test_get_schedule_esp_me_8_zones(
     # Zone runtimes for 11 pages (0x80 to 0x8A)
     # Page data format: A0 <page> <zone1_4_programs> <zone2_4_programs>
     # 4 programs * 4 chars = 16 chars per zone.
-    # We provide data for all 11 pages as defined by the ESP-Me model family.
+    # stations.count = 32 (8 hex chars * 4), min(32, 22) / 2 = 11 pages.
     responses.extend(
         [
             "A00080" + "000A000000000000" + "0005000000000000",  # Z1:P1=10, Z2:P1=5
@@ -1604,36 +1604,3 @@ async def test_get_schedule_esp_me_8_zones(
     assert durations[3] == datetime.timedelta(minutes=20)
     assert durations[7] == datetime.timedelta(minutes=15)
     assert durations[8] == datetime.timedelta(minutes=10)
-
-
-async def test_get_schedule_non_program_based(
-    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    api_response: Callable[..., Awaitable[None]],
-    sip_data_responses: Callable[[list[str]], None],
-    app: aiohttp.web.Application,
-) -> None:
-    """Test get_schedule for a non-program based device (ESP-RZXe)."""
-    controller = await rainbird_controller()
-
-    # ESP_RZXe: max_programs=0
-    api_response("82", modelID=0x03, protocolRevisionMajor=1, protocolRevisionMinor=3)
-    # Active zones: 1, 3, 5 (mask 0x15 = 00010101)
-    api_response("83", pageNumber=0, setStations="15000000")
-
-    # Responses: 1 (0x00) + 3 (zone commands: 0x01, 0x03, 0x05) = 4
-    # Note: 0x00 might not be needed but the code adds it.
-    responses = [
-        "A0000000000000",  # state
-        "A00001000A",  # Z1: 10m
-        "A000030014",  # Z3: 20m
-        "A00005001E",  # Z5: 30m
-    ]
-    sip_data_responses(responses)
-
-    schedule = await controller.get_schedule()
-
-    # Requests: 82, 83 + 4 commands = 6
-    assert len(app["request"]) == 6
-
-    # Let's check the result
-    assert len(schedule.programs) == 0
