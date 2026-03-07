@@ -17,6 +17,7 @@ and querying the device.
 
 import datetime
 import logging
+import math
 import ssl
 from collections.abc import Callable
 from http import HTTPStatus
@@ -486,7 +487,10 @@ class AsyncRainbirdController:
         model = await self.get_model_and_version()
         max_programs = model.model_info.max_programs
         stations = await self.get_available_stations()
-        max_stations = min(stations.stations.count, 22)
+        max_stations = model.model_info.max_stations
+        if not max_stations:
+            # Fallback for unknown models
+            max_stations = min(stations.stations.count, 22)
 
         commands = ["00"]
         # Program details
@@ -497,7 +501,7 @@ class AsyncRainbirdController:
             commands.append("%04x" % (0x60 | program))
         # Run times per zone
         _LOGGER.debug("Loading schedule for %d zones", max_stations)
-        for zone_page in range(0, int(round(max_stations / 2, 0))):
+        for zone_page in range(0, math.ceil(max_stations / 2)):
             commands.append("%04x" % (0x80 | zone_page))
         _LOGGER.debug("Sending schedule commands: %s", commands)
         # Run command serially to avoid overwhelming the controller
