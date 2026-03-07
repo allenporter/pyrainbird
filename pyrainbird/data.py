@@ -68,6 +68,9 @@ class ModelInfo:
     max_run_times: int
     """The maximum number of run times supported by the device."""
 
+    max_stations: int
+    """The maximum number of stations supported by the device."""
+
     retries: bool = False
     """If device busy errors should be retried"""
 
