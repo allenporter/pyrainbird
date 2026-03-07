@@ -33,6 +33,9 @@ repos:
     rev: v2.4.1
     hooks:
       - id: codespell
+        args:
+          - -I
+          - .codespellignore
   - repo: https://github.com/adrienverge/yamllint.git
     rev: v1.38.0
     hooks:
