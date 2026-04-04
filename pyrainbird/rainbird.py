@@ -36,6 +36,13 @@ def decode_schedule(data: str, cmd_template: dict[str, Any]) -> dict[str, Any]:
     subcommand = int(data[4:6], 16)
     rest: str | bytes = data[6:]
     if subcommand == 0:
+        if len(rest) == 4:
+            # LCR series global info: A0 00 00 00 SS
+            return {
+                "controllerInfo": {
+                    "rainSensor": int(rest[2:4], 16),
+                }
+            }
         if len(rest) < 8:
             return {}
         # Delay, Snooze, Rainsensor
@@ -95,6 +102,29 @@ def decode_schedule(data: str, cmd_template: dict[str, Any]) -> dict[str, Any]:
                     "durations": durations[numPrograms : 2 * numPrograms],
                 },
             ],
+        }
+
+    # LCR Series (ESP-RZXe / ST8) per-zone schedules
+    if 0 < subcommand < 16 and len(data) == 28:
+        duration = int(rest[0:2], 16)
+        starts = []
+        for i in range(0, 6):
+            val = int(rest[2 + i * 2 : 4 + i * 2], 16)
+            if val != 255:
+                starts.append(val * 10)
+
+        return {
+            "zoneInfo": {
+                subcommand: {
+                    "zone": subcommand,
+                    "duration": duration,
+                    "startTime": starts,
+                    "frequency": int(rest[14:16], 16),
+                    "daysOfWeekMask": int(rest[16:18], 16),
+                    "period": int(rest[18:20], 16),
+                    "synchro": int(rest[20:22], 16) & 0x7F,
+                }
+            }
         }
 
     return {"data": data}

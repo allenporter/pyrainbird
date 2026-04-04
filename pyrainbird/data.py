@@ -667,6 +667,97 @@ class Program(DataClassDictMixin):
 
 
 @dataclass
+class ZoneSchedule(DataClassDictMixin):
+    """Complete schedule information for an individual zone."""
+
+    zone: int
+    """Zone the program irrigates."""
+
+    duration: datetime.timedelta
+    """Runtime of the zone."""
+
+    starts: list[datetime.time] = field(
+        default_factory=list,
+        metadata=field_options(
+            alias="startTime",
+            deserialize=TimeSerializationStrategy().deserialize,
+        ),
+    )
+    """Start-times for the zone."""
+
+    frequency: ProgramFrequency = field(default=ProgramFrequency.CUSTOM)
+    """How the zone triggers."""
+
+    days_of_week: set[DayOfWeek] = field(
+        default_factory=set,
+        metadata=field_options(
+            alias="daysOfWeekMask",
+            deserialize=DayOfWeekSerializationStrategy().deserialize,
+        ),
+    )
+    """Custom days of week."""
+
+    period: Optional[int] = None
+    """Interval for cyclic frequency."""
+
+    synchro: Optional[int] = None
+    """Days remaining in interval for cyclic schedule."""
+
+    controller_info: Optional[ControllerInfo] = field(
+        metadata=field_options(alias="controllerInfo"), default=None
+    )
+    """Controller settings that apply to this zone."""
+
+    @classmethod
+    def __pre_deserialize__(cls, values: dict[Any, Any]) -> dict[Any, Any]:
+        if duration := values.get("duration"):
+            values["duration"] = duration * 60
+        return values
+
+    @property
+    def timeline(self) -> ProgramTimeline:
+        """Return a timeline of events for the zone."""
+        return self.timeline_tz(datetime.datetime.now().tzinfo)
+
+    def timeline_tz(self, tzinfo: datetime.tzinfo | None) -> ProgramTimeline:
+        """Return a timeline of events for the zone."""
+        return ProgramTimeline(MergedIterable(self.timeline_iters(tzinfo)))
+
+    def timeline_iters(
+        self, tzinfo: datetime.tzinfo | None
+    ) -> list[Iterable[SortableItem[Timespan, ProgramEvent]]]:
+        """Return sequence iterators generated from this zone."""
+        iters: list[Iterable[SortableItem[Timespan, ProgramEvent]]] = []
+        now = datetime.datetime.now(tzinfo)
+        for start in self.starts:
+            dtstart = now.replace(hour=start.hour, minute=start.minute, second=0)
+            iters.append(
+                create_recurrence(
+                    ProgramId(program=0, zone=self.zone),
+                    self.frequency,
+                    dtstart,
+                    self.duration,
+                    self.synchro or 0,
+                    self.days_of_week,
+                    self.period or 0,
+                    delay_days=self.delay_days,
+                ),
+            )
+        return iters
+
+    @property
+    def delay_days(self) -> int:
+        """Return the number of delays this zone is delayed."""
+        return self.controller_info.delay_days if self.controller_info else 0
+
+    def __post_init__(self):
+        if self.frequency != ProgramFrequency.CUSTOM:
+            self.days_of_week = set()
+        if self.frequency != ProgramFrequency.CYCLIC:
+            self.period = None
+
+
+@dataclass
 class Schedule(DataClassDictMixin):
     """Details about program schedules."""
 
@@ -675,8 +766,15 @@ class Schedule(DataClassDictMixin):
     )
     """Information about the controller used in the schedule."""
 
-    programs: list[Program] = field(metadata=field_options(alias="programInfo"))
+    programs: list[Program] = field(
+        default_factory=list, metadata=field_options(alias="programInfo")
+    )
     """Details about the currently scheduled programs."""
+
+    zone_schedules: dict[int, ZoneSchedule] = field(
+        default_factory=dict, metadata=field_options(alias="zoneInfo")
+    )
+    """Details about the individual zone schedules, if no programs exist."""
 
     @property
     def timeline(self) -> ProgramTimeline:
@@ -684,7 +782,7 @@ class Schedule(DataClassDictMixin):
         return self.timeline_tz(datetime.datetime.now().tzinfo)
 
     def timeline_tz(self, tzinfo: datetime.tzinfo | None) -> ProgramTimeline:
-        """Return a timeline of all programs."""
+        """Return a timeline of all programs and zones."""
         iters: list[Iterable[SortableItem[Timespan, ProgramEvent]]] = []
         now = datetime.datetime.now(tzinfo)
         for program in self.programs:
@@ -702,6 +800,8 @@ class Schedule(DataClassDictMixin):
                         delay_days=self.delay_days,
                     )
                 )
+        for zone in self.zone_schedules.values():
+            iters.extend(zone.timeline_iters(tzinfo))
         return ProgramTimeline(MergedIterable(iters))
 
     @property
