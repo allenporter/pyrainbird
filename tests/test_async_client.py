@@ -5,6 +5,7 @@ from __future__ import annotations
 import datetime
 import json
 from collections.abc import Awaitable, Callable
+from typing import Any
 from unittest import mock
 
 import aiohttp
@@ -1590,3 +1591,149 @@ async def test_get_schedule_esp_me_8_zones(
     assert durations[3] == datetime.timedelta(minutes=20)
     assert durations[7] == datetime.timedelta(minutes=15)
     assert durations[8] == datetime.timedelta(minutes=10)
+
+
+async def test_get_schedule_non_program_based(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    api_response: Callable[..., Awaitable[None]],
+    sip_data_responses: Callable[[list[str]], None],
+    app: aiohttp.web.Application,
+) -> None:
+    """Test get_schedule for a non-program based device (ESP-RZXe)."""
+    controller = await rainbird_controller()
+
+    # ESP_RZXe: max_programs=0
+    api_response("82", modelID=0x03, protocolRevisionMajor=1, protocolRevisionMinor=3)
+    # Active zones: 1, 3, 5 (mask 0x15 = 00010101)
+    api_response("83", pageNumber=0, setStations="15000000")
+
+    # Responses: 1 (0x00) + 3 (zone commands: 0x01, 0x03, 0x05) = 4
+    # Note: 0x00 might not be needed but the code adds it.
+    responses = [
+        "A0000000000000",  # state
+        "A00001000A",  # Z1: 10m
+        "A000030014",  # Z3: 20m
+        "A00005001E",  # Z5: 30m
+    ]
+    sip_data_responses(responses)
+
+    # TODO: Add support for non-program based controllers in the future
+    with pytest.raises(RainbirdApiException, match="Rain Bird responded with an error"):
+        await controller.get_schedule()
+
+    # # Requests: 82, 83 + 4 commands = 6
+    # assert len(app["request"]) == 6
+
+    # # Let's check the result
+    # assert len(schedule.programs) == 0
+
+
+async def test_get_schedule_tm2_12_zones(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    api_response: Callable[[...], Awaitable[None]],
+    sip_data_responses: Callable[[list[str]], None],
+    app: dict[str, Any],
+) -> None:
+    controller = await rainbird_controller()
+
+    # ESP-TM2v2 (Model 0x0A): max_programs=3, max_stations=12
+    api_response("82", modelID=0x0A, protocolRevisionMajor=1, protocolRevisionMinor=3)
+    # Available stations mock = 12 zones active
+    api_response("83", pageNumber=0, setStations="FF0F0000")
+
+    responses = [
+        "A0000000000000",
+    ]
+    responses.extend(
+        [
+            "A0001000000000000000",
+            "A0001100000000000000",
+            "A0001200000000000000",
+        ]
+    )
+    responses.extend(
+        [
+            "A00060FFFFFFFF",
+            "A00061FFFFFFFF",
+            "A00062FFFFFFFF",
+        ]
+    )
+    for page in range(0x80, 0x86):
+        responses.append("A000" + ("%02X" % page) + ("00" * 12))
+
+    sip_data_responses(responses)
+
+    schedule = await controller.get_schedule()
+    # Verify the schedule
+    assert len(schedule.programs) == 3
+    assert [program.program for program in schedule.programs] == [0, 1, 2]
+
+    # 2 initial (Model, Stations) + 1 Global + 3 ProgramInfo + 3 StartTimes + 6 Runtimes = 15 total requests.
+    assert len(app["request"]) == 15
+
+
+async def test_get_schedule_unknown_model_fallback(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    api_response: Callable[[...], Awaitable[None]],
+    sip_data_responses: Callable[[list[str]], None],
+    app: dict[str, Any],
+) -> None:
+    controller = await rainbird_controller()
+
+    # Unknown model ID
+    api_response("82", modelID=0x99, protocolRevisionMajor=1, protocolRevisionMinor=3)
+    api_response("83", pageNumber=0, setStations="FF000000")
+
+    responses = [
+        "A0000000000000",
+    ]
+    # No programs requested because max_programs is 0 for unknowns!
+    # It drops right to 11 pages (0x80 to 0x8A)
+    for page in range(0x80, 0x8B):
+        responses.append("A000" + ("%02X" % page) + ("00" * 12))
+
+    sip_data_responses(responses)
+
+    schedule = await controller.get_schedule()
+
+    assert len(schedule.programs) == 0
+    # 2 initial (Model, Stations) + 1 Global + 11 Runtimes = 14 total requests.
+    print([req.get("params", {}).get("data") for req in app["request"]])
+    assert len(app["request"]) == 13
+
+
+async def test_get_schedule_lxme2_bit_collision(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    api_response: Callable[[...], Awaitable[None]],
+    sip_data_responses: Callable[[list[str]], None],
+    app: dict[str, Any],
+) -> None:
+    controller = await rainbird_controller()
+
+    # LXME2 (Model 0x0C): max_programs=40, max_stations=22
+    api_response("82", modelID=0x0C, protocolRevisionMajor=1, protocolRevisionMinor=3)
+    api_response("83", pageNumber=0, setStations="FFFF0000")
+
+    responses = ["A0000000000000"]
+    for i in range(91):
+        responses.append("A00099")  # Unrecognized format skips decoding
+
+    sip_data_responses(responses)
+
+    with mock.patch.object(
+        controller, "_process_command", wraps=controller._process_command
+    ) as mock_process:
+        await controller.get_schedule()
+
+    requests = [
+        call.args[2]
+        for call in mock_process.call_args_list
+        if call.args[1] == "RetrieveScheduleRequest"
+    ]
+
+    # Prove the bug by counting duplicate occurrences
+    # program index 16 evaluates to 0x10 | 16 = 0x10 (decimal 16). We expect 16 twice.
+    assert requests.count(16) == 2
+
+    # Program index 32 evaluating to 0x60 | 32 = 0x60 (decimal 96). We expect 96 twice.
+    assert requests.count(96) == 2
