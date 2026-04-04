@@ -31,7 +31,9 @@ RESPONSE = encryption.encrypt(RESPONSE, PASSWORD)
 
 async def handler(request: aiohttp.web.Request) -> aiohttp.web.Response:
     """Handles the request, inserting response prepared by tests."""
-    request.app["request"].append(dict(await request.post()))
+    assert request.content_type == "application/octet-stream"
+    body = dict(await request.post())
+    request.app["request"].append(body)
     return request.app["response"].pop(0)
 
 
