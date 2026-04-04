@@ -248,9 +248,29 @@ async def test_get_available_stations(
     api_response: Callable[[...], Awaitable[None]],
 ) -> None:
     controller = await rainbird_controller()
-    api_response("83", pageNumber=1, setStations=0x7F000000)
+    api_response("82", modelID=0x07, protocolRevisionMajor=1, protocolRevisionMinor=3)
+    api_response("83", pageNumber=0, setStations=0x7F000000)
     stations = await controller.get_available_stations()
     assert stations.active_set == {1, 2, 3, 4, 5, 6, 7}
+
+
+async def test_get_available_stations_multipage(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    sip_data_responses: Callable[[list[str]], None],
+) -> None:
+    controller = await rainbird_controller()
+    # ESP-2WIRE has 50 stations (2 pages)
+    sip_data_responses(
+        [
+            "8200110103",  # ESP-2WIRE model 0x0011 (requires pages 0 and 1)
+            "8300FFFFFFFF",  # Page 0: stations 1-32
+            "8301FFFF0000",  # Page 1: stations 33-48
+        ]
+    )
+    stations = await controller.get_available_stations()
+    assert stations.stations.count == 64
+    assert len(stations.active_set) == 48  # 32 from page 0 + 16 from page 1
+    assert stations.active_set == set(range(1, 49))
 
 
 async def test_device_busy_retries(
@@ -397,6 +417,7 @@ async def test_get_zone_states(
     api_response: Callable[[...], Awaitable[None]],
 ) -> None:
     controller = await rainbird_controller()
+    api_response("82", modelID=0x07, protocolRevisionMajor=1, protocolRevisionMinor=3)
     for i in range(1, 8):
         mask = (1 << (i - 1)) * 0x1000000
         api_response("BF", pageNumber=0, activeStations=mask)
@@ -411,6 +432,7 @@ async def test_get_zone_state(
     api_response: Callable[[...], Awaitable[None]],
 ) -> None:
     controller = await rainbird_controller()
+    api_response("82", modelID=0x07, protocolRevisionMajor=1, protocolRevisionMinor=3)
     for i in range(1, 9):
         for j in range(1, 9):
             mask = (1 << (i - 1)) * 0x1000000
@@ -436,7 +458,7 @@ async def test_get_zone_state_lxivm(
     active_zones: list[int],
 ) -> None:
     controller = await rainbird_controller()
-    sip_data_responses([sip_data])
+    sip_data_responses(["8200070103", sip_data])
     zone_states = await controller.get_zone_states()
     active_states = sorted(list(zone_states.active_set))
     assert active_states == active_zones

@@ -157,7 +157,7 @@ class States:
     @property
     def active_set(self):
         """Return the set of active zones."""
-        return {number for number in range(1, _MAX_ZONES + 1) if self.active(number)}
+        return {number for number in range(1, self.count + 1) if self.active(number)}
 
     def __str__(self):
         result = ()

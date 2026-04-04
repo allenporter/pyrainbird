@@ -269,15 +269,22 @@ class AsyncRainbirdController:
 
     async def get_available_stations(self) -> AvailableStations:
         """Get the available stations."""
-        mask = (
+        model = await self.get_model_and_version()
+        max_stations = model.model_info.max_stations
+        pages = math.ceil(max_stations / 32) if max_stations else 1
+
+        mask_format = (
             "%%0%dX"
             % RAINBIRD_COMMANDS["AvailableStationsResponse"]["setStations"][LENGTH]
         )
-        return await self._cacheable_command(
-            lambda resp: AvailableStations(mask % resp["setStations"]),
-            "AvailableStationsRequest",
-            0,
-        )
+        mask = ""
+        for page in range(pages):
+            mask += await self._cacheable_command(
+                lambda resp: mask_format % resp["setStations"],
+                "AvailableStationsRequest",
+                page,
+            )
+        return AvailableStations(mask)
 
     async def get_serial_number(self) -> str:
         """Get the device serial number."""
@@ -379,17 +386,24 @@ class AsyncRainbirdController:
 
     async def get_zone_states(self) -> States:
         """Return the current state of all zones."""
-        mask = (
+        model = await self.get_model_and_version()
+        max_stations = model.model_info.max_stations
+        pages = math.ceil(max_stations / 32) if max_stations else 1
+
+        mask_format = (
             "%%0%dX"
             % RAINBIRD_COMMANDS["CurrentStationsActiveResponse"]["activeStations"][
                 LENGTH
             ]
         )
-        return await self._process_command(
-            lambda resp: States((mask % resp["activeStations"])),
-            "CurrentStationsActiveRequest",
-            0,
-        )
+        mask = ""
+        for page in range(pages):
+            mask += await self._process_command(
+                lambda resp: mask_format % resp["activeStations"],
+                "CurrentStationsActiveRequest",
+                page,
+            )
+        return States(mask)
 
     async def get_zone_state(self, zone: int) -> bool:
         """Return the current state of the zone."""
