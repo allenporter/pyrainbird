@@ -31,10 +31,12 @@ To use this skill, execute the `create-release.sh` script from the root of your 
 
 This will perform the following actions:
 
-1. Update the `version` field in `pyproject.toml` to `0.9.1`.
-2. Stage the `pyproject.toml` file.
-3. Commit the change with the message `chore(release): 0.9.1`.
-4. Create a GitHub release named `0.9.1` with auto-generated release notes using `gh release create "0.9.1" --generate-notes`.
+1. Ensure the working directory is clean and in the `main` branch.
+2. Update the `version` field in `pyproject.toml` to `0.9.1`.
+3. Stage the `pyproject.toml` file.
+4. Commit the change with the message `chore(release): 0.9.1`.
+5. Push the changes to the `main` branch.
+6. Create a GitHub release named `0.9.1` with auto-generated release notes using `gh release create "0.9.1" --generate-notes`.
 
 ## Requirements
 
