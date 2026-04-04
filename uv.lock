@@ -488,9 +488,10 @@ wheels = [
 
 [[package]]
 name = "pyrainbird"
-version = "6.1.0"
+version = "6.1.2"
 source = { editable = "." }
 dependencies = [
+    { name = "aiohttp" },
     { name = "aiohttp-retry" },
     { name = "ical" },
     { name = "mashumaro" },
@@ -501,6 +502,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "aiohttp", specifier = ">=3.13.3" },
     { name = "aiohttp-retry", specifier = ">=2.8.3" },
     { name = "ical", specifier = ">=4.2.9" },
     { name = "mashumaro", specifier = ">=3.12" },
