@@ -11,6 +11,7 @@ This page documents details about Rainbird Device types and various levels of su
 | ST8X_WF | ST8x-WiFi | `0006` | ❌ | 0 | 6 | 0 | 8 | Legacy SIP (LCR) |
 | ST8X_WF2 | ST8x-WiFi2 | `0008` | ❌ | 8 | 6 | 0 | 8 | Legacy SIP (LCR) |
 | ESP_ME | ESP-Me | `0007` | ✅ | 4 | 6 | 0 | 22 | Legacy SIP (ME) |
+| ESP_MEv2 | ESP-Me | `0107` | ✅ | 4 | 6 | 0 | 22 | Legacy SIP (ME) |
 | ESP_TM2 | ESP-TM2 | `0005` | ✅ | 3 | 4 | 0 | 12 | Legacy SIP (TM2) |
 | ESP_TM2v2 | ESP-TM2 | `000A` | ✅ | 3 | 4 | 0 | 12 | Legacy SIP (TM2 Upgraded) |
 | ESP_TM2v3 | ESP-TM2 | `010A` | ✅ | 3 | 4 | 0 | 12 | Legacy SIP (TM2 Upgraded) |

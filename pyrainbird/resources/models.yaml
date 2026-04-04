@@ -124,6 +124,54 @@
   max_run_times: 4
   max_stations: 12
 
+- device_id: "0014"
+  code: TM2R
+  name: TM2R
+  supports_water_budget: true
+  max_programs: 3
+  max_run_times: 4
+  max_stations: 12
+
+- device_id: "0015"
+  code: TRU
+  name: TRU
+  supports_water_budget: true
+  max_programs: 3
+  max_run_times: 4
+  max_stations: 12
+
+- device_id: "0011"
+  code: ESP_2WIRE
+  name: ESP-2WIRE
+  supports_water_budget: true
+  max_programs: 4
+  max_run_times: 6
+  max_stations: 50
+
+- device_id: "000c"
+  code: LXME2
+  name: LXME2
+  supports_water_budget: true
+  max_programs: 40
+  max_run_times: 10
+  max_stations: 22
+
+- device_id: "000d"
+  code: LX_IVM
+  name: LX-IVM
+  supports_water_budget: true
+  max_programs: 10
+  max_run_times: 8
+  max_stations: 22
+
+- device_id: "000e"
+  code: LX_IVM_PRO
+  name: LX-IVM Pro
+  supports_water_budget: true
+  max_programs: 40
+  max_run_times: 8
+  max_stations: 22
+
 - device_id: "UNKNOWN"
   code: UNKNOWN
   name: Unknown
