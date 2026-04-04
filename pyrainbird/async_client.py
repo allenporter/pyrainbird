@@ -507,16 +507,25 @@ class AsyncRainbirdController:
             max_stations = min(stations.stations.count, 22)
 
         commands = ["00"]
-        # Program details
-        for program in range(0, max_programs):
-            commands.append("%04x" % (0x10 | program))
-        # Start times
-        for program in range(0, max_programs):
-            commands.append("%04x" % (0x60 | program))
-        # Run times per zone
-        _LOGGER.debug("Loading schedule for %d zones", max_stations)
-        for zone_page in range(0, math.ceil(max_stations / 2)):
-            commands.append("%04x" % (0x80 | zone_page))
+        if max_programs > 0:
+            # Legacy ESP-ME / TM2 Schedule Loop
+            # Program details
+            for program in range(0, max_programs):
+                commands.append("%04x" % (0x10 | program))
+            # Start times
+            for program in range(0, max_programs):
+                commands.append("%04x" % (0x60 | program))
+            # Run times per zone
+            _LOGGER.debug("Loading schedule for %d zones", max_stations)
+            for zone_page in range(0, math.ceil(max_stations / 2)):
+                commands.append("%04x" % (0x80 | zone_page))
+        else:
+            # LCR Series (ESP-RZXe / ST8) Schedule Loop
+            _LOGGER.debug("Loading schedule for %d independent zones", max_stations)
+            for zone_page in range(1, max_stations + 1):
+                if zone_page in stations.stations.active_set:
+                    commands.append("%04x" % zone_page)
+
         _LOGGER.debug("Sending schedule commands: %s", commands)
         # Run command serially to avoid overwhelming the controller
         schedule_data: dict[str, Any] = {
@@ -524,6 +533,7 @@ class AsyncRainbirdController:
             "programInfo": [],
             "programStartInfo": [],
             "durations": [],
+            "zoneInfo": {},
         }
         for command in commands:
             result = await self._process_command(
@@ -542,7 +552,7 @@ class AsyncRainbirdController:
                             ) not in stations.stations.active_set:
                                 continue
                             schedule_data[key].append(entry)
-                    elif key == "controllerInfo":
+                    elif key == "controllerInfo" or key == "zoneInfo":
                         schedule_data[key].update(value)
                     else:
                         schedule_data[key].append(value)

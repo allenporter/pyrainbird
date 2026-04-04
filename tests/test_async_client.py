@@ -1593,6 +1593,7 @@ async def test_get_schedule_esp_me_8_zones(
     assert durations[8] == datetime.timedelta(minutes=10)
 
 
+@freeze_time("2023-01-01 00:00:00")
 async def test_get_schedule_non_program_based(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
     api_response: Callable[..., Awaitable[None]],
@@ -1610,22 +1611,56 @@ async def test_get_schedule_non_program_based(
     # Responses: 1 (0x00) + 3 (zone commands: 0x01, 0x03, 0x05) = 4
     # Note: 0x00 might not be needed but the code adds it.
     responses = [
-        "A0000000000000",  # state
-        "A00001000A",  # Z1: 10m
-        "A000030014",  # Z3: 20m
-        "A00005001E",  # Z5: 30m
+        "A000000000",  # state (10 chars for RZX)
+        "A000010A33FFFFFFFFFF007F0000",  # Z1: 10m, start 08:30, CUSTOM (00), all days (0x7F)
+        "A00003143CFFFFFFFFFF007F0000",  # Z3: 20m, start 10:00, CUSTOM (00), all days (0x7F)
+        "A000051E4CFFFFFFFFFF007F0000",  # Z5: 30m, start 12:40, CUSTOM (00), all days (0x7F)
     ]
     sip_data_responses(responses)
 
-    # TODO: Add support for non-program based controllers in the future
-    with pytest.raises(RainbirdApiException, match="Rain Bird responded with an error"):
-        await controller.get_schedule()
+    schedule = await controller.get_schedule()
 
-    # # Requests: 82, 83 + 4 commands = 6
-    # assert len(app["request"]) == 6
+    # Requests: 82, 83 + 1 (00) + 3 commands = 6 total payload requests
+    assert len(app["request"]) == 6
 
-    # # Let's check the result
-    # assert len(schedule.programs) == 0
+    # Legacy programs should be completely empty
+    assert len(schedule.programs) == 0
+
+    # LCR zones should be strictly 3 elements
+    assert len(schedule.zone_schedules) == 3
+
+    # Verify zone runtime data propagated natively
+    assert schedule.zone_schedules[1].duration == datetime.timedelta(minutes=10)
+    assert schedule.zone_schedules[1].starts == [datetime.time(8, 30)]
+
+    assert schedule.zone_schedules[3].duration == datetime.timedelta(minutes=20)
+    assert schedule.zone_schedules[3].starts == [datetime.time(10, 0)]
+
+    assert schedule.zone_schedules[5].duration == datetime.timedelta(minutes=30)
+    assert schedule.zone_schedules[5].starts == [datetime.time(12, 40)]
+
+    # Test timeline iterates over the active zones natively!
+    tz = datetime.timezone.utc
+    events = list(
+        schedule.timeline_tz(tz).overlapping(
+            datetime.datetime(2023, 1, 1, 0, 0, 0, tzinfo=tz),
+            datetime.datetime(2023, 1, 2, 0, 0, 0, tzinfo=tz),
+        )
+    )
+
+    # 3 active zones, triggering once per day, should yield 3 events per day!
+    assert len(events) == 3
+    assert events[0].start == datetime.datetime(2023, 1, 1, 8, 30, 0, tzinfo=tz)
+    assert events[0].end == datetime.datetime(2023, 1, 1, 8, 40, 0, tzinfo=tz)
+    assert events[0].program_id.zone == 1
+
+    assert events[1].start == datetime.datetime(2023, 1, 1, 10, 0, 0, tzinfo=tz)
+    assert events[1].end == datetime.datetime(2023, 1, 1, 10, 20, 0, tzinfo=tz)
+    assert events[1].program_id.zone == 3
+
+    assert events[2].start == datetime.datetime(2023, 1, 1, 12, 40, 0, tzinfo=tz)
+    assert events[2].end == datetime.datetime(2023, 1, 1, 13, 10, 0, tzinfo=tz)
+    assert events[2].program_id.zone == 5
 
 
 async def test_get_schedule_tm2_12_zones(
