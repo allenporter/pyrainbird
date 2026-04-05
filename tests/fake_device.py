@@ -92,11 +92,15 @@ class FakeRainbirdDevice:
         # Tests populate this before calling get_schedule().
         self.schedule: dict[str, str] = {}
 
+        # Zone State responses keyed by the 2-hex-char subcommand (e.g. "00" for page 0)
+        self.zone_states: dict[str, str] = {}
+
         # Command handlers
         self.handlers = {
             "02": self._handle_model_and_version,
             "03": self._handle_available_stations,
             "20": self._handle_retrieve_schedule,
+            "3F": self._handle_zone_state,
         }
 
     def _handle_model_and_version(self, data: str) -> str:
@@ -134,6 +138,16 @@ class FakeRainbirdDevice:
                 f"Populated keys: {list(self.schedule)}"
             )
         return self.schedule[subcommand]
+
+    def _handle_zone_state(self, data: str) -> str:
+        """Handle RequestZoneState (3F)."""
+        subcommand = data[2:4] if len(data) >= 4 else data[2:]
+        if subcommand not in self.zone_states:
+            raise AssertionError(
+                f"FakeRainbirdDevice: RequestZoneState subcommand "
+                f"'{subcommand}' not found in fake_device.zone_states."
+            )
+        return self.zone_states[subcommand]
 
     def set_model(self, model_identifier: str) -> None:
         """Lookup and set the model code from pyrainbird's device registry."""
