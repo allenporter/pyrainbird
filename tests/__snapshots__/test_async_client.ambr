@@ -1964,7 +1964,7 @@
   [client >]
   Intent: CurrentDateRequest (12)
   Payload: {
-    "id": 2,
+    "id": 1672531200.0,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
@@ -1977,7 +1977,7 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "921FC7B1"
+      "data": "920117E7"
     },
     "id": 1
   }
@@ -8317,13 +8317,13 @@
 # name: test_set_current_date
   '''
   [client >]
-  Intent: SetCurrentDateRequest (131FC7B1)
+  Intent: SetCurrentDateRequest (130117E7)
   Payload: {
-    "id": 2,
+    "id": 1672531200.0,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "131FC7B1",
+      "data": "130117E7",
       "length": 4
     }
   }

@@ -17,14 +17,6 @@ from .fake_device import FakeRainbirdDevice, CapturedRequestLog
 import itertools
 
 
-@pytest.fixture(autouse=True)
-def patch_request_id() -> Generator[None, None, None]:
-    """Patch the request ID to be a deterministic sequence."""
-    counter = itertools.count(1)
-    with patch("pyrainbird.encryption.time.time", side_effect=lambda: next(counter)):
-        yield
-
-
 ResponseResult = Callable[[aiohttp.web.Response], None]
 
 
@@ -41,6 +33,14 @@ RESPONSE = json.dumps(
     }
 )
 RESPONSE = encryption.encrypt(RESPONSE, PASSWORD)
+
+
+@pytest.fixture(autouse=True)
+def patch_request_id() -> Generator[None, None, None]:
+    """Patch the request ID to be a deterministic sequence."""
+    counter = itertools.count(1)
+    with patch("pyrainbird.encryption.time.time", side_effect=lambda: next(counter)):
+        yield
 
 
 @pytest.fixture

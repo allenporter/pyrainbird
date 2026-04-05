@@ -388,6 +388,7 @@ async def test_get_current_time(
     assert await controller.get_current_time() == time
 
 
+@freeze_time("2023-01-01 00:00:00")
 async def test_get_current_date(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
     api_response: Callable[[...], Awaitable[None]],
@@ -409,6 +410,7 @@ async def test_set_current_time(
     await controller.set_current_time(datetime.datetime.now().time())
 
 
+@freeze_time("2023-01-01 00:00:00")
 async def test_set_current_date(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
     api_response: Callable[[...], Awaitable[None]],
