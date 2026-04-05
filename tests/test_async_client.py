@@ -235,26 +235,6 @@ def mock_api_response(
     return _put_result
 
 
-@pytest.fixture(name="sip_data_responses")
-def mock_sip_data_responses(
-    encrypt_response: Callable[[str | dict], None],
-    api_response_id: Iterator[int],
-) -> Callable[[list[str]], None]:
-    """Fixture to create sip data responess."""
-
-    def _put_result(datam: list[str]) -> None:
-        for data in datam:
-            encrypt_response(
-                {
-                    "jsonrpc": "2.0",
-                    "result": {"data": data},
-                    "id": next(api_response_id),
-                }
-            )
-
-    return _put_result
-
-
 async def test_get_model_and_version(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
     fake_device: FakeRainbirdDevice,
@@ -483,12 +463,13 @@ async def test_get_zone_state(
 )
 async def test_get_zone_state_lxivm(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    sip_data_responses: Callable[[list[str]], None],
+    fake_device: FakeRainbirdDevice,
     sip_data: str,
     active_zones: list[int],
 ) -> None:
+    fake_device.set_model("ESP-Me")
+    fake_device.zone_states = {"00": sip_data}
     controller = await rainbird_controller()
-    sip_data_responses(["8200070103", sip_data])
     zone_states = await controller.get_zone_states()
     active_states = sorted(list(zone_states.active_set))
     assert active_states == active_zones
@@ -1163,31 +1144,27 @@ async def test_cyclic_schedule(
 @freeze_time("2023-01-21 09:32:00")
 async def test_custom_schedule(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    api_response: Callable[[...], Awaitable[None]],
-    sip_data_responses: Callable[[list[str]], None],
+    fake_device: FakeRainbirdDevice,
 ) -> None:
     """Test checking for an RPC support."""
+    fake_device.set_model("ESP_TM2v2")
+    fake_device.stations = {1, 2, 3, 4, 5}
+    fake_device.schedule = {
+        "0000": "A0000000000400",
+        "0010": "A00010060602006400",
+        "0011": "A00011110602006400",
+        "0012": "A00012000300006400",
+        "0060": "A0006000F0FFFFFFFFFFFF",
+        "0061": "A00061FFFFFFFFFFFFFFFF",
+        "0062": "A00062FFFFFFFFFFFFFFFF",
+        "0080": "A00080001900000000001400000000",
+        "0081": "A00081000700000000001400000000",
+        "0082": "A00082000A00000000000000000000",
+        "0083": "A00083000000000000000000000000",
+        "0084": "A00084000000000000000000000000",
+        "0085": "A00085000000000000000000000000",
+    }
     controller = await rainbird_controller()
-
-    api_response("82", modelID=0x0A, protocolRevisionMajor=1, protocolRevisionMinor=3)
-    api_response("83", pageNumber=1, setStations=0x1F000000)  # 5 stations
-    sip_data_responses(
-        [
-            "A0000000000400",
-            "A00010060602006400",
-            "A00011110602006400",
-            "A00012000300006400",
-            "A0006000F0FFFFFFFFFFFF",
-            "A00061FFFFFFFFFFFFFFFF",
-            "A00062FFFFFFFFFFFFFFFF",
-            "A00080001900000000001400000000",
-            "A00081000700000000001400000000",
-            "A00082000A00000000000000000000",
-            "A00083000000000000000000000000",
-            "A00084000000000000000000000000",
-            "A00085000000000000000000000000",
-        ]
-    )
 
     schedule = await controller.get_schedule()
     assert len(schedule.programs) == 3
@@ -1249,31 +1226,27 @@ async def test_custom_schedule(
 @freeze_time("2023-01-21 09:32:00")
 async def test_odd_schedule(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    api_response: Callable[[...], Awaitable[None]],
-    sip_data_responses: Callable[[list[str]], None],
+    fake_device: FakeRainbirdDevice,
 ) -> None:
     """Test checking for an RPC support."""
+    fake_device.set_model("ESP_TM2v2")
+    fake_device.stations = {1, 2, 3, 4, 5}
+    fake_device.schedule = {
+        "0000": "A0000000000400",
+        "0010": "A00010110602006402",
+        "0011": "A000117F0300006400",
+        "0012": "A00012000300006400",
+        "0060": "A0006000F0FFFFFFFFFFFF",
+        "0061": "A00061FFFFFFFFFFFFFFFF",
+        "0062": "A00062FFFFFFFFFFFFFFFF",
+        "0080": "A00080001900000000001400000000",
+        "0081": "A00081000700000000001400000000",
+        "0082": "A00082000A00000000000000000000",
+        "0083": "A00083000000000000000000000000",
+        "0084": "A00084000000000000000000000000",
+        "0085": "A00085000000000000000000000000",
+    }
     controller = await rainbird_controller()
-
-    api_response("82", modelID=0x0A, protocolRevisionMajor=1, protocolRevisionMinor=3)
-    api_response("83", pageNumber=1, setStations=0x1F000000)  # 5 stations
-    sip_data_responses(
-        [
-            "A0000000000400",
-            "A00010110602006402",
-            "A000117F0300006400",
-            "A00012000300006400",
-            "A0006000F0FFFFFFFFFFFF",
-            "A00061FFFFFFFFFFFFFFFF",
-            "A00062FFFFFFFFFFFFFFFF",
-            "A00080001900000000001400000000",
-            "A00081000700000000001400000000",
-            "A00082000A00000000000000000000",
-            "A00083000000000000000000000000",
-            "A00084000000000000000000000000",
-            "A00085000000000000000000000000",
-        ]
-    )
 
     schedule = await controller.get_schedule()
     assert len(schedule.programs) == 3
@@ -1316,31 +1289,27 @@ async def test_odd_schedule(
 @freeze_time("2023-01-21 09:32:00")
 async def test_even_schedule(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    api_response: Callable[[...], Awaitable[None]],
-    sip_data_responses: Callable[[list[str]], None],
+    fake_device: FakeRainbirdDevice,
 ) -> None:
     """Test checking for an RPC support."""
+    fake_device.set_model("ESP_TM2v2")
+    fake_device.stations = {1, 2, 3, 4, 5}
+    fake_device.schedule = {
+        "0000": "A0000000000400",
+        "0010": "A00010110602006403",
+        "0011": "A000117F0300006400",
+        "0012": "A00012000300006400",
+        "0060": "A0006000F0FFFFFFFFFFFF",
+        "0061": "A00061FFFFFFFFFFFFFFFF",
+        "0062": "A00062FFFFFFFFFFFFFFFF",
+        "0080": "A00080001900000000001400000000",
+        "0081": "A00081000700000000001400000000",
+        "0082": "A00082000A00000000000000000000",
+        "0083": "A00083000000000000000000000000",
+        "0084": "A00084000000000000000000000000",
+        "0085": "A00085000000000000000000000000",
+    }
     controller = await rainbird_controller()
-
-    api_response("82", modelID=0x0A, protocolRevisionMajor=1, protocolRevisionMinor=3)
-    api_response("83", pageNumber=1, setStations=0x1F000000)  # 5 stations
-    sip_data_responses(
-        [
-            "A0000000000400",
-            "A00010110602006403",
-            "A000117F0300006400",
-            "A00012000300006400",
-            "A0006000F0FFFFFFFFFFFF",
-            "A00061FFFFFFFFFFFFFFFF",
-            "A00062FFFFFFFFFFFFFFFF",
-            "A00080001900000000001400000000",
-            "A00081000700000000001400000000",
-            "A00082000A00000000000000000000",
-            "A00083000000000000000000000000",
-            "A00084000000000000000000000000",
-            "A00085000000000000000000000000",
-        ]
-    )
 
     schedule = await controller.get_schedule()
     assert len(schedule.programs) == 3
@@ -1385,31 +1354,27 @@ async def test_even_schedule(
 @freeze_time("2023-01-21 09:32:00")
 async def test_custom_schedule_by_zone(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    api_response: Callable[[...], Awaitable[None]],
-    sip_data_responses: Callable[[list[str]], None],
+    fake_device: FakeRainbirdDevice,
 ) -> None:
     """Test checking for an RPC support."""
+    fake_device.set_model("ESP_TM2v2")
+    fake_device.stations = {1, 2, 3, 4, 5}
+    fake_device.schedule = {
+        "0000": "A0000000000300",
+        "0010": "A00010060602006400",
+        "0011": "A00011110602006400",
+        "0012": "A00012000300006400",
+        "0060": "A0006000F0FFFFFFFFFFFF",
+        "0061": "A00061FFFFFFFFFFFFFFFF",
+        "0062": "A00062FFFFFFFFFFFFFFFF",
+        "0080": "A00080001900000000001400000000",
+        "0081": "A00081000700000000001400000000",
+        "0082": "A00082000A00000000000000000000",
+        "0083": "A00083000000000000000000000000",
+        "0084": "A00084000000000000000000000000",
+        "0085": "A00085000000000000000000000000",
+    }
     controller = await rainbird_controller()
-
-    api_response("82", modelID=0x0A, protocolRevisionMajor=1, protocolRevisionMinor=3)
-    api_response("83", pageNumber=1, setStations=0x1F000000)  # 5 stations
-    sip_data_responses(
-        [
-            "A0000000000300",
-            "A00010060602006400",
-            "A00011110602006400",
-            "A00012000300006400",
-            "A0006000F0FFFFFFFFFFFF",
-            "A00061FFFFFFFFFFFFFFFF",
-            "A00062FFFFFFFFFFFFFFFF",
-            "A00080001900000000001400000000",
-            "A00081000700000000001400000000",
-            "A00082000A00000000000000000000",
-            "A00083000000000000000000000000",
-            "A00084000000000000000000000000",
-            "A00085000000000000000000000000",
-        ]
-    )
 
     schedule = await controller.get_schedule()
     assert schedule.controller_info.rain_delay == 3
@@ -1464,31 +1429,27 @@ async def test_custom_schedule_by_zone(
 @freeze_time("2023-01-25 20:00:00")
 async def test_custom_schedule_in_past(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    api_response: Callable[[...], Awaitable[None]],
-    sip_data_responses: Callable[[list[str]], None],
+    fake_device: FakeRainbirdDevice,
 ) -> None:
     """Test checking for an RPC support."""
+    fake_device.set_model("ESP_TM2v2")
+    fake_device.stations = {1, 2, 3, 4, 5}
+    fake_device.schedule = {
+        "0000": "A0000000000000",
+        "0010": "A00010110605006401",
+        "0011": "A000117F0300006400",
+        "0012": "A00012000300006400",
+        "0060": "A0006000F0FFFFFFFFFFFF",
+        "0061": "A00061FFFFFFFFFFFFFFFF",
+        "0062": "A00062FFFFFFFFFFFFFFFF",
+        "0080": "A00080001900000000001400000000",
+        "0081": "A00081000700000000001400000000",
+        "0082": "A00082000A00000000000000000000",
+        "0083": "A00083000000000000000000000000",
+        "0084": "A00084000000000000000000000000",
+        "0085": "A00085000000000000000000000000",
+    }
     controller = await rainbird_controller()
-
-    api_response("82", modelID=0x0A, protocolRevisionMajor=1, protocolRevisionMinor=3)
-    api_response("83", pageNumber=1, setStations=0x1F000000)  # 5 stations
-    sip_data_responses(
-        [
-            "A0000000000000",
-            "A00010110605006401",
-            "A000117F0300006400",
-            "A00012000300006400",
-            "A0006000F0FFFFFFFFFFFF",
-            "A00061FFFFFFFFFFFFFFFF",
-            "A00062FFFFFFFFFFFFFFFF",
-            "A00080001900000000001400000000",
-            "A00081000700000000001400000000",
-            "A00082000A00000000000000000000",
-            "A00083000000000000000000000000",
-            "A00084000000000000000000000000",
-            "A00085000000000000000000000000",
-        ]
-    )
 
     schedule = await controller.get_schedule()
     assert len(schedule.programs) == 3
@@ -1517,31 +1478,27 @@ async def test_custom_schedule_in_past(
 @freeze_time("2023-01-25 20:00:00")
 async def test_get_schedule_parse_failure(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    api_response: Callable[[...], Awaitable[None]],
-    sip_data_responses: Callable[[list[str]], None],
+    fake_device: FakeRainbirdDevice,
 ) -> None:
     """Test a schedule that fails to parse."""
+    fake_device.set_model("ESP_TM2v2")
+    fake_device.stations = {1, 2, 3, 4, 5}
+    fake_device.schedule = {
+        "0000": "A0000080",
+        "0010": "A00010",
+        "0011": "A00011",
+        "0012": "A00012",
+        "0060": "A00060",
+        "0061": "A00061",
+        "0062": "A00062",
+        "0080": "A00080",
+        "0081": "A00081",
+        "0082": "A00082",
+        "0083": "A00083",
+        "0084": "A00084",
+        "0085": "A00085",
+    }
     controller = await rainbird_controller()
-
-    api_response("82", modelID=0x0A, protocolRevisionMajor=1, protocolRevisionMinor=3)
-    api_response("83", pageNumber=1, setStations=0x1F000000)  # 5 stations
-    sip_data_responses(
-        [
-            "A0000080",
-            "A00010",
-            "A00011",
-            "A00012",
-            "A00060",
-            "A00061",
-            "A00062",
-            "A00080",
-            "A00081",
-            "A00082",
-            "A00083",
-            "A00084",
-            "A00085",
-        ]
-    )
 
     schedule = await controller.get_schedule()
     assert len(schedule.programs) == 0
@@ -1549,64 +1506,46 @@ async def test_get_schedule_parse_failure(
 
 async def test_get_schedule_esp_me_8_zones(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    api_response: Callable[..., Awaitable[None]],
-    sip_data_responses: Callable[[list[str]], None],
-    app: aiohttp.web.Application,
+    fake_device: FakeRainbirdDevice,
 ) -> None:
     """Test get_schedule for ESP-Me with 8-zone capability."""
-    controller = await rainbird_controller()
+    fake_device.set_model("ESP-Me")
+    # ESP_Me: max_programs=4, max_stations=22
+    fake_device.stations = set(range(1, 9))
 
-    # ESP_Me: max_programs=4
-    api_response("82", modelID=0x07, protocolRevisionMajor=1, protocolRevisionMinor=3)
-    # 8 zones
-    api_response("83", pageNumber=0, setStations="FF000000")
-
-    # Responses: 1 (0x00) + 4 (0x1x) + 4 (0x6x) + 4 (0x80-0x83 for 8 zones) = 13
-    responses = [
-        "A0000000000400",  # state: delay=0, snooze=0, rain=4 (disabled/unknown)
-    ]
-    # Program data for 4 programs (0x10 to 0x13)
-    responses.extend(
-        [
-            "A00010000000000000",  # PGM A
-            "A00011000000000000",  # PGM B
-            "A00012000000000000",  # PGM C
-            "A00013000000000000",  # PGM D
-        ]
-    )
-    # Start times for 4 programs (0x60 to 0x63)
-    responses.extend(
-        [
-            "A00060FFFFFFFF",  # No starts
-            "A00061FFFFFFFF",
-            "A00062FFFFFFFF",
-            "A00063FFFFFFFF",
-        ]
-    )
-    # Zone runtimes for 11 pages (0x80 to 0x8A)
-    # Page data format: A0 <page> <zone1_4_programs> <zone2_4_programs>
-    # 4 programs * 4 chars = 16 chars per zone.
-    # stations.count = 32 (8 hex chars * 4), min(32, 22) / 2 = 11 pages.
-    responses.extend(
-        [
-            "A00080" + "000A000000000000" + "0005000000000000",  # Z1:P1=10, Z2:P1=5
-            "A00081" + "0014000000000000" + "0000000000000000",  # Z3:P1=20, Z4:0
-            "A00082" + "0000000000000000" + "0000000000000000",  # Z5:0, Z6:0
-            "A00083" + "000F000000000000" + "000A000000000000",  # Z7:P1=15, Z8:P1=10
-        ]
-    )
+    schedule_data = {
+        "0000": "A0000000000400",  # state: delay=0, snooze=0, rain=4 (disabled/unknown)
+        "0010": "A00010000000000000",  # PGM A
+        "0011": "A00011000000000000",  # PGM B
+        "0012": "A00012000000000000",  # PGM C
+        "0013": "A00013000000000000",  # PGM D
+        "0060": "A00060FFFFFFFF",  # No starts
+        "0061": "A00061FFFFFFFF",
+        "0062": "A00062FFFFFFFF",
+        "0063": "A00063FFFFFFFF",
+        "0080": "A00080" + "000A000000000000" + "0005000000000000",  # Z1:P1=10, Z2:P1=5
+        "0081": "A00081" + "0014000000000000" + "0000000000000000",  # Z3:P1=20, Z4:0
+        "0082": "A00082" + "0000000000000000" + "0000000000000000",  # Z5:0, Z6:0
+        "0083": "A00083"
+        + "000F000000000000"
+        + "000A000000000000",  # Z7:P1=15, Z8:P1=10
+    }
     # Add empty responses for pages 0x84 to 0x8A (total 11 pages)
     for page in range(0x84, 0x8B):
-        responses.append("A000" + ("%02X" % page) + ("00" * 16))
+        schedule_data["00%02X" % page] = "A000" + ("%02X" % page) + ("00" * 16)
 
-    sip_data_responses(responses)
+    fake_device.schedule = schedule_data
+    controller = await rainbird_controller()
 
     schedule = await controller.get_schedule()
 
     # Verify we requested 20 schedule commands in total
     # 1 (state) + 4 (program details) + 4 (start times) + 11 (zone pages) = 20
     # Plus discovery: 82, 83 = 22 total requests.
-    assert len(app["request"]) == 22
+    requests = [
+        r for r in fake_device.request_log if type(r).__name__ == "RequestLogEntry"
+    ]
+    assert len(requests) == 22
 
     assert len(schedule.programs) == 4
     # Check durations for PGM A (program 0)
@@ -1621,32 +1560,29 @@ async def test_get_schedule_esp_me_8_zones(
 @freeze_time("2023-01-01 00:00:00")
 async def test_get_schedule_non_program_based(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    api_response: Callable[..., Awaitable[None]],
-    sip_data_responses: Callable[[list[str]], None],
-    app: aiohttp.web.Application,
+    fake_device: FakeRainbirdDevice,
 ) -> None:
     """Test get_schedule for a non-program based device (ESP-RZXe)."""
+    fake_device.set_model("ESP_RZXe")
+    # Active zones: 1, 3, 5
+    fake_device.stations = {1, 3, 5}
+
+    fake_device.schedule = {
+        "0000": "A000000000",  # state (10 chars for RZX)
+        "0001": "A000010A33FFFFFFFFFF007F0000",  # Z1: 10m, start 08:30, CUSTOM (00), all days (0x7F)
+        "0003": "A00003143CFFFFFFFFFF007F0000",  # Z3: 20m, start 10:00, CUSTOM (00), all days (0x7F)
+        "0005": "A000051E4CFFFFFFFFFF007F0000",  # Z5: 30m, start 12:40, CUSTOM (00), all days (0x7F)
+    }
+
     controller = await rainbird_controller()
-
-    # ESP_RZXe: max_programs=0
-    api_response("82", modelID=0x03, protocolRevisionMajor=1, protocolRevisionMinor=3)
-    # Active zones: 1, 3, 5 (mask 0x15 = 00010101)
-    api_response("83", pageNumber=0, setStations="15000000")
-
-    # Responses: 1 (0x00) + 3 (zone commands: 0x01, 0x03, 0x05) = 4
-    # Note: 0x00 might not be needed but the code adds it.
-    responses = [
-        "A000000000",  # state (10 chars for RZX)
-        "A000010A33FFFFFFFFFF007F0000",  # Z1: 10m, start 08:30, CUSTOM (00), all days (0x7F)
-        "A00003143CFFFFFFFFFF007F0000",  # Z3: 20m, start 10:00, CUSTOM (00), all days (0x7F)
-        "A000051E4CFFFFFFFFFF007F0000",  # Z5: 30m, start 12:40, CUSTOM (00), all days (0x7F)
-    ]
-    sip_data_responses(responses)
 
     schedule = await controller.get_schedule()
 
     # Requests: 82, 83 + 1 (00) + 3 commands = 6 total payload requests
-    assert len(app["request"]) == 6
+    requests = [
+        r for r in fake_device.request_log if type(r).__name__ == "RequestLogEntry"
+    ]
+    assert len(requests) == 6
 
     # Legacy programs should be completely empty
     assert len(schedule.programs) == 0
@@ -1690,38 +1626,26 @@ async def test_get_schedule_non_program_based(
 
 async def test_get_schedule_tm2_12_zones(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    api_response: Callable[[...], Awaitable[None]],
-    sip_data_responses: Callable[[list[str]], None],
-    app: dict[str, Any],
+    fake_device: FakeRainbirdDevice,
 ) -> None:
-    controller = await rainbird_controller()
-
-    # ESP-TM2v2 (Model 0x0A): max_programs=3, max_stations=12
-    api_response("82", modelID=0x0A, protocolRevisionMajor=1, protocolRevisionMinor=3)
+    fake_device.set_model("ESP_TM2v2")
     # Available stations mock = 12 zones active
-    api_response("83", pageNumber=0, setStations="FF0F0000")
+    fake_device.stations = set(range(1, 13))
 
-    responses = [
-        "A0000000000000",
-    ]
-    responses.extend(
-        [
-            "A0001000000000000000",
-            "A0001100000000000000",
-            "A0001200000000000000",
-        ]
-    )
-    responses.extend(
-        [
-            "A00060FFFFFFFF",
-            "A00061FFFFFFFF",
-            "A00062FFFFFFFF",
-        ]
-    )
+    schedule_data = {
+        "0000": "A0000000000000",
+        "0010": "A0001000000000000000",
+        "0011": "A0001100000000000000",
+        "0012": "A0001200000000000000",
+        "0060": "A00060FFFFFFFF",
+        "0061": "A00061FFFFFFFF",
+        "0062": "A00062FFFFFFFF",
+    }
     for page in range(0x80, 0x86):
-        responses.append("A000" + ("%02X" % page) + ("00" * 12))
+        schedule_data["00%02X" % page] = "A000" + ("%02X" % page) + ("00" * 12)
 
-    sip_data_responses(responses)
+    fake_device.schedule = schedule_data
+    controller = await rainbird_controller()
 
     schedule = await controller.get_schedule()
     # Verify the schedule
@@ -1729,56 +1653,76 @@ async def test_get_schedule_tm2_12_zones(
     assert [program.program for program in schedule.programs] == [0, 1, 2]
 
     # 2 initial (Model, Stations) + 1 Global + 3 ProgramInfo + 3 StartTimes + 6 Runtimes = 15 total requests.
-    assert len(app["request"]) == 15
+    requests = [
+        r for r in fake_device.request_log if type(r).__name__ == "RequestLogEntry"
+    ]
+    assert len(requests) == 15
 
 
 async def test_get_schedule_unknown_model_fallback(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    api_response: Callable[[...], Awaitable[None]],
-    sip_data_responses: Callable[[list[str]], None],
-    app: dict[str, Any],
+    fake_device: FakeRainbirdDevice,
 ) -> None:
-    controller = await rainbird_controller()
-
     # Unknown model ID
-    api_response("82", modelID=0x99, protocolRevisionMajor=1, protocolRevisionMinor=3)
-    api_response("83", pageNumber=0, setStations="FF000000")
+    fake_device.model_code = 0x88
+    fake_device.version_major = 1
+    fake_device.version_minor = 3
+    fake_device.stations = set(range(1, 9))  # 8 zones active
 
-    responses = [
-        "A0000000000000",
-    ]
-    # No programs requested because max_programs is 0 for unknowns!
-    # It drops right to 11 pages (0x80 to 0x8A)
-    for page in range(0x80, 0x8B):
-        responses.append("A000" + ("%02X" % page) + ("00" * 12))
+    schedule_data = {
+        "0000": "A0000000000000",
+    }
+    # Unknown models fall back to max_programs=0, triggering the LCR zone loop.
+    # It will request the 8 active zones.
+    for zone in range(1, 9):
+        schedule_data["00%02X" % zone] = (
+            "A0000" + ("%X" % zone) + "0A33FFFFFFFFFF007F0000"
+        )
 
-    sip_data_responses(responses)
+    fake_device.schedule = schedule_data
+    controller = await rainbird_controller()
 
     schedule = await controller.get_schedule()
 
     assert len(schedule.programs) == 0
-    # 2 initial (Model, Stations) + 1 Global + 11 Runtimes = 14 total requests.
-    print([req.get("params", {}).get("data") for req in app["request"]])
-    assert len(app["request"]) == 13
+    # 2 initial (Model, Stations) + 1 Global + 8 Zone Pages = 11 requests
+    requests = [
+        r for r in fake_device.request_log if type(r).__name__ == "RequestLogEntry"
+    ]
+    assert len(requests) == 11
 
 
 async def test_get_schedule_lxme2_bit_collision(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    api_response: Callable[[...], Awaitable[None]],
-    sip_data_responses: Callable[[list[str]], None],
-    app: dict[str, Any],
+    fake_device: FakeRainbirdDevice,
 ) -> None:
-    controller = await rainbird_controller()
-
     # LXME2 (Model 0x0C): max_programs=40, max_stations=22
-    api_response("82", modelID=0x0C, protocolRevisionMajor=1, protocolRevisionMinor=3)
-    api_response("83", pageNumber=0, setStations="FFFF0000")
+    fake_device.model_code = 0x0C
+    fake_device.version_major = 1
+    fake_device.version_minor = 3
+    fake_device.stations = set(range(1, 17))
 
-    responses = ["A0000000000000"]
+    schedule_data = {"0000": "A0000000000000"}
+
+    # 40 programs * 2 commands (0x10-0x37 for info, 0x60-0x87 for start times) = 80 commands
+    # Plus 11 zones pages = 91 commands
     for i in range(91):
-        responses.append("A00099")  # Unrecognized format skips decoding
+        # We don't want to actually populate all 91 keys manually in this test.
+        # Since it only tests bit collision logic via mocked requests, we can just intercept the mock process.
+        # However, fake_device expects all keys to be present. We will use a default dict for fake_device in this specific test.
+        pass
 
-    sip_data_responses(responses)
+    class DefaultScheduleDict(dict):
+        def __contains__(self, item: Any) -> bool:
+            return True
+
+        def __getitem__(self, key: Any) -> Any:
+            return "A00099"  # Unrecognized format skips decoding
+
+    schedule_data = DefaultScheduleDict({"0000": "A0000000000000"})
+    fake_device.schedule = schedule_data
+
+    controller = await rainbird_controller()
 
     with mock.patch.object(
         controller, "_process_command", wraps=controller._process_command
