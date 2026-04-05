@@ -36,6 +36,7 @@ from pyrainbird.exceptions import (
 from pyrainbird.resources import RAINBIRD_COMMANDS_BY_ID
 
 from .conftest import LENGTH, PASSWORD, REQUEST, RESPONSE, RESULT_DATA, ResponseResult
+from .fake_device import FakeRainbirdDevice
 
 
 @pytest.fixture(autouse=True)
@@ -256,10 +257,12 @@ def mock_sip_data_responses(
 
 async def test_get_model_and_version(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    api_response: Callable[[...], Awaitable[None]],
+    fake_device: FakeRainbirdDevice,
 ) -> None:
+    fake_device.set_model("ESP_TM2v2")
+    fake_device.version_major = 1
+    fake_device.version_minor = 3
     controller = await rainbird_controller()
-    api_response("82", modelID=0x0A, protocolRevisionMajor=1, protocolRevisionMinor=3)
     result = await controller.get_model_and_version()
     assert result == ModelAndVersion(0x0A, 1, 3)
     assert result.model_code == "ESP_TM2v2"
