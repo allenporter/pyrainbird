@@ -1052,31 +1052,27 @@ async def test_unrecognized_response(
 @freeze_time("2023-01-21 09:32:00")
 async def test_cyclic_schedule(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    api_response: Callable[[...], Awaitable[None]],
-    sip_data_responses: Callable[[list[str]], None],
+    fake_device: FakeRainbirdDevice,
 ) -> None:
     """Test checking for an RPC support."""
+    fake_device.set_model("ESP_TM2v2")
+    fake_device.stations = {1, 2, 3, 4, 5}
+    fake_device.schedule = {
+        "0000": "A0000000000400",
+        "0010": "A000106A0602006401",
+        "0011": "A000117F0300006400",
+        "0012": "A00012000300006400",
+        "0060": "A0006000F0FFFFFFFFFFFF",
+        "0061": "A00061FFFFFFFFFFFFFFFF",
+        "0062": "A00062FFFFFFFFFFFFFFFF",
+        "0080": "A00080001900000000001400000000",
+        "0081": "A00081000700000000001400000000",
+        "0082": "A00082000A00000000000000000000",
+        "0083": "A00083000000000000000000000000",
+        "0084": "A00084000000000000000000000000",
+        "0085": "A00085000000000000000000000000",
+    }
     controller = await rainbird_controller()
-
-    api_response("82", modelID=0x0A, protocolRevisionMajor=1, protocolRevisionMinor=3)
-    api_response("83", pageNumber=1, setStations=0x1F000000)  # 5 stations
-    sip_data_responses(
-        [
-            "A0000000000400",
-            "A000106A0602006401",
-            "A000117F0300006400",
-            "A00012000300006400",
-            "A0006000F0FFFFFFFFFFFF",
-            "A00061FFFFFFFFFFFFFFFF",
-            "A00062FFFFFFFFFFFFFFFF",
-            "A00080001900000000001400000000",
-            "A00081000700000000001400000000",
-            "A00082000A00000000000000000000",
-            "A00083000000000000000000000000",
-            "A00084000000000000000000000000",
-            "A00085000000000000000000000000",
-        ]
-    )
 
     schedule = await controller.get_schedule()
     assert len(schedule.programs) == 3
