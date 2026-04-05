@@ -88,10 +88,15 @@ class FakeRainbirdDevice:
             7,
         }
 
+        # Schedule responses keyed by the 4-hex-char subcommand (e.g. "0000", "0010", "0080")
+        # Tests populate this before calling get_schedule().
+        self.schedule: dict[str, str] = {}
+
         # Command handlers
         self.handlers = {
             "02": self._handle_model_and_version,
             "03": self._handle_available_stations,
+            "20": self._handle_retrieve_schedule,
         }
 
     def _handle_model_and_version(self, data: str) -> str:
@@ -113,6 +118,22 @@ class FakeRainbirdDevice:
                     byte_val |= 1 << bit
             mask_str += f"{byte_val:02X}"
         return f"83{page:02X}{mask_str}"
+
+    def _handle_retrieve_schedule(self, data: str) -> str:
+        """Handle RetrieveScheduleRequest (20).
+
+        Tests must pre-populate fake_device.schedule with every subcommand
+        the controller will request. A missing entry is a test setup error.
+        """
+        # Request data is '20SSSS' where SSSS is the 4-hex sub-command
+        subcommand = data[2:6] if len(data) >= 6 else data[2:]
+        if subcommand not in self.schedule:
+            raise AssertionError(
+                f"FakeRainbirdDevice: RetrieveScheduleRequest subcommand "
+                f"'{subcommand}' not found in fake_device.schedule. "
+                f"Populated keys: {list(self.schedule)}"
+            )
+        return self.schedule[subcommand]
 
     def set_model(self, model_identifier: str) -> None:
         """Lookup and set the model code from pyrainbird's device registry."""
