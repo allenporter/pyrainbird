@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import datetime
+import itertools
 import json
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Generator, Iterator
 from typing import Any
 from unittest import mock
 
@@ -35,6 +36,18 @@ from pyrainbird.exceptions import (
 from pyrainbird.resources import RAINBIRD_COMMANDS_BY_ID
 
 from .conftest import LENGTH, PASSWORD, REQUEST, RESPONSE, RESULT_DATA, ResponseResult
+
+
+@pytest.fixture(autouse=True)
+def auto_snapshot_request_log(
+    request_log: list[dict[str, Any]], snapshot: Any
+) -> Generator[None, None, None]:
+    """Automatically snapshot the network requests of every test."""
+    yield
+    if request_log:
+        assert str(request_log) == snapshot
+    else:
+        assert [] == snapshot
 
 
 async def test_request(
@@ -198,16 +211,25 @@ def mock_encrypt_response(response: ResponseResult) -> Callable[[...], None]:
     return _put_result
 
 
+@pytest.fixture(name="api_response_id")
+def api_response_id_fixture() -> Iterator[int]:
+    """Provide sequential ids for hardcoded mock responses."""
+    return itertools.count(1)
+
+
 @pytest.fixture(name="api_response")
 def mock_api_response(
     encrypt_response: Callable[[str | dict], None],
+    api_response_id: Iterator[int],
 ) -> Callable[[...], None]:
     """Fixture to construct a fake API response."""
 
     def _put_result(command: str, **kvargs) -> None:
         command_set = RAINBIRD_COMMANDS_BY_ID[command]
         data = rainbird.encode_command(command_set, *kvargs.values())
-        encrypt_response({"jsonrpc": "2.0", "result": {"data": data}, "id": 1})
+        encrypt_response(
+            {"jsonrpc": "2.0", "result": {"data": data}, "id": next(api_response_id)}
+        )
 
     return _put_result
 
@@ -215,12 +237,19 @@ def mock_api_response(
 @pytest.fixture(name="sip_data_responses")
 def mock_sip_data_responses(
     encrypt_response: Callable[[str | dict], None],
+    api_response_id: Iterator[int],
 ) -> Callable[[list[str]], None]:
     """Fixture to create sip data responess."""
 
     def _put_result(datam: list[str]) -> None:
         for data in datam:
-            encrypt_response({"jsonrpc": "2.0", "result": {"data": data}, "id": 1})
+            encrypt_response(
+                {
+                    "jsonrpc": "2.0",
+                    "result": {"data": data},
+                    "id": next(api_response_id),
+                }
+            )
 
     return _put_result
 
@@ -369,6 +398,7 @@ async def test_get_current_date(
     assert await controller.get_current_date() == date
 
 
+@freeze_time("2023-01-01 00:00:00")
 async def test_set_current_time(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
     api_response: Callable[[...], Awaitable[None]],
