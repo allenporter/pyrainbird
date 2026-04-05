@@ -13,6 +13,14 @@ if [[ "$BRANCH" != "main" ]]; then
   exit 1
 fi
 
+<<<<<<< ours
+=======
+if [[ -n $(git status -s) ]]; then
+  echo "Error: Working directory is not clean. Please commit or stash your changes."
+  exit 1
+fi
+
+>>>>>>> theirs
 if ! command -v gh &> /dev/null; then
     echo "gh command could not be found, please install it first"
     exit 1
