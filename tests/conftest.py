@@ -39,7 +39,7 @@ RESPONSE = encryption.encrypt(RESPONSE, PASSWORD)
 def patch_request_id() -> Generator[None, None, None]:
     """Patch the request ID to be a deterministic sequence."""
     counter = itertools.count(1)
-    with patch("pyrainbird.encryption.time.time", side_effect=lambda: next(counter)):
+    with patch("pyrainbird.encryption._request_id", side_effect=lambda: next(counter)):
         yield
 
 

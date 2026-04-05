@@ -78,9 +78,20 @@ class FakeRainbirdDevice:
         self.version_major = 1
         self.version_minor = 3
 
+        self.stations: set[int] = {
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+        }
+
         # Command handlers
         self.handlers = {
             "02": self._handle_model_and_version,
+            "03": self._handle_available_stations,
         }
 
     def _handle_model_and_version(self, data: str) -> str:
@@ -88,6 +99,20 @@ class FakeRainbirdDevice:
         return (
             f"82{self.model_code:04X}{self.version_major:02X}{self.version_minor:02X}"
         )
+
+    def _handle_available_stations(self, data: str) -> str:
+        """Handle AvailableStationsRequest (03)."""
+        page = int(data[2:4], 16) if len(data) >= 4 else 0
+        mask_str = ""
+        # 4 bytes per page (32 stations)
+        for b in range(4):
+            byte_val = 0
+            for bit in range(8):
+                station_num = page * 32 + b * 8 + bit + 1
+                if station_num in self.stations:
+                    byte_val |= 1 << bit
+            mask_str += f"{byte_val:02X}"
+        return f"83{page:02X}{mask_str}"
 
     def set_model(self, model_identifier: str) -> None:
         """Lookup and set the model code from pyrainbird's device registry."""

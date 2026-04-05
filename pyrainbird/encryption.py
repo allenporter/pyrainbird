@@ -77,6 +77,11 @@ def to_bytes_old(string):
     return bytes(string.encode("UTF-8"))
 
 
+def _request_id() -> float:
+    """Return a unique request ID based on the current time."""
+    return time.time()
+
+
 class PayloadCoder:
     """PayloadCoder holds encoding/decoding information for the client."""
 
@@ -87,7 +92,7 @@ class PayloadCoder:
 
     def encode_command(self, method: str, params: dict[str, Any]) -> str:
         """Encode a request payload."""
-        request_id = time.time()
+        request_id = _request_id()
         data = {
             "id": request_id,
             "jsonrpc": "2.0",
