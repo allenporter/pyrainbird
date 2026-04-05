@@ -16,6 +16,7 @@ from .fake_device import FakeRainbirdDevice, CapturedRequestLog
 
 import itertools
 
+
 ResponseResult = Callable[[aiohttp.web.Response], None]
 
 

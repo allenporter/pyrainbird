@@ -4789,7 +4789,7 @@
   [client >]
   Intent: ModelAndVersionRequest (02)
   Payload: {
-    "id": 1,
+    "id": 1672531200.0,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
@@ -4810,7 +4810,7 @@
   [client >]
   Intent: AvailableStationsRequest (0300)
   Payload: {
-    "id": 4,
+    "id": 1672531200.0,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
@@ -4831,7 +4831,7 @@
   [client >]
   Intent: RetrieveScheduleRequest (200000)
   Payload: {
-    "id": 7,
+    "id": 1672531200.0,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
@@ -4844,19 +4844,19 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A0000000000000"
+      "data": "A000000000"
     },
     "id": 3
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200080)
+  Intent: RetrieveScheduleRequest (200001)
   Payload: {
-    "id": 10,
+    "id": 1672531200.0,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200080",
+      "data": "200001",
       "length": 3
     }
   }
@@ -4865,19 +4865,19 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00001000A"
+      "data": "A000010A33FFFFFFFFFF007F0000"
     },
     "id": 4
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200081)
+  Intent: RetrieveScheduleRequest (200003)
   Payload: {
-    "id": 13,
+    "id": 1672531200.0,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200081",
+      "data": "200003",
       "length": 3
     }
   }
@@ -4886,19 +4886,19 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A000030014"
+      "data": "A00003143CFFFFFFFFFF007F0000"
     },
     "id": 5
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200082)
+  Intent: RetrieveScheduleRequest (200005)
   Payload: {
-    "id": 16,
+    "id": 1672531200.0,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200082",
+      "data": "200005",
       "length": 3
     }
   }
@@ -4907,7 +4907,7 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00005001E"
+      "data": "A000051E4CFFFFFFFFFF007F0000"
     },
     "id": 6
   }
