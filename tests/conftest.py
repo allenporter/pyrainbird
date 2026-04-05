@@ -62,21 +62,47 @@ async def handler(request: aiohttp.web.Request) -> aiohttp.web.Response:
     assert request.content_type == "application/octet-stream"
     body = await request.read()
 
-    response_to_send = request.app["response"].pop(0)
+    response_to_send = None
 
     device = request.app.get("fake_device")
     decoded_request = None
+    response_to_send = None
+
     if device is not None:
         pwd = PASSWORD if request.path == "/stick" else None
         decoded_request = device.process_request(body, pwd)
+
+    if request.app["response"]:
+        # Legacy Override: Test manually queued a mock sequence. Pop it blindly.
+        response_to_send = request.app["response"].pop(0)
+    elif device is not None and decoded_request:
+        # Phase 2 Synthesis: No manual mocks queued. Simulator takes over!
+        synthetic_body = device.generate_response(decoded_request, pwd)
+
+        if synthetic_body is not None:
+            response_to_send = aiohttp.web.Response(body=synthetic_body)
+        elif decoded_request.get("method") == "tunnelSip":
+            # Simulator lacks native handler for this command. Synthesize NACK!
+            fallback_bytes = device.generate_nack(decoded_request, pwd)
+            response_to_send = aiohttp.web.Response(body=fallback_bytes)
+        else:
+            response_to_send = aiohttp.web.Response(status=500, text="Unhandled")
+    else:
+        response_to_send = aiohttp.web.Response(status=500, text="Unhandled")
+
+    if device is not None:
         body_bytes = (
-            response_to_send.body if isinstance(response_to_send.body, bytes) else None
+            response_to_send.body
+            if response_to_send and isinstance(response_to_send.body, bytes)
+            else None
         )
-        device.process_response(body_bytes, response_to_send.status, pwd)
+        status = response_to_send.status if response_to_send else 500
+        device.process_response(body_bytes, status, pwd)
 
     request.app["request"].append(
         decoded_request if decoded_request is not None else {}
     )
+
     return response_to_send
 
 

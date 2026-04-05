@@ -5,8 +5,8 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
-from pyrainbird.encryption import decrypt
-from pyrainbird.resources import RAINBIRD_COMMANDS
+from pyrainbird.encryption import decrypt, encrypt
+from pyrainbird.resources import MODEL_INFO, RAINBIRD_COMMANDS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -73,6 +73,35 @@ class FakeRainbirdDevice:
     def __init__(self) -> None:
         self.request_log = CapturedRequestLog()
 
+        # Phase 2: Simulator State variables
+        self.model_code = 0x07  # Default to ESP-TM2
+        self.version_major = 1
+        self.version_minor = 3
+
+        # Command handlers
+        self.handlers = {
+            "02": self._handle_model_and_version,
+        }
+
+    def _handle_model_and_version(self, data: str) -> str:
+        """Handle ModelAndVersionRequest (02)."""
+        return (
+            f"82{self.model_code:04X}{self.version_major:02X}{self.version_minor:02X}"
+        )
+
+    def set_model(self, model_identifier: str) -> None:
+        """Lookup and set the model code from pyrainbird's device registry."""
+        for info in MODEL_INFO:
+            if (
+                info.get("code") == model_identifier
+                or info.get("name") == model_identifier
+            ):
+                self.model_code = int(info["device_id"], 16)
+                return
+        raise ValueError(
+            f"Unknown model identifier '{model_identifier}' in models.yaml registry."
+        )
+
     def process_request(self, body: bytes, pwd: str | None) -> dict[str, Any] | None:
         """Decode and log a request, returning the decoded JSON."""
         try:
@@ -112,6 +141,44 @@ class FakeRainbirdDevice:
             self.request_log.append(ErrorLogEntry("Failed to decode request", str(e)))
             _LOGGER.exception("Failed to decode request")
             return None
+
+    def generate_response(
+        self, request: dict[str, Any], pwd: str | None
+    ) -> bytes | None:
+        """Autonomously generate a response for a decoded request. If unsupported, return None."""
+        if not pwd or request.get("method") != "tunnelSip" or "params" not in request:
+            return None
+
+        data = request["params"].get("data")
+        if not data:
+            return None
+
+        req_id = request.get("id", 1)
+        cmd_code = data[:2]
+        handler = self.handlers.get(cmd_code)
+
+        if handler:
+            resp_hex = handler(data)
+            payload = json.dumps(
+                {"jsonrpc": "2.0", "result": {"data": resp_hex}, "id": req_id}
+            )
+            return encrypt(payload, pwd)
+
+        return None  # Pass to conftest.py to decide manual queue vs NACK
+
+    def generate_nack(self, request: dict[str, Any], pwd: str | None) -> bytes:
+        """Autonomously generate a NotAcknowledgeResponse for an unsupported command."""
+        req_id = request.get("id", 1)
+        data = request.get("params", {}).get("data", "00")
+
+        command_echo = data[:2] if len(data) >= 2 else "00"
+        nak_code = "00"  # generic NAK
+        resp_hex = f"00{command_echo}{nak_code}"
+
+        payload = json.dumps(
+            {"jsonrpc": "2.0", "result": {"data": resp_hex}, "id": req_id}
+        )
+        return encrypt(payload, pwd)
 
     def process_response(
         self, response_body: bytes | None, status: int, pwd: str | None
