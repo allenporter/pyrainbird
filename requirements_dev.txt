@@ -21,3 +21,4 @@ pytest-golden==1.0.1
 python-dateutil==2.9.0.post0
 responses==0.26.0
 types-PyYAML==6.0.12.20250915
+syrupy>=5.1.0

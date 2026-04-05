@@ -1,8 +1,9 @@
 """Test fixtures for pyrainbird."""
 
 import json
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Generator
 from typing import cast
+from unittest.mock import patch
 
 import aiohttp
 import pytest
@@ -10,6 +11,11 @@ from aiohttp.test_utils import TestClient
 
 from pyrainbird import encryption
 from pyrainbird.async_client import AsyncRainbirdClient, AsyncRainbirdController
+
+from .fake_device import FakeRainbirdDevice, CapturedRequestLog
+
+import itertools
+
 
 ResponseResult = Callable[[aiohttp.web.Response], None]
 
@@ -29,12 +35,49 @@ RESPONSE = json.dumps(
 RESPONSE = encryption.encrypt(RESPONSE, PASSWORD)
 
 
+@pytest.fixture(autouse=True)
+def patch_request_id() -> Generator[None, None, None]:
+    """Patch the request ID to be a deterministic sequence."""
+    counter = itertools.count(1)
+    with patch("pyrainbird.encryption.time.time", side_effect=lambda: next(counter)):
+        yield
+
+
+@pytest.fixture
+def fake_device(app: aiohttp.web.Application) -> FakeRainbirdDevice:
+    """Fixture to inject a fake device."""
+    device = FakeRainbirdDevice()
+    app["fake_device"] = device
+    return device
+
+
+@pytest.fixture
+def request_log(fake_device: FakeRainbirdDevice) -> CapturedRequestLog:
+    """Fixture to capture request payloads."""
+    return fake_device.request_log
+
+
 async def handler(request: aiohttp.web.Request) -> aiohttp.web.Response:
     """Handles the request, inserting response prepared by tests."""
     assert request.content_type == "application/octet-stream"
-    body = dict(await request.post())
-    request.app["request"].append(body)
-    return request.app["response"].pop(0)
+    body = await request.read()
+
+    response_to_send = request.app["response"].pop(0)
+
+    device = request.app.get("fake_device")
+    decoded_request = None
+    if device is not None:
+        pwd = PASSWORD if request.path == "/stick" else None
+        decoded_request = device.process_request(body, pwd)
+        body_bytes = (
+            response_to_send.body if isinstance(response_to_send.body, bytes) else None
+        )
+        device.process_response(body_bytes, response_to_send.status, pwd)
+
+    request.app["request"].append(
+        decoded_request if decoded_request is not None else {}
+    )
+    return response_to_send
 
 
 @pytest.fixture(name="app")
