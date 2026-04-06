@@ -4,6 +4,9 @@ import json
 import logging
 from dataclasses import dataclass
 from typing import Any
+from datetime import date, time
+
+from pyrainbird import rainbird
 
 from pyrainbird.encryption import decrypt, encrypt
 from pyrainbird.resources import MODEL_INFO, RAINBIRD_COMMANDS
@@ -95,12 +98,37 @@ class FakeRainbirdDevice:
         # Zone State responses keyed by the 2-hex-char subcommand (e.g. "00" for page 0)
         self.zone_states: dict[str, str] = {}
 
+        # Basic device state
+        self.serial_number: int = 0x12635436566
+        self.time: time = time(12, 34, 56)
+        self.date: date = date(2023, 1, 1)
+        self.water_budget_pct: int = 100
+        self.rain_sensor_state: bool = False
+        self.rain_delay: int = 0
+        self.irrigation_state: bool = False
+
         # Command handlers
         self.handlers = {
             "02": self._handle_model_and_version,
             "03": self._handle_available_stations,
+            "05": self._handle_serial_number,
+            "10": self._handle_current_time,
+            "12": self._handle_current_date,
             "20": self._handle_retrieve_schedule,
+            "30": self._handle_water_budget,
+            "36": self._handle_rain_delay,
+            "3E": self._handle_rain_sensor,
             "3F": self._handle_zone_state,
+            "48": self._handle_current_irrigation,
+            # Setters reply with ACK
+            "11": self._handle_ack,
+            "13": self._handle_ack,
+            "37": self._handle_ack,
+            "38": self._handle_ack,
+            "39": self._handle_ack,
+            "3A": self._handle_ack,
+            "40": self._handle_ack,
+            "42": self._handle_ack,
         }
 
     def _handle_model_and_version(self, data: str) -> str:
@@ -148,6 +176,41 @@ class FakeRainbirdDevice:
                 f"'{subcommand}' not found in fake_device.zone_states."
             )
         return self.zone_states[subcommand]
+
+    def _encode(self, cmd: str, *args: Any) -> str:
+        cmd_set = RAINBIRD_COMMANDS.get(cmd) or next(
+            v for v in RAINBIRD_COMMANDS.values() if v.get("command") == cmd
+        )
+        return rainbird.encode_command(cmd_set, *args)
+
+    def _handle_ack(self, data: str) -> str:
+        return self._encode("AcknowledgeResponse", int(data[:2], 16))
+
+    def _handle_serial_number(self, data: str) -> str:
+        return self._encode("SerialNumberResponse", self.serial_number)
+
+    def _handle_current_time(self, data: str) -> str:
+        return self._encode(
+            "CurrentTimeResponse", self.time.hour, self.time.minute, self.time.second
+        )
+
+    def _handle_current_date(self, data: str) -> str:
+        return self._encode(
+            "CurrentDateResponse", self.date.day, self.date.month, self.date.year
+        )
+
+    def _handle_water_budget(self, data: str) -> str:
+        # Assuming program 1 for simplicity of mock
+        return self._encode("WaterBudgetResponse", 1, self.water_budget_pct)
+
+    def _handle_rain_sensor(self, data: str) -> str:
+        return self._encode("CurrentRainSensorStateResponse", self.rain_sensor_state)
+
+    def _handle_rain_delay(self, data: str) -> str:
+        return self._encode("RainDelaySettingResponse", self.rain_delay)
+
+    def _handle_current_irrigation(self, data: str) -> str:
+        return self._encode("CurrentIrrigationStateResponse", self.irrigation_state)
 
     def set_model(self, model_identifier: str) -> None:
         """Lookup and set the model code from pyrainbird's device registry."""

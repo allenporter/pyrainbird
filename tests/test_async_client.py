@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import datetime
-import itertools
 import json
-from collections.abc import Awaitable, Callable, Generator, Iterator
+from collections.abc import Awaitable, Callable, Generator
 from typing import Any
 from unittest import mock
 
@@ -13,7 +12,6 @@ import aiohttp
 import pytest
 from freezegun import freeze_time
 
-from pyrainbird import rainbird
 from pyrainbird.async_client import (
     AsyncRainbirdClient,
     AsyncRainbirdController,
@@ -33,7 +31,6 @@ from pyrainbird.exceptions import (
     RainbirdConnectionError,
     RainbirdDeviceBusyException,
 )
-from pyrainbird.resources import RAINBIRD_COMMANDS_BY_ID
 
 from .conftest import LENGTH, PASSWORD, REQUEST, RESPONSE, RESULT_DATA, ResponseResult
 from .fake_device import FakeRainbirdDevice
@@ -212,29 +209,6 @@ def mock_encrypt_response(response: ResponseResult) -> Callable[[...], None]:
     return _put_result
 
 
-@pytest.fixture(name="api_response_id")
-def api_response_id_fixture() -> Iterator[int]:
-    """Provide sequential ids for hardcoded mock responses."""
-    return itertools.count(1)
-
-
-@pytest.fixture(name="api_response")
-def mock_api_response(
-    encrypt_response: Callable[[str | dict], None],
-    api_response_id: Iterator[int],
-) -> Callable[[...], None]:
-    """Fixture to construct a fake API response."""
-
-    def _put_result(command: str, **kvargs) -> None:
-        command_set = RAINBIRD_COMMANDS_BY_ID[command]
-        data = rainbird.encode_command(command_set, *kvargs.values())
-        encrypt_response(
-            {"jsonrpc": "2.0", "result": {"data": data}, "id": next(api_response_id)}
-        )
-
-    return _put_result
-
-
 async def test_get_model_and_version(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
     fake_device: FakeRainbirdDevice,
@@ -282,13 +256,13 @@ async def test_get_available_stations_multipage(
 
 async def test_device_busy_retries(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    fake_device: FakeRainbirdDevice,
     rainbird_client: Callable[[], Awaitable[AsyncRainbirdClient]],
-    api_response: Callable[[...], Awaitable[None]],
     response: ResponseResult,
 ) -> None:
     """Test a basic request failure handling with retries."""
     controller = await rainbird_controller()
-    api_response("82", modelID=0x09, protocolRevisionMajor=1, protocolRevisionMinor=3)
+    fake_device.set_model("ESP-ME3")
     result = await controller.get_model_and_version()
     assert result.model_code == "ESP_ME3"
     assert result.model_info.retries
@@ -296,7 +270,7 @@ async def test_device_busy_retries(
     # Make two attempts then succeed
     response(aiohttp.web.Response(status=503))
     response(aiohttp.web.Response(status=503))
-    api_response("83", pageNumber=1, setStations=0x7F000000)
+    fake_device.stations = set(range(1, 8))
 
     stations = await controller.get_available_stations()
     assert stations.active_set == {1, 2, 3, 4, 5, 6, 7}
@@ -304,13 +278,13 @@ async def test_device_busy_retries(
 
 async def test_non_retryable_errors(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    fake_device: FakeRainbirdDevice,
     rainbird_client: Callable[[], Awaitable[AsyncRainbirdClient]],
-    api_response: Callable[[...], Awaitable[None]],
     response: ResponseResult,
 ) -> None:
     """Test a basic request failure handling with retries."""
     controller = await rainbird_controller()
-    api_response("82", modelID=0x09, protocolRevisionMajor=1, protocolRevisionMinor=3)
+    fake_device.set_model("ESP-ME3")
     result = await controller.get_model_and_version()
     assert result.model_code == "ESP_ME3"
     assert result.model_info.retries
@@ -323,13 +297,13 @@ async def test_non_retryable_errors(
 
 async def test_device_busy_retries_not_enabled(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    fake_device: FakeRainbirdDevice,
     rainbird_client: Callable[[], Awaitable[AsyncRainbirdClient]],
-    api_response: Callable[[...], Awaitable[None]],
     response: ResponseResult,
 ) -> None:
     """Test a basic request failure handling for device without retries."""
     controller = await rainbird_controller()
-    api_response("82", modelID=0x0A, protocolRevisionMajor=1, protocolRevisionMinor=3)
+    fake_device.set_model("ESP_TM2v2")
     result = await controller.get_model_and_version()
     assert result == ModelAndVersion(0x0A, 1, 3)
     assert result.model_code == "ESP_TM2v2"
@@ -344,10 +318,10 @@ async def test_device_busy_retries_not_enabled(
 
 async def test_get_serial_number(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    api_response: Callable[[...], Awaitable[None]],
+    fake_device: FakeRainbirdDevice,
 ) -> None:
     controller = await rainbird_controller()
-    api_response("85", serialNumber=0x12635436566)
+    fake_device.serial_number = 0x12635436566
     assert await controller.get_serial_number() == 0x12635436566
     # Result is cached
     assert await controller.get_serial_number() == 0x12635436566
@@ -357,53 +331,51 @@ async def test_get_serial_number(
 
 async def test_get_current_time(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    api_response: Callable[[...], Awaitable[None]],
+    fake_device: FakeRainbirdDevice,
 ) -> None:
     controller = await rainbird_controller()
     time = datetime.time()
-    api_response("90", hour=time.hour, minute=time.minute, second=time.second)
+    fake_device.time = time
+
     assert await controller.get_current_time() == time
 
 
 @freeze_time("2023-01-01 00:00:00")
 async def test_get_current_date(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    api_response: Callable[[...], Awaitable[None]],
 ) -> None:
     controller = await rainbird_controller()
     date = datetime.date.today()
-    api_response("92", day=date.day, month=date.month, year=date.year)
+
     assert await controller.get_current_date() == date
 
 
 @freeze_time("2023-01-01 00:00:00")
 async def test_set_current_time(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    api_response: Callable[[...], Awaitable[None]],
 ) -> None:
     """Test for setting the current time."""
     controller = await rainbird_controller()
-    api_response("01", commandEcho="11")
+
     await controller.set_current_time(datetime.datetime.now().time())
 
 
 @freeze_time("2023-01-01 00:00:00")
 async def test_set_current_date(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    api_response: Callable[[...], Awaitable[None]],
 ) -> None:
     """Test for setting the current date."""
     controller = await rainbird_controller()
-    api_response("01", commandEcho="13")
+
     await controller.set_current_date(datetime.date.today())
 
 
 async def test_get_water_budget(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    api_response: Callable[[...], Awaitable[None]],
+    fake_device: FakeRainbirdDevice,
 ) -> None:
     controller = await rainbird_controller()
-    api_response("B0", programCode=1, seasonalAdjust=65)
+    fake_device.water_budget_pct = 65
     assert await controller.water_budget(5) == WaterBudget(1, 65)
 
 
@@ -413,24 +385,24 @@ async def test_get_water_budget(
 )
 async def test_get_rain_sensor(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    api_response: Callable[[...], Awaitable[None]],
+    fake_device: FakeRainbirdDevice,
     state: int,
     expected: bool,
 ) -> None:
     controller = await rainbird_controller()
-    api_response("BE", sensorState=state)
+    fake_device.rain_sensor_state = state
     assert await controller.get_rain_sensor_state() == expected
 
 
 async def test_get_zone_states(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    api_response: Callable[[...], Awaitable[None]],
+    fake_device: FakeRainbirdDevice,
 ) -> None:
     controller = await rainbird_controller()
-    api_response("82", modelID=0x07, protocolRevisionMajor=1, protocolRevisionMinor=3)
+    fake_device.set_model("ESP-Me")
     for i in range(1, 8):
         mask = (1 << (i - 1)) * 0x1000000
-        api_response("BF", pageNumber=0, activeStations=mask)
+        fake_device.zone_states["00"] = "BF00" + f"{mask:08X}"
         states = await controller.get_zone_states()
         assert i in states.active_set
         assert i - 1 not in states.active_set
@@ -439,14 +411,14 @@ async def test_get_zone_states(
 
 async def test_get_zone_state(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    api_response: Callable[[...], Awaitable[None]],
+    fake_device: FakeRainbirdDevice,
 ) -> None:
     controller = await rainbird_controller()
-    api_response("82", modelID=0x07, protocolRevisionMajor=1, protocolRevisionMinor=3)
+    fake_device.set_model("ESP-Me")
     for i in range(1, 9):
         for j in range(1, 9):
             mask = (1 << (i - 1)) * 0x1000000
-            api_response("BF", pageNumber=0, activeStations=mask)
+            fake_device.zone_states["00"] = "BF00" + f"{mask:08X}"
             assert await controller.get_zone_state(j) == (i == j)
 
 
@@ -477,66 +449,58 @@ async def test_get_zone_state_lxivm(
 
 async def test_set_program(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    api_response: Callable[[...], Awaitable[None]],
 ) -> None:
     controller = await rainbird_controller()
-    api_response("01", commandEcho=5)
+
     await controller.set_program(5)
 
 
 async def test_irrigate_zone(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    api_response: Callable[[...], Awaitable[None]],
 ) -> None:
     controller = await rainbird_controller()
-    api_response("01", pageNumber=0, commandEcho=6)
-    api_response("BF", pageNumber=0, activeStations=0b10000000000000000000000000000)
+
     await controller.irrigate_zone(5, 30)
 
 
 async def test_test_zone(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    api_response: Callable[[...], Awaitable[None]],
 ) -> None:
     controller = await rainbird_controller()
-    api_response("01", commandEcho=6)
+
     await controller.test_zone(6)
 
 
 async def test_stop_irrigation(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    api_response: Callable[[...], Awaitable[None]],
 ) -> None:
     controller = await rainbird_controller()
-    api_response("01", pageNumber=0, commandEcho=6)
-    api_response("BF", pageNumber=0, activeStations=0b0)
+
     await controller.stop_irrigation()
 
 
 async def test_get_rain_delay(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    api_response: Callable[[...], Awaitable[None]],
+    fake_device: FakeRainbirdDevice,
 ) -> None:
     controller = await rainbird_controller()
-    api_response("B6", delaySetting=16)
+    fake_device.rain_delay = 16
     await controller.get_rain_delay() == 16
 
 
 async def test_set_rain_delay(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    api_response: Callable[[...], Awaitable[None]],
 ) -> None:
     controller = await rainbird_controller()
-    api_response("01", pageNumber=0, commandEcho=6)
+
     await controller.set_rain_delay(3)
 
 
 async def test_advance_zone(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    api_response: Callable[[...], Awaitable[None]],
 ) -> None:
     controller = await rainbird_controller()
-    api_response("01", commandEcho=3)
+
     await controller.advance_zone(3)
 
 
@@ -549,21 +513,23 @@ async def test_advance_zone(
 )
 async def test_get_current_irrigation(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    api_response: Callable[[...], Awaitable[None]],
+    fake_device: FakeRainbirdDevice,
     state: int,
     expected: bool,
 ) -> None:
     controller = await rainbird_controller()
-    api_response("C8", irrigationState=state)
+    fake_device.irrigation_state = state
     assert await controller.get_current_irrigation() == expected
 
 
 async def test_not_acknowledge_response(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
-    api_response: Callable[[...], Awaitable[None]],
+    fake_device: FakeRainbirdDevice,
 ) -> None:
     controller = await rainbird_controller()
-    api_response("00", commandEcho=17, NAKCode=28)
+    fake_device.handlers["39"] = lambda data: fake_device._encode(
+        "NotAcknowledgeResponse", 17, 28
+    )
     with pytest.raises(RainbirdApiException):
         await controller.irrigate_zone(1, 30)
 
