@@ -17,9 +17,6 @@ from .fake_device import FakeRainbirdDevice, CapturedRequestLog
 import itertools
 
 
-ResponseResult = Callable[[aiohttp.web.Response], None]
-
-
 PASSWORD = "password"
 REQUEST = "example data"
 LENGTH = len(REQUEST)
@@ -72,8 +69,7 @@ async def handler(request: aiohttp.web.Request) -> aiohttp.web.Response:
         pwd = PASSWORD if request.path == "/stick" else None
         decoded_request = device.process_request(body, pwd)
 
-    if request.app["response"]:
-        # Legacy Override: Test manually queued a mock sequence. Pop it blindly.
+    if request.app.get("response"):
         response_to_send = request.app["response"].pop(0)
     elif device is not None and decoded_request:
         # Phase 2 Synthesis: No manual mocks queued. Simulator takes over!
@@ -173,6 +169,9 @@ def mock_rainbird_controller(
         return AsyncRainbirdController(local, cloud)
 
     return func
+
+
+ResponseResult = Callable[[aiohttp.web.Response], None]
 
 
 @pytest.fixture(name="response")
