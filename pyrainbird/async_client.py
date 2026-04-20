@@ -59,6 +59,7 @@ from .exceptions import (
     RainbirdCertificateError,
     RainbirdConnectionError,
     RainbirdDeviceBusyException,
+    RainbirdDeviceNackError,
 )
 from .resources import LENGTH, RAINBIRD_COMMANDS, RESPONSE
 
@@ -536,11 +537,17 @@ class AsyncRainbirdController:
             "zoneInfo": {},
         }
         for command in commands:
-            result = await self._process_command(
-                lambda resp: resp,
-                "RetrieveScheduleRequest",
-                int(command, 16),
-            )
+            try:
+                result = await self._process_command(
+                    lambda resp: resp,
+                    "RetrieveScheduleRequest",
+                    int(command, 16),
+                )
+            except RainbirdDeviceNackError as e:
+                _LOGGER.debug(
+                    "Ignoring schedule request failed with NACK (not supported): %s", e
+                )
+                continue
             if not isinstance(result, dict):
                 continue
             for key in schedule_data:
@@ -606,11 +613,19 @@ class AsyncRainbirdController:
         if funct is None:
             allowed.add("00")  # Allow NACK
         if response_code not in allowed:
-            _LOGGER.error(
+            msg = (
                 "Request (%s) failed with wrong response! Requested (%s), got %s:\n%s"
                 % (command, allowed, response_code, decoded)
             )
-            raise RainbirdApiException("Unexpected response from Rain Bird device")
+            if response_code == "00":
+                _LOGGER.debug(msg)
+                raise RainbirdDeviceNackError("Device returned a NACK response")
+            elif response_code == "":
+                _LOGGER.debug(msg)
+                raise RainbirdApiException("Device returned an empty response")
+            else:
+                _LOGGER.error(msg)
+                raise RainbirdApiException("Unexpected response from Rain Bird device")
         return funct(decoded)
 
     async def _cacheable_command(

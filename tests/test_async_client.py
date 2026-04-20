@@ -1707,3 +1707,63 @@ async def test_get_schedule_lxme2_bit_collision(
 
     # Program index 32 evaluating to 0x60 | 32 = 0x60 (decimal 96). We expect 96 twice.
     assert requests.count(96) == 2
+
+
+async def test_get_schedule_partial_nack(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    fake_device: FakeRainbirdDevice,
+) -> None:
+    fake_device.model_code = 0x010A
+    fake_device.version_major = 0x02
+    fake_device.version_minor = 0x0A
+    # 82010A020A
+    fake_device.stations = set(range(1, 22))
+    fake_device.schedule = {
+        "0000": "A0000000000000",
+        "0010": "A0001000000000000000",
+        "0011": "A0001100000000000000",
+        "0012": "A0001200000000000000",
+        "0060": "A00060FFFFFFFF",
+        "0061": "A00061FFFFFFFF",
+        "0062": "A00062FFFFFFFF",
+        "0080": "A00081000500000000000500000000",
+        "0081": "A00081000500000000000500000000",
+        "0082": "A00082000000000000000000000000",
+        "0083": "A00083000000000000000000000000",
+        # Simulate an early NACK
+        "0084": "002004",
+        "0085": "002004",
+    }
+
+    controller = await rainbird_controller()
+
+    schedule = await controller.get_schedule()
+
+    # The loop should break upon reaching the NACK at 0081.
+    requests = [
+        r for r in fake_device.request_log if type(r).__name__ == "RequestLogEntry"
+    ]
+
+    assert len(requests) == 15
+
+    # Prove that the schedule built up until the NACK is gracefully preserved
+    assert len(schedule.programs) > 0
+    assert schedule.programs[0].program == 0
+    program = schedule.programs[0]
+    assert program.program == 0
+    assert program.name == "PGM A"
+    assert program.frequency == ProgramFrequency.CUSTOM
+    assert program.period is None
+    assert program.synchro == 0
+    assert program.starts == []
+    assert program.duration == datetime.timedelta(seconds=1200)
+    assert program.days_of_week == set()
+    assert len(program.durations) == 4
+    assert program.durations[0].zone == 3
+    assert program.durations[0].duration == datetime.timedelta(minutes=5)
+    assert program.durations[1].zone == 4
+    assert program.durations[1].duration == datetime.timedelta(minutes=5)
+    assert program.durations[2].zone == 3
+    assert program.durations[2].duration == datetime.timedelta(minutes=5)
+    assert program.durations[3].zone == 4
+    assert program.durations[3].duration == datetime.timedelta(minutes=5)

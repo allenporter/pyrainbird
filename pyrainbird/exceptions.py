@@ -5,6 +5,10 @@ class RainbirdApiException(Exception):
     """Exception from rainbird api."""
 
 
+class RainbirdDeviceNackError(RainbirdApiException):
+    """The device returned a Not Acknowledge (NACK) response."""
+
+
 class RainbirdDeviceBusyException(RainbirdApiException):
     """Device is busy processing another request."""
 
