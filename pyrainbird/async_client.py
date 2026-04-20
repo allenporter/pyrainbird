@@ -620,12 +620,8 @@ class AsyncRainbirdController:
             if response_code == "00":
                 _LOGGER.debug(msg)
                 raise RainbirdDeviceNackError("Device returned a NACK response")
-            elif response_code == "":
-                _LOGGER.debug(msg)
-                raise RainbirdApiException("Device returned an empty response")
-            else:
-                _LOGGER.error(msg)
-                raise RainbirdApiException("Unexpected response from Rain Bird device")
+            _LOGGER.error(msg)
+            raise RainbirdApiException("Unexpected response from Rain Bird device")
         return funct(decoded)
 
     async def _cacheable_command(
