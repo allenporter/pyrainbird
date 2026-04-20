@@ -5231,6 +5231,324 @@
   }
   '''
 # ---
+# name: test_get_schedule_partial_nack
+  '''
+  [client >]
+  Intent: ModelAndVersionRequest (02)
+  Payload: {
+    "id": 1,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "02",
+      "length": 1
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "82010A020A"
+    },
+    "id": 1
+  }
+  
+  [client >]
+  Intent: AvailableStationsRequest (0300)
+  Payload: {
+    "id": 2,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "0300",
+      "length": 2
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "8300FFFF1F00"
+    },
+    "id": 2
+  }
+  
+  [client >]
+  Intent: RetrieveScheduleRequest (200000)
+  Payload: {
+    "id": 3,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "200000",
+      "length": 3
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "A0000000000000"
+    },
+    "id": 3
+  }
+  
+  [client >]
+  Intent: RetrieveScheduleRequest (200010)
+  Payload: {
+    "id": 4,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "200010",
+      "length": 3
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "A0001000000000000000"
+    },
+    "id": 4
+  }
+  
+  [client >]
+  Intent: RetrieveScheduleRequest (200011)
+  Payload: {
+    "id": 5,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "200011",
+      "length": 3
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "A0001100000000000000"
+    },
+    "id": 5
+  }
+  
+  [client >]
+  Intent: RetrieveScheduleRequest (200012)
+  Payload: {
+    "id": 6,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "200012",
+      "length": 3
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "A0001200000000000000"
+    },
+    "id": 6
+  }
+  
+  [client >]
+  Intent: RetrieveScheduleRequest (200060)
+  Payload: {
+    "id": 7,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "200060",
+      "length": 3
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "A00060FFFFFFFF"
+    },
+    "id": 7
+  }
+  
+  [client >]
+  Intent: RetrieveScheduleRequest (200061)
+  Payload: {
+    "id": 8,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "200061",
+      "length": 3
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "A00061FFFFFFFF"
+    },
+    "id": 8
+  }
+  
+  [client >]
+  Intent: RetrieveScheduleRequest (200062)
+  Payload: {
+    "id": 9,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "200062",
+      "length": 3
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "A00062FFFFFFFF"
+    },
+    "id": 9
+  }
+  
+  [client >]
+  Intent: RetrieveScheduleRequest (200080)
+  Payload: {
+    "id": 10,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "200080",
+      "length": 3
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "A00081000500000000000500000000"
+    },
+    "id": 10
+  }
+  
+  [client >]
+  Intent: RetrieveScheduleRequest (200081)
+  Payload: {
+    "id": 11,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "200081",
+      "length": 3
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "A00081000500000000000500000000"
+    },
+    "id": 11
+  }
+  
+  [client >]
+  Intent: RetrieveScheduleRequest (200082)
+  Payload: {
+    "id": 12,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "200082",
+      "length": 3
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "A00082000000000000000000000000"
+    },
+    "id": 12
+  }
+  
+  [client >]
+  Intent: RetrieveScheduleRequest (200083)
+  Payload: {
+    "id": 13,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "200083",
+      "length": 3
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "A00083000000000000000000000000"
+    },
+    "id": 13
+  }
+  
+  [client >]
+  Intent: RetrieveScheduleRequest (200084)
+  Payload: {
+    "id": 14,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "200084",
+      "length": 3
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "002004"
+    },
+    "id": 14
+  }
+  
+  [client >]
+  Intent: RetrieveScheduleRequest (200085)
+  Payload: {
+    "id": 15,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "200085",
+      "length": 3
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "002004"
+    },
+    "id": 15
+  }
+  '''
+# ---
 # name: test_get_schedule_tm2_12_zones
   '''
   [client >]
