@@ -633,4 +633,4 @@ class AsyncRainbirdController:
             return result
         result = await self._process_command(funct, command, *args)
         self._cache[key] = result
-        return result  # type: ignore
+        return result

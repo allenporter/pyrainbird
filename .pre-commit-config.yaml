@@ -22,6 +22,15 @@ repos:
         types_or:
           - python
           - pyi
+  - repo: local
+    hooks:
+      - id: ty
+        name: ty
+        entry: ty check
+        language: system
+        types: [python]
+        require_serial: true
+        pass_filenames: false
   - repo: https://github.com/codespell-project/codespell
     rev: v2.4.2
     hooks:

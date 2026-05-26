@@ -67,3 +67,6 @@ warn_unreachable = false
 
 [tool.ty.src]
 exclude = ["tests", "examples"]
+
+[tool.ty.rules]
+unresolved-import = "ignore"

@@ -46,3 +46,7 @@ jobs:
       - name: Run Ruff Format
         run: |
           ruff format .
+
+      - name: Static typing with ty
+        run: |
+          ty check .
