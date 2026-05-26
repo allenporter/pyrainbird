@@ -64,3 +64,6 @@ warn_return_any = false
 check_untyped_defs = false
 disallow_untyped_calls = false
 warn_unreachable = false
+
+[tool.ty.src]
+exclude = ["tests", "examples"]

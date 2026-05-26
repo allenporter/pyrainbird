@@ -46,7 +46,3 @@ jobs:
       - name: Run Ruff Format
         run: |
           ruff format .
-
-      - name: Static typing with mypy
-        run: |
-          mypy --install-types --non-interactive --no-warn-unused-ignores .
