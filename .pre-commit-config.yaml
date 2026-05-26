@@ -9,7 +9,7 @@ repos:
       - id: check-yaml
       - id: check-added-large-files
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.2
+    rev: v0.15.14
     hooks:
       - id: ruff-check
         types_or:
@@ -22,14 +22,6 @@ repos:
         types_or:
           - python
           - pyi
-  - repo: local
-    hooks:
-      - id: ty
-        name: ty check
-        entry: ty check . --ignore unresolved-import
-        language: python
-        pass_filenames: false
-        additional_dependencies: ["ty==0.0.18"]
   - repo: https://github.com/codespell-project/codespell
     rev: v2.4.1
     hooks:
