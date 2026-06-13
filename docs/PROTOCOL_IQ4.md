@@ -1,6 +1,8 @@
 # Rain Bird IQ4 Cloud API Specification
 
-This document details the reverse-engineered **Rain Bird IQ4 REST API (Rain Bird 2.0 app)** protocol. Modern Rain Bird controller firmware upgrades migrate devices from the local JSON-RPC / LNK client API to this cloud-based platform.
+This document details the **Rain Bird IQ4 REST API (Rain Bird 2.0 app)** protocol. Modern Rain Bird controller firmware upgrades migrate devices from the local JSON-RPC / LNK client API to this cloud-based platform.
+
+This specification is based on the custom component implementation by [@davidsuarez82](https://github.com/davidsuarez82) in [davidsuarez82/rainbird_iq4](https://github.com/davidsuarez82/rainbird_iq4).
 
 ---
 
