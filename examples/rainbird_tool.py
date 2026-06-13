@@ -39,6 +39,14 @@ def parse_args():
     subcommand_parsers = parser.add_subparsers(
         title="Commands", dest="command", required=True
     )
+
+    # Add discover_cloud subcommand
+    discover_parser = subcommand_parsers.add_parser(
+        "discover_cloud",
+        help="Authenticate with the cloud and list registered satellites/controllers",
+    )
+    discover_parser.set_defaults(func=None)
+
     for method_name in dir(async_client.AsyncRainbirdController):
         if method_name.startswith("_"):
             continue
@@ -90,10 +98,38 @@ async def main():
     args = parse_args()
     logging.basicConfig(level=getattr(logging, args.log_level.upper()))
 
-    host = os.environ["RAINBIRD_SERVER"]
-    password = os.environ["RAINBIRD_PASSWORD"]
-
     async with aiohttp.ClientSession() as session:
+        if args.command == "discover_cloud":
+            username = os.environ.get("RAINBIRD_CLOUD_USERNAME")
+            password = os.environ.get("RAINBIRD_CLOUD_PASSWORD")
+            if not username or not password:
+                print(
+                    "Error: RAINBIRD_CLOUD_USERNAME and RAINBIRD_CLOUD_PASSWORD environment variables are required."
+                )
+                return
+
+            from pyrainbird.cloud.client import async_authenticate_cloud
+
+            try:
+                token, satellites = await async_authenticate_cloud(
+                    session, username, password
+                )
+                print(f"Authentication successful! Token: {token[:10]}...")
+                print(f"Satellites found: {len(satellites)}")
+                for sat in satellites:
+                    print(f"- ID: {sat.id}")
+                    print(f"  Name: {sat.name}")
+                    print(f"  Type: {sat.type}")
+                    print(f"  Site ID: {sat.site_id}")
+                    print(f"  Site Name: {sat.site_name}")
+                    print(f"  Station Count: {sat.station_count}")
+                    print(f"  Description: {sat.description}")
+            except Exception as err:
+                print(f"Cloud discovery failed: {err}")
+            return
+
+        host = os.environ["RAINBIRD_SERVER"]
+        password = os.environ["RAINBIRD_PASSWORD"]
         controller = await async_client.create_controller(session, host, password)
         method_args = {
             k: parse_value(v)
