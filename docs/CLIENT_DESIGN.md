@@ -130,7 +130,7 @@ Depending on how the user connects their device, the home automation client runs
 2. **Device Detection:**
    - **Port 80 Open:** The device is running legacy HTTP firmware.
      - *Client Action:* Prompt the user for the local device password.
-     - *Instantiation:* Call `create_local_controller(session, host, password)`.
+     - *Instantiation:* Call `create_controller(session, host, password)`.
    - **Port 443 Open (HTTPS):** The device is running upgraded/newer firmware.
      - *Client Action:* Inform the user that they must sign in using their Rain Bird cloud account.
      - *Next Step:* Redirect to **Journey B**.
@@ -153,16 +153,16 @@ Depending on how the user connects their device, the home automation client runs
 
 ### A. Local Controller Factory
 ```python
-from pyrainbird.async_client import create_local_controller
+from pyrainbird.async_client import create_controller
 
 # Instantiates local controller (auto-probes and handles HTTP or HTTPS+AES transparently)
-controller = await create_local_controller(
+controller = await create_controller(
     session=clientsession,
     host="192.168.1.15",
     password="my_device_password",
 )
 ```
-- **Returns:** `AsyncRainbirdLocalController` (implements `RainbirdController`).
+- **Returns:** `AsyncRainbirdController` (implements `RainbirdController`).
 - **Features supported:** Typically `{ControllerFeature.RAIN_DELAY, ControllerFeature.SEASONAL_ADJUST, ControllerFeature.ZONE_IRRIGATION, ControllerFeature.CALENDAR_SCHEDULE}`.
 
 ### B. Cloud Authentication Helper

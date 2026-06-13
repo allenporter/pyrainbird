@@ -8137,6 +8137,10 @@
   }
   '''
 # ---
+# name: test_local_controller_capabilities
+  list([
+  ])
+# ---
 # name: test_non_retryable_errors
   '''
   [client >]

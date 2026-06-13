@@ -15,6 +15,7 @@ from freezegun import freeze_time
 from pyrainbird.async_client import (
     AsyncRainbirdClient,
     AsyncRainbirdController,
+    ControllerFeature,
     create_controller,
 )
 from pyrainbird.data import (
@@ -1767,3 +1768,25 @@ async def test_get_schedule_partial_nack(
     assert program.durations[2].duration == datetime.timedelta(minutes=5)
     assert program.durations[3].zone == 4
     assert program.durations[3].duration == datetime.timedelta(minutes=5)
+
+
+async def test_local_controller_capabilities() -> None:
+    local_client = mock.Mock()
+    controller = AsyncRainbirdController(local_client)
+
+    # Before model_info is loaded:
+    assert controller.max_zones == 0
+    assert controller.max_programs == 0
+
+    # Assert base capabilities are supported
+    assert controller.supported_features == {
+        ControllerFeature.RAIN_DELAY,
+        ControllerFeature.SEASONAL_ADJUST,
+        ControllerFeature.ZONE_IRRIGATION,
+        ControllerFeature.CALENDAR_SCHEDULE,
+    }
+
+    # Set model info (ESP-TM2)
+    controller._model = ModelAndVersion(0x0A, 1, 3)
+    assert controller.max_zones == 12
+    assert controller.max_programs == 3

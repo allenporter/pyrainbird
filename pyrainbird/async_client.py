@@ -326,7 +326,7 @@ async def create_controller(
         return await _probe(url=http_url, ssl_context=None)
 
 
-class AsyncRainbirdController:
+class AsyncRainbirdController(RainbirdController):
     """Rainbird controller that uses asyncio."""
 
     def __init__(
@@ -724,3 +724,27 @@ class AsyncRainbirdController:
         result = await self._process_command(funct, command, *args)
         self._cache[key] = result
         return result  # type: ignore
+
+    @property
+    def supported_features(self) -> set[ControllerFeature]:
+        """Return the features supported by this specific controller."""
+        return {
+            ControllerFeature.RAIN_DELAY,
+            ControllerFeature.SEASONAL_ADJUST,
+            ControllerFeature.ZONE_IRRIGATION,
+            ControllerFeature.CALENDAR_SCHEDULE,
+        }
+
+    @property
+    def max_zones(self) -> int:
+        """Return the maximum number of stations/zones supported."""
+        if self._model and self._model.model_info:
+            return self._model.model_info.max_stations
+        return 0
+
+    @property
+    def max_programs(self) -> int:
+        """Return the maximum number of programs supported."""
+        if self._model and self._model.model_info:
+            return self._model.model_info.max_programs
+        return 0
