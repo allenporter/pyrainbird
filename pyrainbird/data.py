@@ -851,3 +851,18 @@ class Schedule(DataClassDictMixin):
                     }
                 )
         return values
+
+
+@dataclass
+class CloudSatellite(DataClassDictMixin):
+    """Registered satellite/controller under a cloud account."""
+
+    id: int
+    name: str
+    type: int
+    site_id: int = field(metadata=field_options(alias="siteId"))
+    site_name: str = field(metadata=field_options(alias="siteName"))
+    device_uuid: str = field(metadata=field_options(alias="deviceUUID"))
+    station_count: int = field(metadata=field_options(alias="stationCount"))
+    satellite_enabled: bool = field(metadata=field_options(alias="satelliteEnabled"))
+    description: str | None = None
