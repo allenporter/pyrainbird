@@ -35,6 +35,18 @@
   list([
   ])
 # ---
+# name: test_create_local_controller_does_not_fallback_on_auth_error
+  list([
+  ])
+# ---
+# name: test_create_local_controller_tries_https_then_http_on_connection_error
+  list([
+  ])
+# ---
+# name: test_create_local_controller_tries_insecure_https_first
+  list([
+  ])
+# ---
 # name: test_custom_schedule
   '''
   [client >]
@@ -8136,6 +8148,10 @@
     "id": 1
   }
   '''
+# ---
+# name: test_local_controller_capabilities
+  list([
+  ])
 # ---
 # name: test_non_retryable_errors
   '''

@@ -153,7 +153,9 @@ class RainbirdTokenProvider:
 __all__ = [
     "CreateController",
     "create_controller",
+    "create_local_controller",
     "AsyncRainbirdController",
+    "AsyncRainbirdLocalController",
     "ControllerFeature",
     "RainbirdController",
     "RainbirdTokenProvider",
@@ -724,3 +726,66 @@ class AsyncRainbirdController:
         result = await self._process_command(funct, command, *args)
         self._cache[key] = result
         return result  # type: ignore
+
+
+class AsyncRainbirdLocalController(AsyncRainbirdController, RainbirdController):
+    """Local Rain Bird controller client implementing RainbirdController capabilities."""
+
+    @property
+    def supported_features(self) -> set[ControllerFeature]:
+        """Return the features supported by this specific controller."""
+        return {
+            ControllerFeature.RAIN_DELAY,
+            ControllerFeature.SEASONAL_ADJUST,
+            ControllerFeature.ZONE_IRRIGATION,
+            ControllerFeature.CALENDAR_SCHEDULE,
+        }
+
+    @property
+    def max_zones(self) -> int:
+        """Return the maximum number of stations/zones supported."""
+        if self._model and self._model.model_info:
+            return self._model.model_info.max_stations
+        return 0
+
+    @property
+    def max_programs(self) -> int:
+        """Return the maximum number of programs supported."""
+        if self._model and self._model.model_info:
+            return self._model.model_info.max_programs
+        return 0
+
+
+async def create_local_controller(
+    session: aiohttp.ClientSession, host: str, password: str
+) -> AsyncRainbirdLocalController:
+    """Create an AsyncRainbirdLocalController with local HTTP/HTTPS discovery.
+
+    The local Rain Bird controller API appears to vary by firmware. Some devices
+    accept HTTP on port 80, while others require HTTPS (commonly with a
+    self-signed certificate). This factory probes the controller to determine
+    the correct scheme while keeping the public API hostname-based.
+    """
+    host = host.strip()
+    host = host.rstrip("/")
+
+    async def _probe(
+        *, url: str, ssl_context: ssl.SSLContext | bool | None
+    ) -> AsyncRainbirdLocalController:
+        local_client = AsyncRainbirdClient(
+            session,
+            url,
+            password,
+            ssl_context=ssl_context,
+        )
+        controller = AsyncRainbirdLocalController(local_client)
+        await controller.get_model_and_version()
+        return controller
+
+    https_url = f"https://{host}/stick"
+    http_url = f"http://{host}/stick"
+    try:
+        return await _probe(url=https_url, ssl_context=False)
+    except RainbirdConnectionError:
+        # Likely wrong scheme (device doesn't speak TLS); fall back to HTTP.
+        return await _probe(url=http_url, ssl_context=None)
