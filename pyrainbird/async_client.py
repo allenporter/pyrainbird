@@ -153,7 +153,6 @@ class RainbirdTokenProvider:
 __all__ = [
     "CreateController",
     "create_controller",
-    "create_local_controller",
     "AsyncRainbirdController",
     "ControllerFeature",
     "RainbirdController",
@@ -749,8 +748,3 @@ class AsyncRainbirdController(RainbirdController):
         if self._model and self._model.model_info:
             return self._model.model_info.max_programs
         return 0
-
-
-# Alias create_local_controller directly to create_controller since AsyncRainbirdController
-# now implements the RainbirdController interface directly.
-create_local_controller = create_controller
