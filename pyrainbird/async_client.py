@@ -74,11 +74,22 @@ from .resources import LENGTH, RAINBIRD_COMMANDS, RESPONSE
 
 
 class ControllerFeature(enum.StrEnum):
+    """Capabilities and features supported by a Rain Bird controller."""
+
     RAIN_DELAY = "rain_delay"
+    """Controller supports setting a rain delay duration."""
+
     SEASONAL_ADJUST = "seasonal_adjust"
+    """Controller supports seasonal adjust (water budget) percentage configuration."""
+
     FORECAST_DELAY = "forecast_delay"
+    """Controller supports automatic rain delays based on weather forecasts."""
+
     ZONE_IRRIGATION = "zone_irrigation"
+    """Controller supports starting and stopping individual zones manually."""
+
     CALENDAR_SCHEDULE = "calendar_schedule"
+    """Controller supports querying or setting the irrigation schedules."""
 
 
 class RainbirdController:
