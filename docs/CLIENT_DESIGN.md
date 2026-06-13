@@ -135,8 +135,11 @@ Depending on how the user connects their device, the home automation client runs
      - *Client Action:* Inform the user that they must sign in using their Rain Bird cloud account.
      - *Next Step:* Redirect to **Journey B**.
 
-### Journey B: Cloud Account Sign-In (Account-based Discovery)
+### Journey B: Cloud Account Sign-In (Programmatic OAuth Flow)
 1. **Authentication:** The client prompts the user for cloud credentials (username/password) and calls `async_authenticate_cloud`.
+   - **OAuth 2.0 Implicit Grant:** The Rain Bird backend employs a standard OIDC/OAuth 2.0 Implicit Grant flow.
+   - **Programmatic Emulation:** Because the Rain Bird identity server strictly restricts redirection to `https://iq4.rainbird.com/auth.html` and does not support registering arbitrary external redirect URIs (e.g. local home automation domains), the standard browser redirect flow cannot be used.
+   - **Mechanism:** Instead, `async_authenticate_cloud` programmatically performs the OAuth steps: it initiates the authorization flow, parses the CSRF verification token from the login page, POSTs the credentials, and extracts the JWT `access_token` from the resulting redirect URL hash fragment.
 2. **Satellite Discovery:** The helper verifies the credentials and returns a list of registered satellites associated with the user's account, along with the initial access token.
    - **Account-based Setup:** The config flow behaves as an *account-based* discovery flow. It discovers all controllers under the user's account and registers a separate device/config entry for each `satellite_id`.
    - **Device-based Runtime:** Once configured, each device/config entry is managed independently, instantiating its own `RainbirdController` with its specific `satellite_id` at runtime.
