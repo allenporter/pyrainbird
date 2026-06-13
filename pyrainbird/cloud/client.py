@@ -68,11 +68,6 @@ class AsyncRainbirdCloudClient:
         }
         return_url = f"/coreidentityserver/connect/authorize/callback?{urllib.parse.urlencode(auth_url_params)}"
 
-        # 1. Fetch the login page to extract CSRF token
-        login_url = (
-            f"{AUTH_BASE}/Account/Login?ReturnUrl={urllib.parse.quote(return_url)}"
-        )
-
         headers = {
             "User-Agent": DEFAULT_USER_AGENT,
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
@@ -80,6 +75,19 @@ class AsyncRainbirdCloudClient:
             "Origin": "https://iq4server.rainbird.com",
         }
 
+        csrf_token = await self._get_csrf_token(return_url, headers)
+        location = await self._submit_credentials(return_url, csrf_token, headers)
+        access_token_value = await self._follow_redirects(location, headers)
+
+        self._token = access_token_value
+        self._headers["Authorization"] = f"Bearer {self._token}"
+        return self._token
+
+    async def _get_csrf_token(self, return_url: str, headers: dict[str, str]) -> str:
+        """Fetch the login page and extract the CSRF token."""
+        login_url = (
+            f"{AUTH_BASE}/Account/Login?ReturnUrl={urllib.parse.quote(return_url)}"
+        )
         try:
             async with self._session.get(login_url, headers=headers) as resp:
                 if resp.status != 200:
@@ -109,9 +117,12 @@ class AsyncRainbirdCloudClient:
                 "Could not find __RequestVerificationToken in the page."
             )
 
-        csrf_token = match.group(1)
+        return match.group(1)
 
-        # 2. Submit credentials
+    async def _submit_credentials(
+        self, return_url: str, csrf_token: str, headers: dict[str, str]
+    ) -> str:
+        """Submit login credentials and retrieve the initial redirect location."""
         post_url = (
             f"{AUTH_BASE}/Account/Login?ReturnUrl={urllib.parse.quote(return_url)}"
         )
@@ -136,13 +147,18 @@ class AsyncRainbirdCloudClient:
                         f"Unexpected response status submitting credentials: {resp.status}"
                     )
                 location = resp.headers.get("Location")
+                if not location:
+                    raise RainbirdAuthException(
+                        "No redirect location returned after credentials submission."
+                    )
+                return location
         except aiohttp.ClientError as err:
             raise RainbirdConnectionError(
                 f"Connection error submitting credentials: {err}"
             ) from err
 
-        # 3. Follow redirect chain manually to retrieve access token
-        access_token_value = None
+    async def _follow_redirects(self, location: str, headers: dict[str, str]) -> str:
+        """Follow the redirect chain manually to retrieve the access token."""
         max_redirects = 10
         redirects_followed = 0
 
@@ -158,8 +174,7 @@ class AsyncRainbirdCloudClient:
                 params = urllib.parse.parse_qs(fragment)
                 token_list = params.get("access_token")
                 if token_list:
-                    access_token_value = token_list[0]
-                    break
+                    return token_list[0]
                 else:
                     raise RainbirdAuthException(
                         "Reached redirect URI but could not find access_token in fragment."
@@ -185,14 +200,9 @@ class AsyncRainbirdCloudClient:
                     f"Connection error following login redirect: {err}"
                 ) from err
 
-        if not access_token_value:
-            raise RainbirdAuthException(
-                "Could not retrieve access token from redirect chain."
-            )
-
-        self._token = access_token_value
-        self._headers["Authorization"] = f"Bearer {self._token}"
-        return self._token
+        raise RainbirdAuthException(
+            "Could not retrieve access token from redirect chain."
+        )
 
     async def get_satellites(self) -> list[CloudSatellite]:
         """Retrieve the list of registered satellites/controllers under the user account."""
