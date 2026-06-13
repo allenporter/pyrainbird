@@ -86,6 +86,15 @@ class RainbirdController:
     async def set_rain_delay(self, days: int) -> None:
         """Set or clear a rain delay."""
         raise NotImplementedError()
+
+    async def get_schedule(self) -> Schedule:
+        """Return the controller's irrigation schedule.
+
+        For cloud controllers, the REST responses (program list and assigned runtimes)
+        are mapped internally to return the unified `Schedule` object, allowing the
+        same timeline/calendar helpers to be reused.
+        """
+        raise NotImplementedError()
 ```
 
 ---
