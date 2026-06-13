@@ -12,7 +12,7 @@ The IQ4 cloud platform uses OAuth 2.0 / OpenID Connect (OIDC) JWT token-based au
 
 - **Authentication Base URL:** `https://iq4server.rainbird.com/coreidentityserver`
 - **API Base URL:** `https://iq4server.rainbird.com/coreapi/api`
-- **OAuth Client ID:** `C5A6F324-3CD3-4B22-9F78-B4835BA55D25`
+- **OAuth Client ID:** Any dynamically generated random UUID (e.g., `C5A6F324-3CD3-4B22-9F78-B4835BA55D25`). The official app generates a UUID on initial setup using `UUID.randomUUID().toString()` and stores it as the `APP_CLIENT_ID` in preferences.
 - **Redirect URI:** `https://iq4.rainbird.com/auth.html`
 
 ### Authentication Flow (Browser Emulation / Bypass)
