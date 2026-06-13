@@ -7,6 +7,14 @@ password of the Rain Bird controller and performs local HTTP/HTTPS discovery.
 `CreateController` is a legacy factory that does not perform discovery and may
 not work with HTTPS-only controllers.
 
+.. note::
+   **WIP Migration to Capabilities Abstraction:**
+   The library is transitioning to a capability-based interface where callers query
+   controller features using `ControllerFeature` enums rather than concrete subclass types.
+   New implementations extend `RainbirdController` (e.g., concrete local HTTPS/JSON-RPC and
+   cloud REST clients), and utilize `RainbirdTokenProvider` for OAuth/OIDC credential lifetimes.
+   Legacy factory functions and `AsyncRainbirdController` remain supported for compatibility.
+
 Most API calls are fairly low level with thin response wrappers that are data classes,
 though some static data about the device may have the underlying calls cached.
 
