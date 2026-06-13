@@ -1,0 +1,271 @@
+import asyncio
+import base64
+import datetime
+import json
+import logging
+from collections.abc import AsyncIterator
+from dataclasses import dataclass
+from typing import Any
+
+import aiohttp
+
+from pyrainbird.async_client import RainbirdTokenProvider
+from pyrainbird.exceptions import RainbirdAuthException
+
+_LOGGER = logging.getLogger(__name__)
+
+API_HOST = "m3iuhu3l3zbjpkctbnh2of4chm.appsync-api.us-west-2.amazonaws.com"
+REALTIME_HOST = (
+    "m3iuhu3l3zbjpkctbnh2of4chm.appsync-realtime-api.us-west-2.amazonaws.com"
+)
+WS_ENDPOINT = f"wss://{REALTIME_HOST}/graphql"
+
+
+@dataclass
+class CloudStreamEvent:
+    """Represents a real-time status update from a cloud satellite."""
+
+    satellite_id: int
+    state: str
+    active_station: int | None
+    remain_seconds: int | None
+    rain_delay: int | None
+    updated_at: datetime.datetime
+
+
+class AsyncRainbirdCloudStream:
+    """Manages a real-time WebSocket subscription stream to AWS AppSync."""
+
+    def __init__(
+        self,
+        token_provider: RainbirdTokenProvider,
+        satellite_id: int,
+        session: aiohttp.ClientSession,
+    ) -> None:
+        """Initialize the real-time cloud stream manager."""
+        self._token_provider = token_provider
+        self._satellite_id = satellite_id
+        self._session = session
+        self._force_refresh_token = False
+
+    def _get_connection_url(self, token: str) -> str:
+        """Construct the authenticated AppSync WebSocket handshake URL."""
+        headers = {
+            "host": API_HOST,
+            "Authorization": token,
+        }
+        headers_json = json.dumps(headers).encode("utf-8")
+        headers_b64 = base64.urlsafe_b64encode(headers_json).decode("utf-8").rstrip("=")
+        # AppSync requires payload to be base64-encoded '{}' -> 'e30='
+        return f"{WS_ENDPOINT}?header={headers_b64}&payload=e30="
+
+    def _parse_event(self, data: dict[str, Any]) -> CloudStreamEvent | None:
+        """Parse a pushed GraphQL subscription message payload."""
+        try:
+            payload = data.get("payload", {})
+            data_wrapper = payload.get("data", {})
+            device_state = data_wrapper.get("onUpdateDeviceState")
+            if not device_state:
+                return None
+
+            sat_id_str = device_state.get("id")
+            satellite_id = int(sat_id_str) if sat_id_str else self._satellite_id
+            state = device_state.get("state", "Unknown")
+
+            updated_at_str = device_state.get("updatedAt")
+            if updated_at_str:
+                if updated_at_str.endswith("Z"):
+                    updated_at_str = updated_at_str[:-1] + "+00:00"
+                updated_at = datetime.datetime.fromisoformat(updated_at_str)
+            else:
+                updated_at = datetime.datetime.now(datetime.timezone.utc)
+
+            inner_data_str = device_state.get("data")
+            active_station = None
+            remain_seconds = None
+            rain_delay = None
+
+            if inner_data_str:
+                try:
+                    inner_data = json.loads(inner_data_str)
+                    active_station = inner_data.get("activeStation")
+                    remain_seconds = inner_data.get("remainSec")
+                    rain_delay = inner_data.get("rainDelay")
+                except json.JSONDecodeError as err:
+                    _LOGGER.warning("Failed to parse inner state data JSON: %s", err)
+
+            return CloudStreamEvent(
+                satellite_id=satellite_id,
+                state=state,
+                active_station=active_station,
+                remain_seconds=remain_seconds,
+                rain_delay=rain_delay,
+                updated_at=updated_at,
+            )
+        except Exception as e:
+            _LOGGER.error("Error parsing stream event: %s", e)
+            return None
+
+    async def listen(self) -> AsyncIterator[CloudStreamEvent]:
+        """Establish a connection to the WebSocket and yield events in real-time.
+
+        Automatically manages heartbeats, reconnections, and token lifecycle.
+        """
+        backoff = 2.0
+        max_backoff = 60.0
+
+        while True:
+            ws = None
+            try:
+                # 1. Fetch current access token
+                try:
+                    token = await self._token_provider.async_get_token(
+                        force_refresh=self._force_refresh_token
+                    )
+                    # Reset force refresh on successful token retrieval
+                    self._force_refresh_token = False
+                except Exception as token_err:
+                    _LOGGER.error(
+                        "Failed to retrieve authentication token: %s", token_err
+                    )
+                    raise RainbirdAuthException(
+                        "Token acquisition failed"
+                    ) from token_err
+
+                url = self._get_connection_url(token)
+                _LOGGER.debug("Connecting to AppSync WebSocket endpoint...")
+
+                async with self._session.ws_connect(
+                    url, protocols=["graphql-ws"]
+                ) as ws:
+                    _LOGGER.debug(
+                        "WebSocket connection opened. Initializing protocol..."
+                    )
+                    backoff = 2.0  # Reset backoff upon successful connection
+
+                    # 2. Send connection_init
+                    await ws.send_json({"type": "connection_init"})
+
+                    # 3. Read message loop
+                    async for msg in ws:
+                        if msg.type == aiohttp.WSMsgType.TEXT:
+                            data = msg.json()
+                            msg_type = data.get("type")
+
+                            if msg_type == "connection_ack":
+                                _LOGGER.info(
+                                    "Connection acknowledged. Registering subscription..."
+                                )
+                                # Subscribe once connection is acknowledged
+                                sub_payload = {
+                                    "id": "sub_device_state",
+                                    "type": "start",
+                                    "payload": {
+                                        "data": json.dumps(
+                                            {
+                                                "query": "subscription OnUpdateDeviceState($satelliteId: ID!) { onUpdateDeviceState(satelliteId: $satelliteId) { id state data updatedAt } }",
+                                                "variables": {
+                                                    "satelliteId": str(
+                                                        self._satellite_id
+                                                    )
+                                                },
+                                            }
+                                        ),
+                                        "extensions": {
+                                            "authorization": {
+                                                "host": API_HOST,
+                                                "Authorization": token,
+                                            }
+                                        },
+                                    },
+                                }
+                                await ws.send_json(sub_payload)
+
+                            elif msg_type == "data":
+                                event = self._parse_event(data)
+                                if event:
+                                    yield event
+
+                            elif msg_type == "ka":
+                                # Keep-alive heartbeat received
+                                _LOGGER.debug(
+                                    "AppSync WebSocket keep-alive heartbeat received."
+                                )
+
+                            elif msg_type in ("connection_error", "error"):
+                                payload = data.get("payload", {})
+                                errors = payload.get("errors", [])
+                                error_msg = (
+                                    errors[0].get("message")
+                                    if errors
+                                    else "Unknown error"
+                                )
+                                _LOGGER.error(
+                                    "AppSync server returned error: %s (type: %s)",
+                                    error_msg,
+                                    msg_type,
+                                )
+
+                                is_auth_error = False
+                                # Check if authorization failed
+                                for err in errors:
+                                    if (
+                                        "unauthorized" in err.get("message", "").lower()
+                                        or err.get("errorType")
+                                        == "UnauthorizedException"
+                                    ):
+                                        _LOGGER.warning(
+                                            "Authorization error detected. Forcing token refresh."
+                                        )
+                                        self._force_refresh_token = True
+                                        is_auth_error = True
+
+                                if is_auth_error:
+                                    break
+                                else:
+                                    raise RainbirdAuthException(
+                                        f"WebSocket protocol error: {error_msg}"
+                                    )
+
+                            elif msg_type == "complete":
+                                _LOGGER.info(
+                                    "Subscription registration was terminated by server."
+                                )
+                                break
+
+                        elif msg.type in (
+                            aiohttp.WSMsgType.CLOSE,
+                            aiohttp.WSMsgType.CLOSING,
+                            aiohttp.WSMsgType.CLOSED,
+                        ):
+                            _LOGGER.warning("WebSocket closing/closed: %s", msg.data)
+                            break
+
+            except asyncio.CancelledError:
+                _LOGGER.info("WebSocket connection cancelled by caller.")
+                if ws and not ws.closed:
+                    await ws.close()
+                break
+
+            except RainbirdAuthException as auth_err:
+                _LOGGER.error(
+                    "Fatal authentication error in WebSocket stream: %s", auth_err
+                )
+                if ws and not ws.closed:
+                    await ws.close()
+                raise
+
+            except Exception as e:
+                _LOGGER.warning(
+                    "WebSocket error encountered: %s. Retrying in %ss...", e, backoff
+                )
+                # If we get a 401 response status, force a token refresh next time
+                if isinstance(e, aiohttp.ClientResponseError) and e.status == 401:
+                    _LOGGER.warning(
+                        "Received 401 response status. Forcing token refresh."
+                    )
+                    self._force_refresh_token = True
+
+            # Reconnection backoff
+            await asyncio.sleep(backoff)
+            backoff = min(backoff * 2.0, max_backoff)
