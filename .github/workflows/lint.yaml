@@ -30,7 +30,7 @@ jobs:
           strict: true
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@v8.2.0
         with:
           enable-cache: true
           cache-dependency-glob: "requirements_dev.txt"
@@ -46,7 +46,3 @@ jobs:
       - name: Run Ruff Format
         run: |
           ruff format .
-
-      - name: Static typing with mypy
-        run: |
-          mypy --install-types --non-interactive --no-warn-unused-ignores .

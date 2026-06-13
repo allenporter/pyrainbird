@@ -144,4 +144,7 @@ venv.bak/
 .dmypy.json
 dmypy.json
 
+# ty
+.ty_cache/
+
 .DS_Store
