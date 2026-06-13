@@ -15,7 +15,6 @@ from freezegun import freeze_time
 from pyrainbird.async_client import (
     AsyncRainbirdClient,
     AsyncRainbirdController,
-    AsyncRainbirdLocalController,
     ControllerFeature,
     create_controller,
     create_local_controller,
@@ -1778,13 +1777,14 @@ async def test_create_local_controller_tries_insecure_https_first() -> None:
     with (
         mock.patch("pyrainbird.async_client.AsyncRainbirdClient") as client_cls,
         mock.patch(
-            "pyrainbird.async_client.AsyncRainbirdLocalController.get_model_and_version",
+            "pyrainbird.async_client.AsyncRainbirdController.get_model_and_version",
             new=mock.AsyncMock(return_value=ModelAndVersion(0x0A, 1, 3)),
         ),
     ):
         await create_local_controller(session, "example.com", "password")
 
     assert client_cls.call_args_list == [
+        mock.call(session, mock.ANY, None),
         mock.call(session, "https://example.com/stick", "password", ssl_context=False),
     ]
 
@@ -1797,7 +1797,7 @@ async def test_create_local_controller_tries_https_then_http_on_connection_error
     with (
         mock.patch("pyrainbird.async_client.AsyncRainbirdClient") as client_cls,
         mock.patch(
-            "pyrainbird.async_client.AsyncRainbirdLocalController.get_model_and_version",
+            "pyrainbird.async_client.AsyncRainbirdController.get_model_and_version",
             new=mock.AsyncMock(
                 side_effect=[
                     RainbirdConnectionError("connect error"),
@@ -1809,6 +1809,7 @@ async def test_create_local_controller_tries_https_then_http_on_connection_error
         await create_local_controller(session, "example.com", "password")
 
     assert client_cls.call_args_list == [
+        mock.call(session, mock.ANY, None),
         mock.call(session, "https://example.com/stick", "password", ssl_context=False),
         mock.call(session, "http://example.com/stick", "password", ssl_context=None),
     ]
@@ -1820,7 +1821,7 @@ async def test_create_local_controller_does_not_fallback_on_auth_error() -> None
     with (
         mock.patch("pyrainbird.async_client.AsyncRainbirdClient") as client_cls,
         mock.patch(
-            "pyrainbird.async_client.AsyncRainbirdLocalController.get_model_and_version",
+            "pyrainbird.async_client.AsyncRainbirdController.get_model_and_version",
             new=mock.AsyncMock(side_effect=RainbirdAuthException("bad password")),
         ),
     ):
@@ -1828,13 +1829,14 @@ async def test_create_local_controller_does_not_fallback_on_auth_error() -> None
             await create_local_controller(session, "example.com", "password")
 
     assert client_cls.call_args_list == [
+        mock.call(session, mock.ANY, None),
         mock.call(session, "https://example.com/stick", "password", ssl_context=False),
     ]
 
 
 async def test_local_controller_capabilities() -> None:
     local_client = mock.Mock()
-    controller = AsyncRainbirdLocalController(local_client)
+    controller = AsyncRainbirdController(local_client)
 
     # Before model_info is loaded:
     assert controller.max_zones == 0
