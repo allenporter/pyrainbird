@@ -16,6 +16,7 @@ and querying the device.
 """
 
 import datetime
+import enum
 import logging
 import math
 import ssl
@@ -63,10 +64,80 @@ from .exceptions import (
 )
 from .resources import LENGTH, RAINBIRD_COMMANDS, RESPONSE
 
+
+class ControllerFeature(enum.StrEnum):
+    RAIN_DELAY = "rain_delay"
+    SEASONAL_ADJUST = "seasonal_adjust"
+    FORECAST_DELAY = "forecast_delay"
+    ZONE_IRRIGATION = "zone_irrigation"
+    CALENDAR_SCHEDULE = "calendar_schedule"
+
+
+class RainbirdController:
+    """Abstract base class representing a Rain Bird controller's capabilities."""
+
+    @property
+    def supported_features(self) -> set[ControllerFeature]:
+        """Return the features supported by this specific controller."""
+        raise NotImplementedError()
+
+    @property
+    def max_zones(self) -> int:
+        """Return the maximum number of stations supported."""
+        raise NotImplementedError()
+
+    @property
+    def max_programs(self) -> int:
+        """Return the maximum number of programs supported."""
+        raise NotImplementedError()
+
+    async def irrigate_zone(self, zone: int, minutes: int) -> None:
+        """Turn on irrigation for a single zone."""
+        raise NotImplementedError()
+
+    async def stop_irrigation(self) -> None:
+        """Turn off all active irrigation zones."""
+        raise NotImplementedError()
+
+    async def get_zone_states(self) -> States:
+        """Return which zones are currently active."""
+        raise NotImplementedError()
+
+    async def get_rain_sensor_state(self) -> bool:
+        """Return True if the rain sensor is active."""
+        raise NotImplementedError()
+
+    async def get_rain_delay(self) -> int:
+        """Return the remaining rain delay in days."""
+        raise NotImplementedError()
+
+    async def set_rain_delay(self, days: int) -> None:
+        """Set or clear a rain delay."""
+        raise NotImplementedError()
+
+    async def get_schedule(self) -> Schedule:
+        """Return the controller's irrigation schedule."""
+        raise NotImplementedError()
+
+
+class RainbirdTokenProvider:
+    """Interface for managing OAuth JWT authentication tokens."""
+
+    async def async_get_token(self, force_refresh: bool = False) -> str:
+        """Return a valid Bearer token.
+
+        If `force_refresh` is True, bypasses local caches to request a fresh token.
+        """
+        raise NotImplementedError()
+
+
 __all__ = [
     "CreateController",
     "create_controller",
     "AsyncRainbirdController",
+    "ControllerFeature",
+    "RainbirdController",
+    "RainbirdTokenProvider",
 ]
 
 _LOGGER = logging.getLogger(__name__)
