@@ -113,7 +113,7 @@ Depending on how the user connects their device, the home automation client runs
                         |                                   |
             Save: Host + Password                 Authenticate & Get Satellites
                                                             |
-                                                   Save: Satellite ID + Token
+                                                   Save: Satellite ID + Auth Config
 ```
 
 ### Journey A: Local Host/IP Setup (Probing)
@@ -126,10 +126,12 @@ Depending on how the user connects their device, the home automation client runs
      - *Client Action:* Inform the user that they must sign in using their Rain Bird cloud account.
      - *Next Step:* Redirect to **Journey B**.
 
-### Journey B: Cloud Account Sign-In
-1. **Authentication:** The client prompts the user for cloud credentials and calls `async_authenticate_cloud`.
-2. **Satellite Discovery:** The helper verifies the credentials and returns the JWT token and a list of registered satellites associated with the user's account.
-3. **Instantiation:** The user selects a satellite, and the client calls `create_cloud_controller(...)` to initialize the runtime controller.
+### Journey B: Cloud Account Sign-In (Account-based Discovery)
+1. **Authentication:** The client prompts the user for cloud credentials (username/password) and calls `async_authenticate_cloud`.
+2. **Satellite Discovery:** The helper verifies the credentials and returns a list of registered satellites associated with the user's account, along with the initial access token.
+   - **Account-based Setup:** The config flow behaves as an *account-based* discovery flow. It discovers all controllers under the user's account and registers a separate device/config entry for each `satellite_id`.
+   - **Device-based Runtime:** Once configured, each device/config entry is managed independently, instantiating its own `RainbirdController` with its specific `satellite_id` at runtime.
+3. **Instantiation:** The client instantiates a `RainbirdTokenProvider` for the entry and calls `create_cloud_controller(...)` to initialize the runtime controller.
 
 ---
 
@@ -153,7 +155,7 @@ controller = await create_local_controller(
 ```python
 from pyrainbird.cloud.client import async_authenticate_cloud
 
-# Authenticates with iq4server.rainbird.com and returns token + registered controllers
+# Authenticates with iq4server.rainbird.com and returns initial token + registered satellites
 token, satellites = await async_authenticate_cloud(
     session=clientsession,
     username="user@example.com",
@@ -162,16 +164,30 @@ token, satellites = await async_authenticate_cloud(
 ```
 - **Returns:** `tuple[str, list[CloudSatellite]]`.
 
-### C. Cloud Controller Factory
+### C. Token Provider Interface
+To avoid managing authentication lifecycle and persistence details inside `pyrainbird`, the client defines an abstract token provider class. Callers implement this interface to coordinate token caching, storage, and renewal:
+
+```python
+class RainbirdTokenProvider:
+    """Interface for managing OAuth JWT authentication tokens."""
+
+    async def async_get_token(self, force_refresh: bool = False) -> str:
+        """Return a valid Bearer token.
+
+        If `force_refresh` is True, bypasses local caches to request a fresh token.
+        """
+        raise NotImplementedError()
+```
+
+### D. Cloud Controller Factory
 ```python
 from pyrainbird.cloud.client import create_cloud_controller
 
-# Instantiates cloud controller with a refreshed token callback
+# Instantiates cloud controller using the token provider
 controller = create_cloud_controller(
     session=clientsession,
-    token=token,
+    token_provider=token_provider,
     satellite_id=satellites[0].id,
-    async_get_access_token=my_token_refresher_callback,
 )
 ```
 - **Returns:** `AsyncRainbirdCloudController` (implements `RainbirdController`).
@@ -179,10 +195,11 @@ controller = create_cloud_controller(
 
 ---
 
-## 5. Token Refresh API Callback Callback
+## 5. Token Provider Responsibilities & Error Handling
 
-To avoid managing authentication persistence state inside `pyrainbird`, the client provides an `async_get_access_token` callback hook. If the cloud REST client receives an `HTTP 401 Unauthorized` response:
-1. It executes the registered callback `async_get_access_token()`.
-2. The home automation client retrieves a fresh token from its config session cache and returns it.
-3. `pyrainbird` updates its active headers and retries the original request.
-4. If no callback is registered, or the callback fails, a `RainbirdAuthException` is raised.
+During API requests, the cloud controller queries `await token_provider.async_get_token()` to populate the `Authorization` header.
+
+If the REST endpoint returns an `HTTP 401 Unauthorized` response:
+1. The client invokes `await token_provider.async_get_token(force_refresh=True)` to force a token renewal.
+2. The client retries the failed API request exactly once with the fresh token.
+3. If the request fails again with a 401, a `RainbirdAuthException` is raised to the caller, signaling that re-authentication or setup credentials verification is required.
