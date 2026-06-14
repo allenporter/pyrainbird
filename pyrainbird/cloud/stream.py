@@ -1,6 +1,6 @@
 """Real-time cloud updates stream client using AWS AppSync GraphQL subscriptions over WebSockets.
 
-This module implements the persistent WebSocket streaming protocol used by the Rain Bird 2.0 app
+This module implements the persistent WebSocket streaming protocol used by the newer 2.0 cloud protocol
 to receive real-time controller updates (such as active station, remaining watering seconds, and
 rain delay) from the AWS AppSync service without polling.
 
