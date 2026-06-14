@@ -29,6 +29,41 @@ WAF_RETRY_BACKOFF_INCREMENT = 10.0
 WAF_RETRY_MAX_BACKOFF = 60.0
 
 
+def _parse_login_validation_error(html: str) -> str | None:
+    """Parse OIDC login page HTML to extract form validation errors or WAF/CAPTCHA signatures.
+
+    Returns "WAF_CHALLENGE" if a WAF/CAPTCHA challenge is detected.
+    """
+    if (
+        "challenge" in html.lower()
+        or "captcha" in html.lower()
+        or "waf" in html.lower()
+        or "robot" in html.lower()
+    ):
+        return "WAF_CHALLENGE"
+
+    # Search for validation summary errors
+    re_match = re.search(
+        r"validation-summary-errors.*?<li>([^<]+)</li>",
+        html,
+        re.DOTALL,
+    )
+    if re_match:
+        return re_match.group(1).strip()
+
+    # Search for field-level validation errors
+    re_match = re.search(r"field-validation-error[^>]*>([^<]+)<", html)
+    if re_match:
+        return re_match.group(1).strip()
+
+    # Search for generic text-danger validation messages
+    re_match = re.search(r"text-danger[^>]*>([^<]+)<", html)
+    if re_match:
+        return re_match.group(1).strip()
+
+    return None
+
+
 class AsyncRainbirdCloudClient:
     """Rainbird cloud API client handling OIDC authentication and REST endpoints."""
 
@@ -180,33 +215,11 @@ class AsyncRainbirdCloudClient:
             ) as resp:
                 if resp.status == 200:
                     html = await resp.text()
-                    if (
-                        "challenge" in html.lower()
-                        or "captcha" in html.lower()
-                        or "waf" in html.lower()
-                        or "robot" in html.lower()
-                    ):
+                    error_msg = _parse_login_validation_error(html)
+                    if error_msg == "WAF_CHALLENGE":
                         raise RainbirdConnectionError(
                             "AWS WAF challenge or captcha page detected under HTTP 200 status"
                         )
-
-                    error_msg = None
-                    match = re.search(
-                        r"validation-summary-errors.*?<li>([^<]+)</li>",
-                        html,
-                        re.DOTALL,
-                    )
-                    if match:
-                        error_msg = match.group(1).strip()
-                    else:
-                        match = re.search(r"field-validation-error[^>]*>([^<]+)<", html)
-                        if match:
-                            error_msg = match.group(1).strip()
-                        else:
-                            match = re.search(r"text-danger[^>]*>([^<]+)<", html)
-                            if match:
-                                error_msg = match.group(1).strip()
-
                     if error_msg:
                         raise RainbirdAuthException(
                             f"Invalid credentials or authentication failure: {error_msg}"
