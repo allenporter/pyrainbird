@@ -490,3 +490,42 @@ async def test_caching_token_provider_waf_retry(
             with open(config_file, "r") as f:
                 content = json.load(f)
             assert content == {"token": "valid_access_token_abc123"}
+
+
+async def test_caching_token_provider_waf_retry_limit_exceeded(
+    mock_cloud_app: aiohttp.web.Application,
+    aiohttp_client: TestClient,
+    tmp_path: Any,
+) -> None:
+    """Test CachingTokenProvider stops retrying and raises when WAF retry limit is exceeded."""
+    from examples.rainbird_tool import CachingTokenProvider
+
+    client_session = await aiohttp_client(mock_cloud_app)
+    mock_auth_base = "/coreidentityserver"
+
+    with mock.patch("pyrainbird.cloud.client.AUTH_BASE", new=mock_auth_base):
+        client = AsyncRainbirdCloudClient(
+            client_session, "user@example.com", "correct_password"
+        )
+
+        config_file = tmp_path / "rainbird.json"
+        provider = CachingTokenProvider(client, str(config_file))
+
+        async def mock_get_csrf(*args: Any, **kwargs: Any) -> str:
+            from pyrainbird.exceptions import RainbirdConnectionError
+
+            raise RainbirdConnectionError(
+                "Failed to fetch login page, HTTP status: 202"
+            )
+
+        with (
+            mock.patch.object(client, "_get_csrf_token", side_effect=mock_get_csrf),
+            mock.patch("asyncio.sleep", return_value=None) as mock_sleep,
+        ):
+            # Test that login raises after 3 retries (4 attempts total)
+            with pytest.raises(
+                RainbirdAuthException,
+                match="AWS WAF challenge page detected. Login blocked by WAF",
+            ):
+                await provider.async_get_token()
+            assert mock_sleep.call_count == 3

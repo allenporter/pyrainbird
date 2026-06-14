@@ -103,7 +103,7 @@ class AsyncRainbirdCloudClient:
         """Set the token provider."""
         self._token_provider = provider
 
-    async def login(self) -> str:
+    async def login(self, max_retries: int = 3) -> str:
         """Emulate OIDC implicit grant login flow to obtain an access token."""
         if not self._username or not self._password:
             raise RainbirdAuthException("Username and password are required to log in.")
@@ -126,9 +126,15 @@ class AsyncRainbirdCloudClient:
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
             "Accept-Language": "en-US,en;q=0.9",
             "Origin": "https://iq4server.rainbird.com",
+            "Upgrade-Insecure-Requests": "1",
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "same-origin",
+            "Sec-Fetch-User": "?1",
         }
 
         backoff = WAF_RETRY_INITIAL_BACKOFF
+        retries = 0
         while True:
             try:
                 csrf_token = await self._get_csrf_token(return_url, headers)
@@ -144,6 +150,11 @@ class AsyncRainbirdCloudClient:
                     or "captcha" in str(err).lower()
                     or "waf" in str(err).lower()
                 ):
+                    retries += 1
+                    if retries > max_retries:
+                        raise RainbirdAuthException(
+                            f"AWS WAF challenge page detected. Login blocked by WAF: {err}"
+                        ) from err
                     _LOGGER.warning(
                         "AWS WAF challenge page detected. Retrying login in %.1f seconds...",
                         backoff,
@@ -208,10 +219,14 @@ class AsyncRainbirdCloudClient:
             "ReturnUrl": return_url,
             "__RequestVerificationToken": csrf_token,
         }
+        post_headers = {
+            **headers,
+            "Referer": post_url,
+        }
 
         try:
             async with self._session.post(
-                post_url, data=payload, headers=headers, allow_redirects=False
+                post_url, data=payload, headers=post_headers, allow_redirects=False
             ) as resp:
                 if resp.status == 200:
                     html = await resp.text()
