@@ -382,3 +382,62 @@ def test_parse_event_scalar_data() -> None:
     event = stream._parse_event(event_data_str)
     assert event is not None
     assert event.state == "offline"
+
+    # Test case 3: SK is Station2, Data has remainSec as a normal duration
+    event_data_station = {
+        "payload": {
+            "data": {
+                "onUpdateDeviceStateTable": {
+                    "PK": "8c756129-0000-8da0-9049-8e44b2deb091",
+                    "SK": "Station2",
+                    "Data": '{"state":1,"remainSec":88,"programNumber":36}',
+                    "TimeStamp": 1781468532,
+                }
+            }
+        }
+    }
+    event = stream._parse_event(event_data_station)
+    assert event is not None
+    assert event.state == "1"
+    assert event.active_station == 2
+    assert event.remain_seconds == 88
+
+    # Test case 4: SK is Station1, Data has remainSec as a future epoch timestamp
+    event_data_station_epoch = {
+        "payload": {
+            "data": {
+                "onUpdateDeviceStateTable": {
+                    "PK": "8c756129-0000-8da0-9049-8e44b2deb091",
+                    "SK": "Station1",
+                    "Data": '{"state":1,"remainSec":1781468620,"programNumber":34}',
+                    "TimeStamp": 1781468532,
+                }
+            }
+        }
+    }
+    event = stream._parse_event(event_data_station_epoch)
+    assert event is not None
+    assert event.state == "1"
+    assert event.active_station == 1
+    # 1781468620 - 1781468532 = 88 seconds
+    assert event.remain_seconds == 88
+
+    # Test case 5: SK is Station1, Data has remainSec as a past epoch timestamp (unsynced clock)
+    event_data_station_past_epoch = {
+        "payload": {
+            "data": {
+                "onUpdateDeviceStateTable": {
+                    "PK": "8c756129-0000-8da0-9049-8e44b2deb091",
+                    "SK": "Station1",
+                    "Data": '{"state":1,"remainSec":1476535243,"programNumber":34}',
+                    "TimeStamp": 1781468532,
+                }
+            }
+        }
+    }
+    event = stream._parse_event(event_data_station_past_epoch)
+    assert event is not None
+    assert event.state == "1"
+    assert event.active_station == 1
+    # Should not subtract because 1476535243 < 1781468532, keeping raw value
+    assert event.remain_seconds == 1476535243

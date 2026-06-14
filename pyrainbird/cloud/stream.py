@@ -150,6 +150,24 @@ class AsyncRainbirdCloudStream:
                 except json.JSONDecodeError as err:
                     _LOGGER.warning("Failed to parse inner state data JSON: %s", err)
 
+            if sk.startswith("Station"):
+                try:
+                    station_num = int(sk[7:])
+                    if active_station is None:
+                        active_station = station_num
+                except ValueError:
+                    pass
+
+            # If remain_seconds is a Unix epoch timestamp, calculate relative remaining seconds
+            if remain_seconds is not None and remain_seconds > 1000000000:
+                if timestamp_val:
+                    try:
+                        server_ts = int(timestamp_val)
+                        if remain_seconds >= server_ts:
+                            remain_seconds = remain_seconds - server_ts
+                    except ValueError:
+                        pass
+
             return CloudStreamEvent(
                 satellite_id=self._satellite_id,
                 device_uuid=device_uuid,
