@@ -1,3 +1,42 @@
+"""Real-time cloud updates stream client using AWS AppSync GraphQL subscriptions over WebSockets.
+
+This module implements the persistent WebSocket streaming protocol used by the Rain Bird 2.0 app
+to receive real-time controller updates (such as active station, remaining watering seconds, and
+rain delay) from the AWS AppSync service without polling.
+
+Protocol Overview:
+1. Handshake URL Construction:
+   AppSync requires the OIDC Authorization token and API host to be passed during the initial
+   HTTP Upgrade request. These parameters must be URL-safe base64-encoded JSON strings passed
+   as query parameters:
+     - `header`: Contains `host` (GraphQL API host) and `Authorization` (raw OIDC JWT access token).
+     - `payload`: Contains an empty JSON object `{}` (encoded as `e30=`).
+
+2. Protocol Handshake:
+   Upon opening the connection, the client sends a `connection_init` message. The server
+   replies with a `connection_ack` containing connection keep-alive timeout configuration.
+
+3. Subscription Registration:
+   Once the connection is established, the client starts the subscription by sending a `start`
+   type message. The subscription query is:
+     subscription onUpdateDeviceStateTable($PK : String!) {
+       onUpdateDeviceStateTable(PK: $PK) {
+         PK
+         SK
+         Data
+         TimeStamp
+       }
+     }
+   - `PK` represents the Partition Key (the satellite's `device_uuid`).
+   - `SK` represents the Sort Key (indicating the type of status/update).
+
+4. Message Handling:
+   - `ka`: Keep-alive message sent periodically by the server to maintain the connection.
+   - `data`: Pushed event update payload. The nested `Data` field contains a JSON-serialized
+     string detailing the active station status:
+       {"activeStation": <int|null>, "remainSec": <int>, "rainDelay": <int>}
+"""
+
 import asyncio
 import base64
 import datetime
@@ -19,6 +58,11 @@ REALTIME_HOST = (
     "m3iuhu3l3zbjpkctbnh2of4chm.appsync-realtime-api.us-west-2.amazonaws.com"
 )
 WS_ENDPOINT = f"wss://{REALTIME_HOST}/graphql"
+
+# Reconnection backoff parameters
+INITIAL_BACKOFF = 2.0
+MAX_BACKOFF = 60.0
+BACKOFF_FACTOR = 2.0
 
 
 @dataclass
@@ -120,8 +164,8 @@ class AsyncRainbirdCloudStream:
 
         Automatically manages heartbeats, reconnections, and token lifecycle.
         """
-        backoff = 2.0
-        max_backoff = 60.0
+        backoff = INITIAL_BACKOFF
+        max_backoff = MAX_BACKOFF
 
         while True:
             ws = None
@@ -150,7 +194,9 @@ class AsyncRainbirdCloudStream:
                     _LOGGER.debug(
                         "WebSocket connection opened. Initializing protocol..."
                     )
-                    backoff = 2.0  # Reset backoff upon successful connection
+                    backoff = (
+                        INITIAL_BACKOFF  # Reset backoff upon successful connection
+                    )
 
                     # 2. Send connection_init
                     await ws.send_json({"type": "connection_init"})
@@ -273,4 +319,4 @@ class AsyncRainbirdCloudStream:
 
             # Reconnection backoff
             await asyncio.sleep(backoff)
-            backoff = min(backoff * 2.0, max_backoff)
+            backoff = min(backoff * BACKOFF_FACTOR, max_backoff)
