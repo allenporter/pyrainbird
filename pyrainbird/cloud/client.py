@@ -1,5 +1,6 @@
 """Cloud client for rainbird IQ4 service."""
 
+import asyncio
 import logging
 import re
 import urllib.parse
@@ -23,6 +24,11 @@ REDIRECT_URI = "https://iq4.rainbird.com/auth.html"
 DEFAULT_USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
 
+WAF_RETRY_INITIAL_BACKOFF = 10.0
+WAF_RETRY_BACKOFF_INCREMENT = 10.0
+WAF_RETRY_MAX_BACKOFF = 60.0
+
+
 class AsyncRainbirdCloudClient:
     """Rainbird cloud API client handling OIDC authentication and REST endpoints."""
 
@@ -32,12 +38,14 @@ class AsyncRainbirdCloudClient:
         username: str | None = None,
         password: str | None = None,
         token: str | None = None,
+        token_provider: RainbirdTokenProvider | None = None,
     ) -> None:
         """Initialize AsyncRainbirdCloudClient."""
         self._session = session
         self._username = username
         self._password = password
         self._token = token
+        self._token_provider = token_provider
         self._headers = {
             "Accept": "application/json",
             "User-Agent": DEFAULT_USER_AGENT,
@@ -49,6 +57,16 @@ class AsyncRainbirdCloudClient:
     def token(self) -> str | None:
         """Return the cached access token."""
         return self._token
+
+    @property
+    def token_provider(self) -> RainbirdTokenProvider | None:
+        """Return the token provider."""
+        return self._token_provider
+
+    @token_provider.setter
+    def token_provider(self, provider: RainbirdTokenProvider | None) -> None:
+        """Set the token provider."""
+        self._token_provider = provider
 
     async def login(self) -> str:
         """Emulate OIDC implicit grant login flow to obtain an access token."""
@@ -75,9 +93,27 @@ class AsyncRainbirdCloudClient:
             "Origin": "https://iq4server.rainbird.com",
         }
 
-        csrf_token = await self._get_csrf_token(return_url, headers)
-        location = await self._submit_credentials(return_url, csrf_token, headers)
-        access_token_value = await self._follow_redirects(location, headers)
+        backoff = WAF_RETRY_INITIAL_BACKOFF
+        while True:
+            try:
+                csrf_token = await self._get_csrf_token(return_url, headers)
+                location = await self._submit_credentials(
+                    return_url, csrf_token, headers
+                )
+                access_token_value = await self._follow_redirects(location, headers)
+                break
+            except Exception as err:
+                if "202" in str(err):
+                    _LOGGER.warning(
+                        "AWS WAF challenge page detected (HTTP 202). Retrying login in %.1f seconds...",
+                        backoff,
+                    )
+                    await asyncio.sleep(backoff)
+                    backoff = min(
+                        backoff + WAF_RETRY_BACKOFF_INCREMENT, WAF_RETRY_MAX_BACKOFF
+                    )
+                else:
+                    raise
 
         self._token = access_token_value
         self._headers["Authorization"] = f"Bearer {self._token}"
@@ -204,10 +240,17 @@ class AsyncRainbirdCloudClient:
             "Could not retrieve access token from redirect chain."
         )
 
+    async def _async_get_token(self, force_refresh: bool = False) -> str:
+        """Resolve the active bearer token, either via provider or stored token."""
+        provider = self._token_provider or RainbirdCloudTokenProvider(self)
+        token = await provider.async_get_token(force_refresh=force_refresh)
+        self._token = token
+        self._headers["Authorization"] = f"Bearer {token}"
+        return token
+
     async def get_satellites(self) -> list[CloudSatellite]:
         """Retrieve the list of registered satellites/controllers under the user account."""
-        if not self._token:
-            raise RainbirdAuthException("No active token. Please call login() first.")
+        await self._async_get_token()
 
         api_url = f"{API_BASE}/Satellite/GetSatelliteList"
         params = {"includeInvisibleToCurrentUser": "false"}
@@ -216,10 +259,10 @@ class AsyncRainbirdCloudClient:
             async with self._session.get(
                 api_url, headers=self._headers, params=params
             ) as resp:
-                if resp.status == 401 and self._username and self._password:
-                    # Token might be expired, attempt to re-login once
+                if resp.status == 401:
+                    # Token might be expired, attempt to refresh token
                     _LOGGER.info("Token expired (401), attempting to refresh token...")
-                    await self.login()
+                    await self._async_get_token(force_refresh=True)
                     async with self._session.get(
                         api_url, headers=self._headers, params=params
                     ) as retry_resp:
@@ -233,8 +276,6 @@ class AsyncRainbirdCloudClient:
                             )
                         data = await retry_resp.json()
                 else:
-                    if resp.status == 401:
-                        raise RainbirdAuthException("Token expired or unauthorized.")
                     if resp.status != 200:
                         raise RainbirdApiException(
                             f"Failed to fetch satellite list, HTTP status: {resp.status}"
