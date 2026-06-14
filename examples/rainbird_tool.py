@@ -29,6 +29,9 @@ from pyrainbird.cloud import AsyncRainbirdCloudClient, AsyncRainbirdCloudStream
 _LOGGER = logging.getLogger(__name__)
 
 
+CACHE_FILE_MODE = 0o600
+
+
 class CachingTokenProvider(async_client.RainbirdTokenProvider):
     """Token provider that caches the cloud token in a JSON file."""
 
@@ -40,6 +43,17 @@ class CachingTokenProvider(async_client.RainbirdTokenProvider):
         """Initialize CachingTokenProvider."""
         self._client = client
         self._config_path = config_path
+        self._client.token_provider = self
+
+    def _save_token_to_cache(self, token: str) -> None:
+        """Save the token to the JSON config file."""
+        try:
+            os.makedirs(os.path.dirname(self._config_path), exist_ok=True)
+            with open(self._config_path, "w", encoding="utf-8") as f:
+                json.dump({"token": token}, f, indent=2)
+            os.chmod(self._config_path, CACHE_FILE_MODE)
+        except Exception as err:
+            _LOGGER.warning("Failed to save token to cache: %s", err)
 
     async def async_get_token(self, force_refresh: bool = False) -> str:
         """Return a valid token, checking env, reading cache, or logging in."""
@@ -71,16 +85,7 @@ class CachingTokenProvider(async_client.RainbirdTokenProvider):
 
         _LOGGER.info("Logging in to obtain a new token...")
         token = await self._client.login()
-
-        # Save to cache
-        try:
-            os.makedirs(os.path.dirname(self._config_path), exist_ok=True)
-            with open(self._config_path, "w", encoding="utf-8") as f:
-                json.dump({"token": token}, f, indent=2)
-            os.chmod(self._config_path, 0o600)
-        except Exception as err:
-            _LOGGER.warning("Failed to save token to cache: %s", err)
-
+        self._save_token_to_cache(token)
         return token
 
 
@@ -95,19 +100,11 @@ async def discover_cloud(session: aiohttp.ClientSession, config_file: str) -> No
     """Authenticate with the cloud and list registered satellites/controllers."""
     client = create_cloud_client(session)
     token_provider = CachingTokenProvider(client, config_file)
+    client.token_provider = token_provider
 
     try:
+        satellites = await client.get_satellites()
         token = await token_provider.async_get_token()
-        try:
-            satellites = await client.get_satellites()
-        except async_client.RainbirdAuthException:
-            if client._username and client._password:
-                _LOGGER.info("Cached token expired, forcing refresh...")
-                token = await token_provider.async_get_token(force_refresh=True)
-                satellites = await client.get_satellites()
-            else:
-                raise
-
         print(f"Authentication successful! Token: {token[:10]}...")
         print(f"Satellites found: {len(satellites)}")
         for sat in satellites:
@@ -128,18 +125,10 @@ async def stream_cloud(
     """Connect to the cloud real-time updates WebSocket stream."""
     client = create_cloud_client(session)
     token_provider = CachingTokenProvider(client, config_file)
+    client.token_provider = token_provider
 
     try:
-        await token_provider.async_get_token()
-        try:
-            satellites = await client.get_satellites()
-        except async_client.RainbirdAuthException:
-            if client._username and client._password:
-                _LOGGER.info("Cached token expired, forcing refresh...")
-                await token_provider.async_get_token(force_refresh=True)
-                satellites = await client.get_satellites()
-            else:
-                raise
+        satellites = await client.get_satellites()
 
         # Find the device_uuid for the given satellite_id
         device_uuid = None

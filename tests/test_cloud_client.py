@@ -440,3 +440,53 @@ async def test_caching_token_provider(
         )
         with pytest.raises(RainbirdAuthException, match="No cached token found"):
             await provider_no_creds.async_get_token()
+
+
+async def test_caching_token_provider_waf_retry(
+    mock_cloud_app: aiohttp.web.Application,
+    aiohttp_client: TestClient,
+    tmp_path: Any,
+) -> None:
+    """Test CachingTokenProvider retries when encountering WAF challenges (202)."""
+    import json
+    from examples.rainbird_tool import CachingTokenProvider
+
+    client_session = await aiohttp_client(mock_cloud_app)
+    mock_auth_base = "/coreidentityserver"
+
+    with mock.patch("pyrainbird.cloud.client.AUTH_BASE", new=mock_auth_base):
+        client = AsyncRainbirdCloudClient(
+            client_session, "user@example.com", "correct_password"
+        )
+
+        config_file = tmp_path / "rainbird.json"
+        provider = CachingTokenProvider(client, str(config_file))
+
+        original_get_csrf = client._get_csrf_token
+        call_count = 0
+
+        async def mock_get_csrf(*args: Any, **kwargs: Any) -> str:
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                from pyrainbird.exceptions import RainbirdConnectionError
+
+                raise RainbirdConnectionError(
+                    "Failed to fetch login page, HTTP status: 202"
+                )
+            return await original_get_csrf(*args, **kwargs)
+
+        with (
+            mock.patch.object(client, "_get_csrf_token", side_effect=mock_get_csrf),
+            mock.patch("asyncio.sleep", return_value=None) as mock_sleep,
+        ):
+            # Test direct client.login call (which invokes on_token_update and writes to config)
+            token = await provider.async_get_token()
+            assert token == "valid_access_token_abc123"
+            assert call_count == 2
+            mock_sleep.assert_called_once_with(10.0)
+
+            # Verify token was written to cache file
+            with open(config_file, "r") as f:
+                content = json.load(f)
+            assert content == {"token": "valid_access_token_abc123"}
