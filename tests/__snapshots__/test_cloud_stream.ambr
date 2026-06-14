@@ -1,0 +1,16 @@
+# serializer version: 1
+# name: test_parse_event_snapshot[scalar_int]
+  CloudStreamEvent(satellite_id=527302, device_uuid='7b1ad1ef-91df-4e50-9004-269c139c681c', state='0', active_station=None, remain_seconds=None, rain_delay=None, updated_at=datetime.datetime(2026, 6, 13, 23, 18, tzinfo=datetime.timezone.utc))
+# ---
+# name: test_parse_event_snapshot[scalar_str]
+  CloudStreamEvent(satellite_id=527302, device_uuid='7b1ad1ef-91df-4e50-9004-269c139c681c', state='offline', active_station=None, remain_seconds=None, rain_delay=None, updated_at=datetime.datetime(2026, 6, 13, 23, 18, tzinfo=datetime.timezone.utc))
+# ---
+# name: test_parse_event_snapshot[station_epoch_timestamp]
+  CloudStreamEvent(satellite_id=527302, device_uuid='8c756129-0000-8da0-9049-8e44b2deb091', state='1', active_station=1, remain_seconds=88, rain_delay=None, updated_at=datetime.datetime(2026, 6, 14, 20, 22, 12, tzinfo=datetime.timezone.utc))
+# ---
+# name: test_parse_event_snapshot[station_normal_duration]
+  CloudStreamEvent(satellite_id=527302, device_uuid='8c756129-0000-8da0-9049-8e44b2deb091', state='1', active_station=2, remain_seconds=88, rain_delay=None, updated_at=datetime.datetime(2026, 6, 14, 20, 22, 12, tzinfo=datetime.timezone.utc))
+# ---
+# name: test_parse_event_snapshot[station_past_epoch_timestamp]
+  CloudStreamEvent(satellite_id=527302, device_uuid='8c756129-0000-8da0-9049-8e44b2deb091', state='1', active_station=1, remain_seconds=1476535243, rain_delay=None, updated_at=datetime.datetime(2026, 6, 14, 20, 22, 12, tzinfo=datetime.timezone.utc))
+# ---

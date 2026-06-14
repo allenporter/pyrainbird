@@ -1,0 +1,12 @@
+{
+  "payload": {
+    "data": {
+      "onUpdateDeviceStateTable": {
+        "PK": "7b1ad1ef-91df-4e50-9004-269c139c681c",
+        "SK": "Connected",
+        "Data": "0",
+        "TimeStamp": 1781392680
+      }
+    }
+  }
+}

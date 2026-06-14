@@ -1,0 +1,12 @@
+{
+  "payload": {
+    "data": {
+      "onUpdateDeviceStateTable": {
+        "PK": "8c756129-0000-8da0-9049-8e44b2deb091",
+        "SK": "Station2",
+        "Data": "{\"state\":1,\"remainSec\":88,\"programNumber\":36}",
+        "TimeStamp": 1781468532
+      }
+    }
+  }
+}
