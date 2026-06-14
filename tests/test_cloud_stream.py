@@ -340,14 +340,13 @@ async def test_stream_sub_error_raise(
                 pass
 
 
-def test_parse_event_scalar_data() -> None:
-    """Test that event parsing handles scalar/non-dict 'Data' payloads without crashing."""
+def test_parse_event_scalar_int() -> None:
+    """Test that event parsing handles an integer scalar 'Data' payload."""
     token_provider = MockTokenProvider("test_token")
     stream = AsyncRainbirdCloudStream(
         token_provider, 527302, "7b1ad1ef-91df-4e50-9004-269c139c681c", None
     )  # type: ignore
 
-    # Test case 1: Data is an integer
     event_data_int = {
         "payload": {
             "data": {
@@ -366,7 +365,14 @@ def test_parse_event_scalar_data() -> None:
     assert event.active_station is None
     assert event.remain_seconds is None
 
-    # Test case 2: Data is a string representing a non-dict value
+
+def test_parse_event_scalar_str() -> None:
+    """Test that event parsing handles a string scalar 'Data' payload representing a non-dict value."""
+    token_provider = MockTokenProvider("test_token")
+    stream = AsyncRainbirdCloudStream(
+        token_provider, 527302, "7b1ad1ef-91df-4e50-9004-269c139c681c", None
+    )  # type: ignore
+
     event_data_str = {
         "payload": {
             "data": {
@@ -383,7 +389,14 @@ def test_parse_event_scalar_data() -> None:
     assert event is not None
     assert event.state == "offline"
 
-    # Test case 3: SK is Station2, Data has remainSec as a normal duration
+
+def test_parse_event_station_normal_duration() -> None:
+    """Test event parsing when SK is a station and remainSec is a normal duration."""
+    token_provider = MockTokenProvider("test_token")
+    stream = AsyncRainbirdCloudStream(
+        token_provider, 527302, "7b1ad1ef-91df-4e50-9004-269c139c681c", None
+    )  # type: ignore
+
     event_data_station = {
         "payload": {
             "data": {
@@ -402,7 +415,14 @@ def test_parse_event_scalar_data() -> None:
     assert event.active_station == 2
     assert event.remain_seconds == 88
 
-    # Test case 4: SK is Station1, Data has remainSec as a future epoch timestamp
+
+def test_parse_event_station_epoch_timestamp() -> None:
+    """Test event parsing when SK is a station and remainSec is a future epoch timestamp."""
+    token_provider = MockTokenProvider("test_token")
+    stream = AsyncRainbirdCloudStream(
+        token_provider, 527302, "7b1ad1ef-91df-4e50-9004-269c139c681c", None
+    )  # type: ignore
+
     event_data_station_epoch = {
         "payload": {
             "data": {
@@ -422,7 +442,14 @@ def test_parse_event_scalar_data() -> None:
     # 1781468620 - 1781468532 = 88 seconds
     assert event.remain_seconds == 88
 
-    # Test case 5: SK is Station1, Data has remainSec as a past epoch timestamp (unsynced clock)
+
+def test_parse_event_station_past_epoch_timestamp() -> None:
+    """Test event parsing when SK is a station and remainSec is a past epoch timestamp (unsynced clock)."""
+    token_provider = MockTokenProvider("test_token")
+    stream = AsyncRainbirdCloudStream(
+        token_provider, 527302, "7b1ad1ef-91df-4e50-9004-269c139c681c", None
+    )  # type: ignore
+
     event_data_station_past_epoch = {
         "payload": {
             "data": {
