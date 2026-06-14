@@ -103,9 +103,14 @@ class AsyncRainbirdCloudClient:
                 access_token_value = await self._follow_redirects(location, headers)
                 break
             except Exception as err:
-                if "202" in str(err):
+                if (
+                    "202" in str(err)
+                    or "challenge" in str(err).lower()
+                    or "captcha" in str(err).lower()
+                    or "waf" in str(err).lower()
+                ):
                     _LOGGER.warning(
-                        "AWS WAF challenge page detected (HTTP 202). Retrying login in %.1f seconds...",
+                        "AWS WAF challenge page detected. Retrying login in %.1f seconds...",
                         backoff,
                     )
                     await asyncio.sleep(backoff)
@@ -174,7 +179,38 @@ class AsyncRainbirdCloudClient:
                 post_url, data=payload, headers=headers, allow_redirects=False
             ) as resp:
                 if resp.status == 200:
-                    # Rerendered login page usually means incorrect credentials
+                    html = await resp.text()
+                    if (
+                        "challenge" in html.lower()
+                        or "captcha" in html.lower()
+                        or "waf" in html.lower()
+                        or "robot" in html.lower()
+                    ):
+                        raise RainbirdConnectionError(
+                            "AWS WAF challenge or captcha page detected under HTTP 200 status"
+                        )
+
+                    error_msg = None
+                    match = re.search(
+                        r"validation-summary-errors.*?<li>([^<]+)</li>",
+                        html,
+                        re.DOTALL,
+                    )
+                    if match:
+                        error_msg = match.group(1).strip()
+                    else:
+                        match = re.search(r"field-validation-error[^>]*>([^<]+)<", html)
+                        if match:
+                            error_msg = match.group(1).strip()
+                        else:
+                            match = re.search(r"text-danger[^>]*>([^<]+)<", html)
+                            if match:
+                                error_msg = match.group(1).strip()
+
+                    if error_msg:
+                        raise RainbirdAuthException(
+                            f"Invalid credentials or authentication failure: {error_msg}"
+                        )
                     raise RainbirdAuthException(
                         "Invalid credentials or authentication failure."
                     )
