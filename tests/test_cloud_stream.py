@@ -366,12 +366,4 @@ def test_parse_event_snapshot(json_path: str, snapshot: Any) -> None:
     event = stream._parse_event(payload)
     assert event is not None
 
-    actual = {
-        "device_uuid": event.device_uuid,
-        "state": event.state,
-        "active_station": event.active_station,
-        "remain_seconds": event.remain_seconds,
-        "rain_delay": event.rain_delay,
-        "updated_at": event.updated_at.isoformat(),
-    }
-    assert actual == snapshot
+    assert event == snapshot
