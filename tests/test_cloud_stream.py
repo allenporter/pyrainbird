@@ -338,3 +338,47 @@ async def test_stream_sub_error_raise(
         ):
             async for _ in stream.listen():
                 pass
+
+
+def test_parse_event_scalar_data() -> None:
+    """Test that event parsing handles scalar/non-dict 'Data' payloads without crashing."""
+    token_provider = MockTokenProvider("test_token")
+    stream = AsyncRainbirdCloudStream(
+        token_provider, 527302, "7b1ad1ef-91df-4e50-9004-269c139c681c", None
+    )  # type: ignore
+
+    # Test case 1: Data is an integer
+    event_data_int = {
+        "payload": {
+            "data": {
+                "onUpdateDeviceStateTable": {
+                    "PK": "7b1ad1ef-91df-4e50-9004-269c139c681c",
+                    "SK": "Connected",
+                    "Data": "0",
+                    "TimeStamp": 1781392680,
+                }
+            }
+        }
+    }
+    event = stream._parse_event(event_data_int)
+    assert event is not None
+    assert event.state == "0"
+    assert event.active_station is None
+    assert event.remain_seconds is None
+
+    # Test case 2: Data is a string representing a non-dict value
+    event_data_str = {
+        "payload": {
+            "data": {
+                "onUpdateDeviceStateTable": {
+                    "PK": "7b1ad1ef-91df-4e50-9004-269c139c681c",
+                    "SK": "Connected",
+                    "Data": '"offline"',
+                    "TimeStamp": 1781392680,
+                }
+            }
+        }
+    }
+    event = stream._parse_event(event_data_str)
+    assert event is not None
+    assert event.state == "offline"

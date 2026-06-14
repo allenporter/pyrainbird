@@ -138,11 +138,15 @@ class AsyncRainbirdCloudStream:
             if inner_data_str:
                 try:
                     inner_data = json.loads(inner_data_str)
-                    active_station = inner_data.get("activeStation")
-                    remain_seconds = inner_data.get("remainSec")
-                    rain_delay = inner_data.get("rainDelay")
-                    if "state" in inner_data:
-                        state = str(inner_data["state"])
+                    if isinstance(inner_data, dict):
+                        active_station = inner_data.get("activeStation")
+                        remain_seconds = inner_data.get("remainSec")
+                        rain_delay = inner_data.get("rainDelay")
+                        if "state" in inner_data:
+                            state = str(inner_data["state"])
+                    else:
+                        if inner_data is not None:
+                            state = str(inner_data)
                 except json.JSONDecodeError as err:
                     _LOGGER.warning("Failed to parse inner state data JSON: %s", err)
 
