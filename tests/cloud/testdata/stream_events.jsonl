@@ -1,0 +1,5 @@
+{"payload": {"data": {"onUpdateDeviceStateTable": {"PK": "7b1ad1ef-91df-4e50-9004-269c139c681c", "SK": "Connected", "Data": "0", "TimeStamp": 1781392680}}}}
+{"payload": {"data": {"onUpdateDeviceStateTable": {"PK": "7b1ad1ef-91df-4e50-9004-269c139c681c", "SK": "Connected", "Data": "\"offline\"", "TimeStamp": 1781392680}}}}
+{"payload": {"data": {"onUpdateDeviceStateTable": {"PK": "8c756129-0000-8da0-9049-8e44b2deb091", "SK": "Station2", "Data": "{\"state\":1,\"remainSec\":88,\"programNumber\":36}", "TimeStamp": 1781468532}}}}
+{"payload": {"data": {"onUpdateDeviceStateTable": {"PK": "8c756129-0000-8da0-9049-8e44b2deb091", "SK": "Station1", "Data": "{\"state\":1,\"remainSec\":1781468620,\"programNumber\":34}", "TimeStamp": 1781468532}}}}
+{"payload": {"data": {"onUpdateDeviceStateTable": {"PK": "8c756129-0000-8da0-9049-8e44b2deb091", "SK": "Station1", "Data": "{\"state\":1,\"remainSec\":1476535243,\"programNumber\":34}", "TimeStamp": 1781468532}}}}

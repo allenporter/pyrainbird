@@ -4,7 +4,9 @@ import asyncio
 import base64
 import datetime
 import json
+import pathlib
 from collections.abc import Generator
+from typing import Any
 from unittest import mock
 
 import aiohttp
@@ -340,131 +342,34 @@ async def test_stream_sub_error_raise(
                 pass
 
 
-def test_parse_event_scalar_int() -> None:
-    """Test that event parsing handles an integer scalar 'Data' payload."""
+def test_parse_events_snapshot(snapshot: Any) -> None:
+    """Test parsing of cloud stream events against a syrupy snapshot."""
     token_provider = MockTokenProvider("test_token")
     stream = AsyncRainbirdCloudStream(
         token_provider, 527302, "7b1ad1ef-91df-4e50-9004-269c139c681c", None
     )  # type: ignore
 
-    event_data_int = {
-        "payload": {
-            "data": {
-                "onUpdateDeviceStateTable": {
-                    "PK": "7b1ad1ef-91df-4e50-9004-269c139c681c",
-                    "SK": "Connected",
-                    "Data": "0",
-                    "TimeStamp": 1781392680,
+    jsonl_path = (
+        pathlib.Path(__file__).parent / "cloud" / "testdata" / "stream_events.jsonl"
+    )
+    parsed_events = []
+
+    with open(jsonl_path, "r", encoding="utf-8") as f:
+        for line in f:
+            if not line.strip():
+                continue
+            payload = json.loads(line)
+            event = stream._parse_event(payload)
+            assert event is not None
+            parsed_events.append(
+                {
+                    "device_uuid": event.device_uuid,
+                    "state": event.state,
+                    "active_station": event.active_station,
+                    "remain_seconds": event.remain_seconds,
+                    "rain_delay": event.rain_delay,
+                    "updated_at": event.updated_at.isoformat(),
                 }
-            }
-        }
-    }
-    event = stream._parse_event(event_data_int)
-    assert event is not None
-    assert event.state == "0"
-    assert event.active_station is None
-    assert event.remain_seconds is None
+            )
 
-
-def test_parse_event_scalar_str() -> None:
-    """Test that event parsing handles a string scalar 'Data' payload representing a non-dict value."""
-    token_provider = MockTokenProvider("test_token")
-    stream = AsyncRainbirdCloudStream(
-        token_provider, 527302, "7b1ad1ef-91df-4e50-9004-269c139c681c", None
-    )  # type: ignore
-
-    event_data_str = {
-        "payload": {
-            "data": {
-                "onUpdateDeviceStateTable": {
-                    "PK": "7b1ad1ef-91df-4e50-9004-269c139c681c",
-                    "SK": "Connected",
-                    "Data": '"offline"',
-                    "TimeStamp": 1781392680,
-                }
-            }
-        }
-    }
-    event = stream._parse_event(event_data_str)
-    assert event is not None
-    assert event.state == "offline"
-
-
-def test_parse_event_station_normal_duration() -> None:
-    """Test event parsing when SK is a station and remainSec is a normal duration."""
-    token_provider = MockTokenProvider("test_token")
-    stream = AsyncRainbirdCloudStream(
-        token_provider, 527302, "7b1ad1ef-91df-4e50-9004-269c139c681c", None
-    )  # type: ignore
-
-    event_data_station = {
-        "payload": {
-            "data": {
-                "onUpdateDeviceStateTable": {
-                    "PK": "8c756129-0000-8da0-9049-8e44b2deb091",
-                    "SK": "Station2",
-                    "Data": '{"state":1,"remainSec":88,"programNumber":36}',
-                    "TimeStamp": 1781468532,
-                }
-            }
-        }
-    }
-    event = stream._parse_event(event_data_station)
-    assert event is not None
-    assert event.state == "1"
-    assert event.active_station == 2
-    assert event.remain_seconds == 88
-
-
-def test_parse_event_station_epoch_timestamp() -> None:
-    """Test event parsing when SK is a station and remainSec is a future epoch timestamp."""
-    token_provider = MockTokenProvider("test_token")
-    stream = AsyncRainbirdCloudStream(
-        token_provider, 527302, "7b1ad1ef-91df-4e50-9004-269c139c681c", None
-    )  # type: ignore
-
-    event_data_station_epoch = {
-        "payload": {
-            "data": {
-                "onUpdateDeviceStateTable": {
-                    "PK": "8c756129-0000-8da0-9049-8e44b2deb091",
-                    "SK": "Station1",
-                    "Data": '{"state":1,"remainSec":1781468620,"programNumber":34}',
-                    "TimeStamp": 1781468532,
-                }
-            }
-        }
-    }
-    event = stream._parse_event(event_data_station_epoch)
-    assert event is not None
-    assert event.state == "1"
-    assert event.active_station == 1
-    # 1781468620 - 1781468532 = 88 seconds
-    assert event.remain_seconds == 88
-
-
-def test_parse_event_station_past_epoch_timestamp() -> None:
-    """Test event parsing when SK is a station and remainSec is a past epoch timestamp (unsynced clock)."""
-    token_provider = MockTokenProvider("test_token")
-    stream = AsyncRainbirdCloudStream(
-        token_provider, 527302, "7b1ad1ef-91df-4e50-9004-269c139c681c", None
-    )  # type: ignore
-
-    event_data_station_past_epoch = {
-        "payload": {
-            "data": {
-                "onUpdateDeviceStateTable": {
-                    "PK": "8c756129-0000-8da0-9049-8e44b2deb091",
-                    "SK": "Station1",
-                    "Data": '{"state":1,"remainSec":1476535243,"programNumber":34}',
-                    "TimeStamp": 1781468532,
-                }
-            }
-        }
-    }
-    event = stream._parse_event(event_data_station_past_epoch)
-    assert event is not None
-    assert event.state == "1"
-    assert event.active_station == 1
-    # Should not subtract because 1476535243 < 1781468532, keeping raw value
-    assert event.remain_seconds == 1476535243
+    assert parsed_events == snapshot

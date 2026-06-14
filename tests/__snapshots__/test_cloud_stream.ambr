@@ -1,0 +1,45 @@
+# serializer version: 1
+# name: test_parse_events_snapshot
+  list([
+    dict({
+      'active_station': None,
+      'device_uuid': '7b1ad1ef-91df-4e50-9004-269c139c681c',
+      'rain_delay': None,
+      'remain_seconds': None,
+      'state': '0',
+      'updated_at': '2026-06-13T23:18:00+00:00',
+    }),
+    dict({
+      'active_station': None,
+      'device_uuid': '7b1ad1ef-91df-4e50-9004-269c139c681c',
+      'rain_delay': None,
+      'remain_seconds': None,
+      'state': 'offline',
+      'updated_at': '2026-06-13T23:18:00+00:00',
+    }),
+    dict({
+      'active_station': 2,
+      'device_uuid': '8c756129-0000-8da0-9049-8e44b2deb091',
+      'rain_delay': None,
+      'remain_seconds': 88,
+      'state': '1',
+      'updated_at': '2026-06-14T20:22:12+00:00',
+    }),
+    dict({
+      'active_station': 1,
+      'device_uuid': '8c756129-0000-8da0-9049-8e44b2deb091',
+      'rain_delay': None,
+      'remain_seconds': 88,
+      'state': '1',
+      'updated_at': '2026-06-14T20:22:12+00:00',
+    }),
+    dict({
+      'active_station': 1,
+      'device_uuid': '8c756129-0000-8da0-9049-8e44b2deb091',
+      'rain_delay': None,
+      'remain_seconds': 1476535243,
+      'state': '1',
+      'updated_at': '2026-06-14T20:22:12+00:00',
+    }),
+  ])
+# ---
