@@ -3,6 +3,7 @@
 import asyncio
 import base64
 import datetime
+import glob
 import json
 import pathlib
 from collections.abc import Generator
@@ -342,34 +343,35 @@ async def test_stream_sub_error_raise(
                 pass
 
 
-def test_parse_events_snapshot(snapshot: Any) -> None:
-    """Test parsing of cloud stream events against a syrupy snapshot."""
+TEST_DATA_DIR = pathlib.Path(__file__).parent / "cloud" / "testdata"
+JSON_FILES = sorted(glob.glob(str(TEST_DATA_DIR / "*.json")))
+JSON_IDS = [pathlib.Path(f).stem for f in JSON_FILES]
+
+
+@pytest.mark.parametrize(
+    "json_path",
+    JSON_FILES,
+    ids=JSON_IDS,
+)
+def test_parse_event_snapshot(json_path: str, snapshot: Any) -> None:
+    """Test parsing of a cloud stream event JSON file against a syrupy snapshot."""
     token_provider = MockTokenProvider("test_token")
     stream = AsyncRainbirdCloudStream(
         token_provider, 527302, "7b1ad1ef-91df-4e50-9004-269c139c681c", None
     )  # type: ignore
 
-    jsonl_path = (
-        pathlib.Path(__file__).parent / "cloud" / "testdata" / "stream_events.jsonl"
-    )
-    parsed_events = []
+    with open(json_path, "r", encoding="utf-8") as f:
+        payload = json.load(f)
 
-    with open(jsonl_path, "r", encoding="utf-8") as f:
-        for line in f:
-            if not line.strip():
-                continue
-            payload = json.loads(line)
-            event = stream._parse_event(payload)
-            assert event is not None
-            parsed_events.append(
-                {
-                    "device_uuid": event.device_uuid,
-                    "state": event.state,
-                    "active_station": event.active_station,
-                    "remain_seconds": event.remain_seconds,
-                    "rain_delay": event.rain_delay,
-                    "updated_at": event.updated_at.isoformat(),
-                }
-            )
+    event = stream._parse_event(payload)
+    assert event is not None
 
-    assert parsed_events == snapshot
+    actual = {
+        "device_uuid": event.device_uuid,
+        "state": event.state,
+        "active_station": event.active_station,
+        "remain_seconds": event.remain_seconds,
+        "rain_delay": event.rain_delay,
+        "updated_at": event.updated_at.isoformat(),
+    }
+    assert actual == snapshot
