@@ -110,11 +110,11 @@ def mock_ws_app() -> aiohttp.web.Application:
                             "type": "data",
                             "payload": {
                                 "data": {
-                                    "onUpdateDeviceState": {
-                                        "id": "527302",
-                                        "state": "Connected",
-                                        "data": '{"activeStation":2,"remainSec":300,"rainDelay":1}',
-                                        "updatedAt": "2026-06-13T23:18:00Z",
+                                    "onUpdateDeviceStateTable": {
+                                        "PK": "7b1ad1ef-91df-4e50-9004-269c139c681c",
+                                        "SK": "Connected",
+                                        "Data": '{"activeStation":2,"remainSec":300,"rainDelay":1}',
+                                        "TimeStamp": 1781392680,
                                     }
                                 }
                             },
@@ -134,11 +134,11 @@ def mock_ws_app() -> aiohttp.web.Application:
                                 "type": "data",
                                 "payload": {
                                     "data": {
-                                        "onUpdateDeviceState": {
-                                            "id": "527302",
-                                            "state": "Connected",
-                                            "data": '{"activeStation":null,"remainSec":0,"rainDelay":0}',
-                                            "updatedAt": "2026-06-13T23:19:00Z",
+                                        "onUpdateDeviceStateTable": {
+                                            "PK": "7b1ad1ef-91df-4e50-9004-269c139c681c",
+                                            "SK": "Connected",
+                                            "Data": '{"activeStation":null,"remainSec":0,"rainDelay":0}',
+                                            "TimeStamp": 1781392740,
                                         }
                                     }
                                 },
@@ -155,7 +155,9 @@ def test_handshake_url_construction() -> None:
     """Test that connection URL construction builds correct base64 parameters."""
     token_provider = MockTokenProvider("test_token_xyz")
     # We pass None/mock for session since we only call the URL helper method
-    stream = AsyncRainbirdCloudStream(token_provider, 527302, None)  # type: ignore
+    stream = AsyncRainbirdCloudStream(
+        token_provider, 527302, "7b1ad1ef-91df-4e50-9004-269c139c681c", None
+    )  # type: ignore
     url = stream._get_connection_url("test_token_xyz")
 
     assert url.startswith(
@@ -193,7 +195,12 @@ async def test_stream_success(
         "pyrainbird.cloud.stream.WS_ENDPOINT",
         f"ws://{client.host}:{client.port}/graphql",
     ):
-        stream = AsyncRainbirdCloudStream(token_provider, 527302, client.session)
+        stream = AsyncRainbirdCloudStream(
+            token_provider,
+            527302,
+            "7b1ad1ef-91df-4e50-9004-269c139c681c",
+            client.session,
+        )
         events = []
 
         async def read_stream():
@@ -209,6 +216,7 @@ async def test_stream_success(
         # Verify first event
         ev1 = events[0]
         assert ev1.satellite_id == 527302
+        assert ev1.device_uuid == "7b1ad1ef-91df-4e50-9004-269c139c681c"
         assert ev1.state == "Connected"
         assert ev1.active_station == 2
         assert ev1.remain_seconds == 300
@@ -219,6 +227,7 @@ async def test_stream_success(
 
         # Verify second event
         ev2 = events[1]
+        assert ev2.device_uuid == "7b1ad1ef-91df-4e50-9004-269c139c681c"
         assert ev2.active_station is None
         assert ev2.remain_seconds == 0
         assert ev2.rain_delay == 0
@@ -241,7 +250,12 @@ async def test_stream_auth_error_refresh(
         ),
         mock.patch("asyncio.sleep", return_value=None),
     ):
-        stream = AsyncRainbirdCloudStream(token_provider, 527302, client.session)
+        stream = AsyncRainbirdCloudStream(
+            token_provider,
+            527302,
+            "7b1ad1ef-91df-4e50-9004-269c139c681c",
+            client.session,
+        )
         events = []
 
         async def read_stream():
@@ -276,7 +290,12 @@ async def test_stream_reconnect_on_disconnect(
         ),
         mock.patch("asyncio.sleep", return_value=None),
     ):
-        stream = AsyncRainbirdCloudStream(token_provider, 527302, client.session)
+        stream = AsyncRainbirdCloudStream(
+            token_provider,
+            527302,
+            "7b1ad1ef-91df-4e50-9004-269c139c681c",
+            client.session,
+        )
         events = []
 
         async def read_stream():
@@ -307,7 +326,12 @@ async def test_stream_sub_error_raise(
         ),
         mock.patch("asyncio.sleep", return_value=None),
     ):
-        stream = AsyncRainbirdCloudStream(token_provider, 527302, client.session)
+        stream = AsyncRainbirdCloudStream(
+            token_provider,
+            527302,
+            "7b1ad1ef-91df-4e50-9004-269c139c681c",
+            client.session,
+        )
 
         with pytest.raises(
             RainbirdAuthException, match="Subscription validation failed"

@@ -1,6 +1,7 @@
 """Unit tests for the Rainbird cloud client."""
 
 from collections.abc import Generator
+from typing import Any
 from unittest import mock
 
 import aiohttp
@@ -368,3 +369,74 @@ async def test_async_authenticate_cloud_helper(
         assert satellites[0].id == 527302
         assert mock_cloud_app["login_attempts"] == 1
         assert mock_cloud_app["get_satellites_attempts"] == 1
+
+
+async def test_caching_token_provider(
+    mock_cloud_app: aiohttp.web.Application,
+    aiohttp_client: TestClient,
+    tmp_path: Any,
+) -> None:
+    """Test CachingTokenProvider loading, saving, and overriding."""
+    import json
+    import os
+    from examples.rainbird_tool import CachingTokenProvider
+
+    client_session = await aiohttp_client(mock_cloud_app)
+    mock_auth_base = "/coreidentityserver"
+
+    with mock.patch("pyrainbird.cloud.client.AUTH_BASE", new=mock_auth_base):
+        client = AsyncRainbirdCloudClient(
+            client_session, "user@example.com", "correct_password"
+        )
+
+        config_file = tmp_path / "rainbird.json"
+        provider = CachingTokenProvider(client, str(config_file))
+
+        # 1. No environment variable, no cache file: triggers login, saves to cache
+        assert not config_file.exists()
+        token1 = await provider.async_get_token()
+        assert token1 == "valid_access_token_abc123"
+        assert mock_cloud_app["login_attempts"] == 1
+        assert config_file.exists()
+
+        # Verify JSON file content
+        with open(config_file, "r") as f:
+            content = json.load(f)
+        assert content == {"token": "valid_access_token_abc123"}
+
+        # 2. Second request retrieves from in-memory token
+        token2 = await provider.async_get_token()
+        assert token2 == "valid_access_token_abc123"
+        assert mock_cloud_app["login_attempts"] == 1
+
+        # 3. If in-memory is cleared but config file exists, retrieves from config file
+        client._token = None
+        token3 = await provider.async_get_token()
+        assert token3 == "valid_access_token_abc123"
+        assert mock_cloud_app["login_attempts"] == 1
+
+        # 4. Force refresh triggers login and updates config file
+        with open(config_file, "w") as f:
+            json.dump({"token": "old_expired_token"}, f)
+
+        token4 = await provider.async_get_token(force_refresh=True)
+        assert token4 == "valid_access_token_abc123"
+        assert mock_cloud_app["login_attempts"] == 2
+        with open(config_file, "r") as f:
+            content = json.load(f)
+        assert content == {"token": "valid_access_token_abc123"}
+
+        # 5. Bypassed via environment variable
+        with mock.patch.dict(
+            os.environ, {"RAINBIRD_CLOUD_TOKEN": "env_override_token"}
+        ):
+            token5 = await provider.async_get_token()
+            assert token5 == "env_override_token"
+
+        # 6. Missing config file and missing credentials raises RainbirdAuthException
+        client_no_creds = AsyncRainbirdCloudClient(client_session)
+        provider_no_creds = CachingTokenProvider(
+            client_no_creds, str(tmp_path / "nonexistent.json")
+        )
+        with pytest.raises(RainbirdAuthException, match="No cached token found"):
+            await provider_no_creds.async_get_token()

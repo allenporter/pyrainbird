@@ -26,6 +26,7 @@ class CloudStreamEvent:
     """Represents a real-time status update from a cloud satellite."""
 
     satellite_id: int
+    device_uuid: str
     state: str
     active_station: int | None
     remain_seconds: int | None
@@ -40,11 +41,13 @@ class AsyncRainbirdCloudStream:
         self,
         token_provider: RainbirdTokenProvider,
         satellite_id: int,
+        device_uuid: str,
         session: aiohttp.ClientSession,
     ) -> None:
         """Initialize the real-time cloud stream manager."""
         self._token_provider = token_provider
         self._satellite_id = satellite_id
+        self._device_uuid = device_uuid
         self._session = session
         self._force_refresh_token = False
 
@@ -64,26 +67,29 @@ class AsyncRainbirdCloudStream:
         try:
             payload = data.get("payload", {})
             data_wrapper = payload.get("data", {})
-            device_state = data_wrapper.get("onUpdateDeviceState")
+            device_state = data_wrapper.get("onUpdateDeviceStateTable")
             if not device_state:
                 return None
 
-            sat_id_str = device_state.get("id")
-            satellite_id = int(sat_id_str) if sat_id_str else self._satellite_id
-            state = device_state.get("state", "Unknown")
+            device_uuid = device_state.get("PK", "")
+            sk = device_state.get("SK", "")
+            timestamp_val = device_state.get("TimeStamp")
 
-            updated_at_str = device_state.get("updatedAt")
-            if updated_at_str:
-                if updated_at_str.endswith("Z"):
-                    updated_at_str = updated_at_str[:-1] + "+00:00"
-                updated_at = datetime.datetime.fromisoformat(updated_at_str)
+            if timestamp_val:
+                try:
+                    updated_at = datetime.datetime.fromtimestamp(
+                        int(timestamp_val), datetime.timezone.utc
+                    )
+                except Exception:
+                    updated_at = datetime.datetime.now(datetime.timezone.utc)
             else:
                 updated_at = datetime.datetime.now(datetime.timezone.utc)
 
-            inner_data_str = device_state.get("data")
+            inner_data_str = device_state.get("Data")
             active_station = None
             remain_seconds = None
             rain_delay = None
+            state = sk
 
             if inner_data_str:
                 try:
@@ -91,11 +97,14 @@ class AsyncRainbirdCloudStream:
                     active_station = inner_data.get("activeStation")
                     remain_seconds = inner_data.get("remainSec")
                     rain_delay = inner_data.get("rainDelay")
+                    if "state" in inner_data:
+                        state = str(inner_data["state"])
                 except json.JSONDecodeError as err:
                     _LOGGER.warning("Failed to parse inner state data JSON: %s", err)
 
             return CloudStreamEvent(
-                satellite_id=satellite_id,
+                satellite_id=self._satellite_id,
+                device_uuid=device_uuid,
                 state=state,
                 active_station=active_station,
                 remain_seconds=remain_seconds,
@@ -163,12 +172,8 @@ class AsyncRainbirdCloudStream:
                                     "payload": {
                                         "data": json.dumps(
                                             {
-                                                "query": "subscription OnUpdateDeviceState($satelliteId: ID!) { onUpdateDeviceState(satelliteId: $satelliteId) { id state data updatedAt } }",
-                                                "variables": {
-                                                    "satelliteId": str(
-                                                        self._satellite_id
-                                                    )
-                                                },
+                                                "query": "subscription onUpdateDeviceStateTable($PK : String!) {\n  onUpdateDeviceStateTable(PK: $PK) {\n    PK\n    SK\n    Data\n    TimeStamp\n  }\n}",
+                                                "variables": {"PK": self._device_uuid},
                                             }
                                         ),
                                         "extensions": {
