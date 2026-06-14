@@ -109,9 +109,9 @@ class AsyncRainbirdCloudStream:
     def _parse_event(self, data: dict[str, Any]) -> CloudStreamEvent | None:
         """Parse a pushed GraphQL subscription message payload."""
         try:
-            payload = data.get("payload", {})
-            data_wrapper = payload.get("data", {})
-            device_state = data_wrapper.get("onUpdateDeviceStateTable")
+            device_state = (
+                data.get("payload", {}).get("data", {}).get("onUpdateDeviceStateTable")
+            )
             if not device_state:
                 return None
 
@@ -119,14 +119,14 @@ class AsyncRainbirdCloudStream:
             sk = device_state.get("SK", "")
             timestamp_val = device_state.get("TimeStamp")
 
-            if timestamp_val:
-                try:
+            try:
+                if timestamp_val:
                     updated_at = datetime.datetime.fromtimestamp(
                         int(timestamp_val), datetime.timezone.utc
                     )
-                except Exception:
+                else:
                     updated_at = datetime.datetime.now(datetime.timezone.utc)
-            else:
+            except (ValueError, TypeError):
                 updated_at = datetime.datetime.now(datetime.timezone.utc)
 
             inner_data_str = device_state.get("Data")
@@ -144,29 +144,29 @@ class AsyncRainbirdCloudStream:
                         rain_delay = inner_data.get("rainDelay")
                         if "state" in inner_data:
                             state = str(inner_data["state"])
-                    else:
-                        if inner_data is not None:
-                            state = str(inner_data)
+                    elif inner_data is not None:
+                        state = str(inner_data)
                 except json.JSONDecodeError as err:
                     _LOGGER.warning("Failed to parse inner state data JSON: %s", err)
 
-            if sk.startswith("Station"):
+            if sk.startswith("Station") and active_station is None:
                 try:
-                    station_num = int(sk[7:])
-                    if active_station is None:
-                        active_station = station_num
+                    active_station = int(sk[7:])
                 except ValueError:
                     pass
 
             # If remain_seconds is a Unix epoch timestamp, calculate relative remaining seconds
-            if remain_seconds is not None and remain_seconds > 1000000000:
-                if timestamp_val:
-                    try:
-                        server_ts = int(timestamp_val)
-                        if remain_seconds >= server_ts:
-                            remain_seconds = remain_seconds - server_ts
-                    except ValueError:
-                        pass
+            if (
+                remain_seconds is not None
+                and remain_seconds > 1000000000
+                and timestamp_val
+            ):
+                try:
+                    server_ts = int(timestamp_val)
+                    if remain_seconds >= server_ts:
+                        remain_seconds -= server_ts
+                except (ValueError, TypeError):
+                    pass
 
             return CloudStreamEvent(
                 satellite_id=self._satellite_id,
