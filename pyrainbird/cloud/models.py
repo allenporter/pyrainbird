@@ -5,8 +5,53 @@ from __future__ import annotations
 import datetime
 from dataclasses import dataclass, field
 import enum
+from typing import Any
 
 from mashumaro import DataClassDictMixin, field_options
+from mashumaro.config import BaseConfig
+
+
+@dataclass
+class WebSocketMessage(DataClassDictMixin):
+    """Represents a protocol message sent over the AppSync GraphQL WebSocket."""
+
+    type: CloudStreamMessageType
+    id: str | None = None
+    payload: dict[str, Any] | None = None
+
+    class Config(BaseConfig):
+        omit_none = True
+
+
+@dataclass
+class SubscriptionQueryData(DataClassDictMixin):
+    """Holds GraphQL query and variable variables for DeviceStateTable updates."""
+
+    query: str
+    variables: dict[str, Any]
+
+
+@dataclass
+class SubscriptionAuthorization(DataClassDictMixin):
+    """Authorization parameters for AppSync connection headers."""
+
+    host: str
+    authorization: str = field(metadata=field_options(alias="Authorization"))
+
+
+@dataclass
+class SubscriptionExtensions(DataClassDictMixin):
+    """AppSync WebSocket payload authorization extension envelope."""
+
+    authorization: SubscriptionAuthorization
+
+
+@dataclass
+class SubscriptionStartPayload(DataClassDictMixin):
+    """AppSync subscription 'start' payload data."""
+
+    data: str
+    extensions: SubscriptionExtensions
 
 
 class CloudStreamSortKey(enum.StrEnum):

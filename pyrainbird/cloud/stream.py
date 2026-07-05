@@ -62,6 +62,11 @@ from .models import (
     RssiStateEvent,
     StationStateData,
     StationStateEvent,
+    SubscriptionAuthorization,
+    SubscriptionExtensions,
+    SubscriptionQueryData,
+    SubscriptionStartPayload,
+    WebSocketMessage,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -294,7 +299,11 @@ class AsyncRainbirdCloudStream:
                     )
 
                     # 2. Send connection_init
-                    await ws.send_json({"type": CloudStreamMessageType.CONNECTION_INIT})
+                    await ws.send_json(
+                        WebSocketMessage(
+                            type=CloudStreamMessageType.CONNECTION_INIT
+                        ).to_dict()
+                    )
 
                     # 3. Read message loop
                     async for msg in ws:
@@ -313,25 +322,35 @@ class AsyncRainbirdCloudStream:
                                     "Connection acknowledged. Registering subscription..."
                                 )
                                 # Subscribe once connection is acknowledged
-                                sub_payload = {
-                                    "id": "sub_device_state",
-                                    "type": CloudStreamMessageType.START,
-                                    "payload": {
-                                        "data": json.dumps(
-                                            {
-                                                "query": "subscription onUpdateDeviceStateTable($PK : String!) {\n  onUpdateDeviceStateTable(PK: $PK) {\n    PK\n    SK\n    Data\n    TimeStamp\n  }\n}",
-                                                "variables": {"PK": self._device_uuid},
-                                            }
-                                        ),
-                                        "extensions": {
-                                            "authorization": {
-                                                "host": API_HOST,
-                                                "Authorization": token,
-                                            }
-                                        },
-                                    },
-                                }
-                                await ws.send_json(sub_payload)
+                                query_data = SubscriptionQueryData(
+                                    query=(
+                                        "subscription onUpdateDeviceStateTable($PK : String!) {\n"
+                                        "  onUpdateDeviceStateTable(PK: $PK) {\n"
+                                        "    PK\n"
+                                        "    SK\n"
+                                        "    Data\n"
+                                        "    TimeStamp\n"
+                                        "  }\n"
+                                        "}"
+                                    ),
+                                    variables={"PK": self._device_uuid},
+                                )
+                                extensions = SubscriptionExtensions(
+                                    authorization=SubscriptionAuthorization(
+                                        host=API_HOST,
+                                        authorization=token,
+                                    )
+                                )
+                                start_payload = SubscriptionStartPayload(
+                                    data=json.dumps(query_data.to_dict()),
+                                    extensions=extensions,
+                                )
+                                sub_message = WebSocketMessage(
+                                    id="sub_device_state",
+                                    type=CloudStreamMessageType.START,
+                                    payload=start_payload.to_dict(),
+                                )
+                                await ws.send_json(sub_message.to_dict())
 
                             elif msg_type == CloudStreamMessageType.DATA:
                                 event = self._parse_event(data)
