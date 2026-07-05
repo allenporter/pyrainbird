@@ -51,6 +51,7 @@ from pyrainbird.exceptions import RainbirdAuthException
 
 from .models import (
     CloudStreamEvent,
+    CloudStreamMessageType,
     CloudStreamSortKey,
     ConnectedData,
     ConnectionStatusEvent,
@@ -312,7 +313,7 @@ class AsyncRainbirdCloudStream:
                     )
 
                     # 2. Send connection_init
-                    await ws.send_json({"type": "connection_init"})
+                    await ws.send_json({"type": CloudStreamMessageType.CONNECTION_INIT})
 
                     # 3. Read message loop
                     async for msg in ws:
@@ -326,14 +327,14 @@ class AsyncRainbirdCloudStream:
                                 continue
                             msg_type = data.get("type")
 
-                            if msg_type == "connection_ack":
+                            if msg_type == CloudStreamMessageType.CONNECTION_ACK:
                                 _LOGGER.info(
                                     "Connection acknowledged. Registering subscription..."
                                 )
                                 # Subscribe once connection is acknowledged
                                 sub_payload = {
                                     "id": "sub_device_state",
-                                    "type": "start",
+                                    "type": CloudStreamMessageType.START,
                                     "payload": {
                                         "data": json.dumps(
                                             {
@@ -351,18 +352,21 @@ class AsyncRainbirdCloudStream:
                                 }
                                 await ws.send_json(sub_payload)
 
-                            elif msg_type == "data":
+                            elif msg_type == CloudStreamMessageType.DATA:
                                 event = self._parse_event(data)
                                 if event:
                                     yield event
 
-                            elif msg_type == "ka":
+                            elif msg_type == CloudStreamMessageType.KEEP_ALIVE:
                                 # Keep-alive heartbeat received
                                 _LOGGER.debug(
                                     "AppSync WebSocket keep-alive heartbeat received."
                                 )
 
-                            elif msg_type in ("connection_error", "error"):
+                            elif msg_type in (
+                                CloudStreamMessageType.CONNECTION_ERROR,
+                                CloudStreamMessageType.ERROR,
+                            ):
                                 payload = data.get("payload", {})
                                 errors = payload.get("errors", [])
                                 error_msg = (
@@ -397,7 +401,7 @@ class AsyncRainbirdCloudStream:
                                         f"WebSocket protocol error: {error_msg}"
                                     )
 
-                            elif msg_type == "complete":
+                            elif msg_type == CloudStreamMessageType.COMPLETE:
                                 _LOGGER.info(
                                     "Subscription registration was terminated by server."
                                 )

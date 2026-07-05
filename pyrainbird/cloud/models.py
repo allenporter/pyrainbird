@@ -18,6 +18,19 @@ class CloudStreamSortKey(enum.StrEnum):
     STATION_PREFIX = "Station"
 
 
+class CloudStreamMessageType(enum.StrEnum):
+    """Message types used in the AppSync GraphQL WebSocket protocol."""
+
+    CONNECTION_INIT = "connection_init"
+    CONNECTION_ACK = "connection_ack"
+    START = "start"
+    DATA = "data"
+    KEEP_ALIVE = "ka"
+    CONNECTION_ERROR = "connection_error"
+    ERROR = "error"
+    COMPLETE = "complete"
+
+
 @dataclass
 class DeviceStateRecord(DataClassDictMixin):
     """Represents a database record pushed by AppSync subscriptions."""
