@@ -29,6 +29,18 @@ class DeviceStateRecord(DataClassDictMixin):
         default=None, metadata=field_options(alias="TimeStamp")
     )
 
+    @property
+    def updated_at(self) -> datetime.datetime:
+        """Get the record updated_at datetime, falling back to current UTC time."""
+        if self.timestamp:
+            try:
+                return datetime.datetime.fromtimestamp(
+                    self.timestamp, datetime.timezone.utc
+                )
+            except (ValueError, OSError, OverflowError):
+                pass
+        return datetime.datetime.now(datetime.timezone.utc)
+
 
 @dataclass
 class RainSensorStateData(DataClassDictMixin):

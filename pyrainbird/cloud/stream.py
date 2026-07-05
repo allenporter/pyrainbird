@@ -39,7 +39,6 @@ Protocol Overview:
 
 import asyncio
 import base64
-import datetime
 import json
 import logging
 from collections.abc import AsyncIterator
@@ -123,15 +122,7 @@ class AsyncRainbirdCloudStream:
             _LOGGER.warning("Failed to parse device state record: %s", err)
             return None
 
-        if record.timestamp:
-            try:
-                updated_at = datetime.datetime.fromtimestamp(
-                    record.timestamp, datetime.timezone.utc
-                )
-            except (ValueError, OSError, OverflowError):
-                updated_at = datetime.datetime.now(datetime.timezone.utc)
-        else:
-            updated_at = datetime.datetime.now(datetime.timezone.utc)
+        updated_at = record.updated_at
 
         # Route parsing based on Sort Key (SK) type
         if record.sk == CloudStreamSortKey.RSSI:
