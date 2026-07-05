@@ -119,7 +119,7 @@ class FakeRainbirdDevice:
             # Setters reply with ACK
             "11": self._handle_ack,
             "13": self._handle_ack,
-            "37": self._handle_ack,
+            "37": self._handle_set_rain_delay,
             "38": self._handle_ack,
             "39": self._handle_ack,
             "3A": self._handle_ack,
@@ -187,6 +187,11 @@ class FakeRainbirdDevice:
 
     def _handle_rain_delay(self, data: str) -> str:
         return self._encode("RainDelaySettingResponse", self.rain_delay)
+
+    def _handle_set_rain_delay(self, data: str) -> str:
+        # data is "37" + 4 hex digits for delay (16-bit integer)
+        self.rain_delay = int(data[2:6], 16)
+        return self._handle_ack(data)
 
     def _handle_current_irrigation(self, data: str) -> str:
         return self._encode("CurrentIrrigationStateResponse", self.irrigation_state)

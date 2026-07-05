@@ -22,14 +22,7 @@ async def test_fake_server_lifecycle_and_discovery() -> None:
 
     # Create temporary directory for downloads
     with tempfile.TemporaryDirectory() as tmpdir:
-        # Start fake server with random ports (port=0, udp_port=0)
         server = RainbirdFakeServer(
-            mac_address="00:11:22:33:44:55",
-            uuid_str="test-uuid-12345",
-            password=None,
-            host="127.0.0.1",
-            port=0,
-            udp_port=0,
             response_udp_port=resp_udp_port,
             output_dir=tmpdir,
         )
@@ -50,7 +43,7 @@ async def test_fake_server_lifecycle_and_discovery() -> None:
             # Recv Legacy response (use executor to avoid blocking the event loop)
             loop = asyncio.get_running_loop()
             data, addr = await loop.run_in_executor(None, client_sock.recvfrom, 1024)
-            assert data.decode("utf-8") == "001122334455"
+            assert data.decode("utf-8") == "442c05001122"
             client_sock.close()
 
             # 3. Test UDP Discovery (Upgraded mode)
@@ -68,7 +61,9 @@ async def test_fake_server_lifecycle_and_discovery() -> None:
             data_upgraded, addr_upgraded = await loop.run_in_executor(
                 None, resp_sock.recvfrom, 1024
             )
-            assert data_upgraded.decode("utf-8") == "test-uuid-12345"
+            assert (
+                data_upgraded.decode("utf-8") == "123e4567-e89b-12d3-a456-426614174000"
+            )
             resp_sock.close()
             client_sock2.close()
 

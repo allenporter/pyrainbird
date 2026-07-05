@@ -60,9 +60,9 @@ class RainbirdFakeServer:
         mac_address: str = "44:2c:05:00:11:22",
         uuid_str: str = "123e4567-e89b-12d3-a456-426614174000",
         password: str | None = None,
-        host: str = "0.0.0.0",
-        port: int = 80,
-        udp_port: int = 33667,
+        host: str = "127.0.0.1",
+        port: int = 0,
+        udp_port: int = 0,
         response_udp_port: int = 33668,
         output_dir: str = "./extracted_fw",
     ) -> None:
@@ -130,6 +130,27 @@ class RainbirdFakeServer:
             await self._http_runner.cleanup()
             self._http_runner = None
             _LOGGER.info("Stopped HTTP Stick Server.")
+
+    @property
+    def http_port(self) -> int:
+        """Return the actual HTTP port the server is listening on."""
+        if not self._http_runner or not self._http_runner.addresses:
+            raise RuntimeError("HTTP server is not running")
+        return self._http_runner.addresses[0][1]
+
+    @property
+    def host_port(self) -> str:
+        """Return the host:port string of the running server."""
+        return f"{self.host}:{self.http_port}"
+
+    async def __aenter__(self) -> "RainbirdFakeServer":
+        await self.start()
+        return self
+
+    async def __aexit__(
+        self, exc_type: object, exc_val: object, exc_tb: object
+    ) -> None:
+        await self.stop()
 
     async def _handle_stick(self, request: web.Request) -> web.Response:
         """Handle JSON-RPC requests sent to the stick endpoint."""
