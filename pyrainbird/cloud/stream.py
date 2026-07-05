@@ -67,15 +67,53 @@ BACKOFF_FACTOR = 2.0
 
 @dataclass
 class CloudStreamEvent:
-    """Represents a real-time status update from a cloud satellite."""
+    """Base class for real-time cloud satellite events."""
 
     satellite_id: int
     device_uuid: str
-    state: str
-    active_station: int | None
-    remain_seconds: int | None
-    rain_delay: int | None
     updated_at: datetime.datetime
+
+
+@dataclass
+class StationStateEvent(CloudStreamEvent):
+    """Fired when a specific zone/station starts or stops watering."""
+
+    zone: int
+    is_watering: bool
+    remaining_seconds: int | None
+    program_number: int | None
+
+
+@dataclass
+class RainSensorStateEvent(CloudStreamEvent):
+    """Fired when the rain sensor detects wet/dry status changes."""
+
+    is_wet: bool
+
+
+@dataclass
+class ConnectionStatusEvent(CloudStreamEvent):
+    """Fired with overall connection and active status details."""
+
+    is_connected: bool
+    active_station: int | None
+    remaining_seconds: int | None
+    rain_delay: int | None
+
+
+@dataclass
+class RssiStateEvent(CloudStreamEvent):
+    """Fired when device RSSI (signal strength) changes."""
+
+    rssi: int
+
+
+@dataclass
+class GenericCloudStreamEvent(CloudStreamEvent):
+    """Catch-all event for any unknown/new sort keys (future-proofing)."""
+
+    event_key: str
+    raw_data: str | None
 
 
 class AsyncRainbirdCloudStream:
@@ -130,52 +168,134 @@ class AsyncRainbirdCloudStream:
                 updated_at = datetime.datetime.now(datetime.timezone.utc)
 
             inner_data_str = device_state.get("Data")
-            active_station = None
-            remain_seconds = None
-            rain_delay = None
-            state = sk
 
-            if inner_data_str:
-                try:
-                    inner_data = json.loads(inner_data_str)
-                    if isinstance(inner_data, dict):
-                        active_station = inner_data.get("activeStation")
-                        remain_seconds = inner_data.get("remainSec")
-                        rain_delay = inner_data.get("rainDelay")
-                        if "state" in inner_data:
-                            state = str(inner_data["state"])
-                    elif inner_data is not None:
-                        state = str(inner_data)
-                except json.JSONDecodeError as err:
-                    _LOGGER.warning("Failed to parse inner state data JSON: %s", err)
+            # Route parsing based on Sort Key (SK) type
+            if sk == "RSSI":
+                rssi_val = 0
+                if inner_data_str:
+                    try:
+                        rssi_val = int(inner_data_str)
+                    except ValueError:
+                        pass
+                return RssiStateEvent(
+                    satellite_id=self._satellite_id,
+                    device_uuid=device_uuid,
+                    updated_at=updated_at,
+                    rssi=rssi_val,
+                )
 
-            if sk.startswith("Station") and active_station is None:
+            elif sk == "Event#RainSensorState":
+                is_wet = False
+                if inner_data_str:
+                    try:
+                        inner_data = json.loads(inner_data_str)
+                        if isinstance(inner_data, dict):
+                            is_wet = str(inner_data.get("state")) == "1"
+                        else:
+                            is_wet = str(inner_data) == "1"
+                    except Exception:
+                        pass
+                return RainSensorStateEvent(
+                    satellite_id=self._satellite_id,
+                    device_uuid=device_uuid,
+                    updated_at=updated_at,
+                    is_wet=is_wet,
+                )
+
+            elif sk.startswith("Station"):
                 try:
-                    active_station = int(sk[7:])
+                    zone_num = int(sk[7:])
                 except ValueError:
-                    pass
+                    return None
 
-            # If remain_seconds is a Unix epoch timestamp, calculate relative remaining seconds
-            if (
-                remain_seconds is not None
-                and remain_seconds > 1000000000
-                and timestamp_val
-            ):
-                try:
-                    server_ts = int(timestamp_val)
-                    if remain_seconds >= server_ts:
-                        remain_seconds -= server_ts
-                except (ValueError, TypeError):
-                    pass
+                is_watering = False
+                remain_seconds = None
+                program_number = None
 
-            return CloudStreamEvent(
+                if inner_data_str:
+                    try:
+                        inner_data = json.loads(inner_data_str)
+                        if isinstance(inner_data, dict):
+                            is_watering = str(inner_data.get("state")) == "1"
+                            remain_seconds = inner_data.get("remainSec")
+                            program_number = inner_data.get("programNumber")
+                    except Exception:
+                        pass
+
+                # If remain_seconds is an epoch timestamp, convert to relative duration
+                if (
+                    remain_seconds is not None
+                    and remain_seconds > 1000000000
+                    and timestamp_val
+                ):
+                    try:
+                        server_ts = int(timestamp_val)
+                        if remain_seconds >= server_ts:
+                            remain_seconds -= server_ts
+                    except (ValueError, TypeError):
+                        pass
+
+                return StationStateEvent(
+                    satellite_id=self._satellite_id,
+                    device_uuid=device_uuid,
+                    updated_at=updated_at,
+                    zone=zone_num,
+                    is_watering=is_watering,
+                    remaining_seconds=remain_seconds,
+                    program_number=program_number,
+                )
+
+            elif sk == "Connected":
+                is_connected = True
+                active_station = None
+                remain_seconds = None
+                rain_delay = None
+
+                if inner_data_str:
+                    try:
+                        inner_data = json.loads(inner_data_str)
+                        if isinstance(inner_data, dict):
+                            active_station = inner_data.get("activeStation")
+                            remain_seconds = inner_data.get("remainSec")
+                            rain_delay = inner_data.get("rainDelay")
+                            if str(inner_data.get("state")) in ("0", "offline"):
+                                is_connected = False
+                        else:
+                            if str(inner_data) in ("0", "offline"):
+                                is_connected = False
+                    except Exception:
+                        pass
+
+                # Epoch check for remaining seconds
+                if (
+                    remain_seconds is not None
+                    and remain_seconds > 1000000000
+                    and timestamp_val
+                ):
+                    try:
+                        server_ts = int(timestamp_val)
+                        if remain_seconds >= server_ts:
+                            remain_seconds -= server_ts
+                    except (ValueError, TypeError):
+                        pass
+
+                return ConnectionStatusEvent(
+                    satellite_id=self._satellite_id,
+                    device_uuid=device_uuid,
+                    updated_at=updated_at,
+                    is_connected=is_connected,
+                    active_station=active_station,
+                    remaining_seconds=remain_seconds,
+                    rain_delay=rain_delay,
+                )
+
+            # Fallback for unrecognized sort keys (future proofing)
+            return GenericCloudStreamEvent(
                 satellite_id=self._satellite_id,
                 device_uuid=device_uuid,
-                state=state,
-                active_station=active_station,
-                remain_seconds=remain_seconds,
-                rain_delay=rain_delay,
                 updated_at=updated_at,
+                event_key=sk,
+                raw_data=inner_data_str,
             )
         except Exception as e:
             _LOGGER.error("Error parsing stream event: %s", e)

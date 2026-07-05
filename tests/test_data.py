@@ -57,6 +57,37 @@ class TestSequence(unittest.TestCase):
             assert active == bit
             i = i + 1
 
+    def test_update_zone(self):
+        states = States("0000")
+        assert not any(states.states)
+
+        # Turn zone 2 on
+        states2 = states.update_zone(2, True)
+        assert states2.active(2) is True
+        assert states2.active_set == {2}
+        assert states2.states[1] is True
+        assert states2.states[:8] == (
+            False,
+            True,
+            False,
+            False,
+            False,
+            False,
+            False,
+            False,
+        )
+
+        # Turn zone 2 off
+        states3 = states2.update_zone(2, False)
+        assert states3.active(2) is False
+        assert states3.active_set == set()
+
+        # Turn zone 9 on (across byte boundary)
+        states4 = states.update_zone(9, True)
+        assert states4.active(9) is True
+        assert states4.active_set == {9}
+        assert states4.states[8] is True
+
 
 @pytest.mark.parametrize(
     ("response", "expected_name"),

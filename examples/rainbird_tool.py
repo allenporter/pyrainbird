@@ -24,7 +24,15 @@ from typing import Any
 import aiohttp
 
 from pyrainbird import async_client
-from pyrainbird.cloud import AsyncRainbirdCloudClient, AsyncRainbirdCloudStream
+from pyrainbird.cloud import (
+    AsyncRainbirdCloudClient,
+    AsyncRainbirdCloudStream,
+    ConnectionStatusEvent,
+    GenericCloudStreamEvent,
+    RainSensorStateEvent,
+    RssiStateEvent,
+    StationStateEvent,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -149,11 +157,26 @@ async def stream_cloud(
         )
 
         async for event in stream.listen():
-            print(
-                f"[{event.updated_at.isoformat()}] Satellite {event.satellite_id} ({event.device_uuid}) - "
-                f"State: {event.state}, Active Station: {event.active_station}, "
-                f"Remaining: {event.remain_seconds}s, Rain Delay: {event.rain_delay}"
-            )
+            prefix = f"[{event.updated_at.isoformat()}] Satellite {event.satellite_id} ({event.device_uuid}) -"
+            if isinstance(event, StationStateEvent):
+                print(
+                    f"{prefix} Station {event.zone} - Watering: {event.is_watering}, "
+                    f"Remaining: {event.remaining_seconds}s, Program: {event.program_number}"
+                )
+            elif isinstance(event, RainSensorStateEvent):
+                print(f"{prefix} Rain Sensor - Wet: {event.is_wet}")
+            elif isinstance(event, ConnectionStatusEvent):
+                print(
+                    f"{prefix} Connection - Connected: {event.is_connected}, "
+                    f"Active Station: {event.active_station}, "
+                    f"Remaining: {event.remaining_seconds}s, Rain Delay: {event.rain_delay}"
+                )
+            elif isinstance(event, RssiStateEvent):
+                print(f"{prefix} Signal - RSSI: {event.rssi}")
+            elif isinstance(event, GenericCloudStreamEvent):
+                print(
+                    f"{prefix} Generic - Key: {event.event_key}, Data: {event.raw_data}"
+                )
     except asyncio.CancelledError:
         print("Stream cancelled.")
     except Exception as err:

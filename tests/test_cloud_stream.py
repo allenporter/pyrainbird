@@ -15,7 +15,14 @@ import pytest
 from aiohttp.test_utils import TestClient
 
 from pyrainbird.async_client import RainbirdTokenProvider
-from pyrainbird.cloud.stream import AsyncRainbirdCloudStream
+from pyrainbird.cloud.stream import (
+    AsyncRainbirdCloudStream,
+    ConnectionStatusEvent,
+    GenericCloudStreamEvent,
+    RainSensorStateEvent,
+    RssiStateEvent,
+    StationStateEvent,
+)
 from pyrainbird.exceptions import RainbirdAuthException
 
 
@@ -218,11 +225,12 @@ async def test_stream_success(
 
         # Verify first event
         ev1 = events[0]
+        assert isinstance(ev1, ConnectionStatusEvent)
         assert ev1.satellite_id == 527302
         assert ev1.device_uuid == "7b1ad1ef-91df-4e50-9004-269c139c681c"
-        assert ev1.state == "Connected"
+        assert ev1.is_connected is True
         assert ev1.active_station == 2
-        assert ev1.remain_seconds == 300
+        assert ev1.remaining_seconds == 300
         assert ev1.rain_delay == 1
         assert ev1.updated_at == datetime.datetime(
             2026, 6, 13, 23, 18, tzinfo=datetime.timezone.utc
@@ -230,9 +238,11 @@ async def test_stream_success(
 
         # Verify second event
         ev2 = events[1]
+        assert isinstance(ev2, ConnectionStatusEvent)
         assert ev2.device_uuid == "7b1ad1ef-91df-4e50-9004-269c139c681c"
+        assert ev2.is_connected is True
         assert ev2.active_station is None
-        assert ev2.remain_seconds == 0
+        assert ev2.remaining_seconds == 0
         assert ev2.rain_delay == 0
 
 
@@ -367,3 +377,120 @@ def test_parse_event_snapshot(json_path: str, snapshot: Any) -> None:
     assert event is not None
 
     assert event == snapshot
+
+
+def test_parse_event_types() -> None:
+    """Test that _parse_event correctly routes and parses different AppSync messages."""
+    stream = AsyncRainbirdCloudStream(
+        MockTokenProvider(), 527302, "7b1ad1ef-91df-4e50-9004-269c139c681c", None
+    )  # type: ignore
+
+    # 1. RSSI
+    rssi_raw = {
+        "payload": {
+            "data": {
+                "onUpdateDeviceStateTable": {
+                    "PK": "7b1ad1ef-91df-4e50-9004-269c139c681c",
+                    "SK": "RSSI",
+                    "Data": "-82",
+                    "TimeStamp": 1781392680,
+                }
+            }
+        }
+    }
+    ev = stream._parse_event(rssi_raw)
+    assert isinstance(ev, RssiStateEvent)
+    assert ev.rssi == -82
+
+    # 2. RainSensorStateEvent (wet)
+    sensor_wet_raw = {
+        "payload": {
+            "data": {
+                "onUpdateDeviceStateTable": {
+                    "PK": "7b1ad1ef-91df-4e50-9004-269c139c681c",
+                    "SK": "Event#RainSensorState",
+                    "Data": '{"state":1}',
+                    "TimeStamp": 1781392680,
+                }
+            }
+        }
+    }
+    ev = stream._parse_event(sensor_wet_raw)
+    assert isinstance(ev, RainSensorStateEvent)
+    assert ev.is_wet is True
+
+    # 3. RainSensorStateEvent (dry)
+    sensor_dry_raw = {
+        "payload": {
+            "data": {
+                "onUpdateDeviceStateTable": {
+                    "PK": "7b1ad1ef-91df-4e50-9004-269c139c681c",
+                    "SK": "Event#RainSensorState",
+                    "Data": '{"state":0}',
+                    "TimeStamp": 1781392680,
+                }
+            }
+        }
+    }
+    ev = stream._parse_event(sensor_dry_raw)
+    assert isinstance(ev, RainSensorStateEvent)
+    assert ev.is_wet is False
+
+    # 4. StationStateEvent (watering)
+    station_on_raw = {
+        "payload": {
+            "data": {
+                "onUpdateDeviceStateTable": {
+                    "PK": "7b1ad1ef-91df-4e50-9004-269c139c681c",
+                    "SK": "Station3",
+                    "Data": '{"state":1,"remainSec":1781393280,"programNumber":36}',
+                    "TimeStamp": 1781392680,
+                }
+            }
+        }
+    }
+    ev = stream._parse_event(station_on_raw)
+    assert isinstance(ev, StationStateEvent)
+    assert ev.zone == 3
+    assert ev.is_watering is True
+    # remaining_seconds should be adjusted by timestamp (1781393280 - 1781392680 = 600)
+    assert ev.remaining_seconds == 600
+    assert ev.program_number == 36
+
+    # 5. StationStateEvent (stopped)
+    station_off_raw = {
+        "payload": {
+            "data": {
+                "onUpdateDeviceStateTable": {
+                    "PK": "7b1ad1ef-91df-4e50-9004-269c139c681c",
+                    "SK": "Station3",
+                    "Data": '{"state":-1,"remainSec":0,"programNumber":36}',
+                    "TimeStamp": 1781392680,
+                }
+            }
+        }
+    }
+    ev = stream._parse_event(station_off_raw)
+    assert isinstance(ev, StationStateEvent)
+    assert ev.zone == 3
+    assert ev.is_watering is False
+    assert ev.remaining_seconds == 0
+    assert ev.program_number == 36
+
+    # 6. GenericCloudStreamEvent
+    generic_raw = {
+        "payload": {
+            "data": {
+                "onUpdateDeviceStateTable": {
+                    "PK": "7b1ad1ef-91df-4e50-9004-269c139c681c",
+                    "SK": "UnknownKey",
+                    "Data": '{"foo":"bar"}',
+                    "TimeStamp": 1781392680,
+                }
+            }
+        }
+    }
+    ev = stream._parse_event(generic_raw)
+    assert isinstance(ev, GenericCloudStreamEvent)
+    assert ev.event_key == "UnknownKey"
+    assert ev.raw_data == '{"foo":"bar"}'
