@@ -50,6 +50,7 @@ from pyrainbird.async_client import RainbirdTokenProvider
 from pyrainbird.exceptions import RainbirdAuthException
 
 from .models import (
+    SUBSCRIBE_DEVICE_STATE_QUERY,
     CloudStreamEvent,
     CloudStreamMessageType,
     CloudStreamSortKey,
@@ -323,16 +324,7 @@ class AsyncRainbirdCloudStream:
                                 )
                                 # Subscribe once connection is acknowledged
                                 query_data = SubscriptionQueryData(
-                                    query=(
-                                        "subscription onUpdateDeviceStateTable($PK : String!) {\n"
-                                        "  onUpdateDeviceStateTable(PK: $PK) {\n"
-                                        "    PK\n"
-                                        "    SK\n"
-                                        "    Data\n"
-                                        "    TimeStamp\n"
-                                        "  }\n"
-                                        "}"
-                                    ),
+                                    query=SUBSCRIBE_DEVICE_STATE_QUERY,
                                     variables={"PK": self._device_uuid},
                                 )
                                 extensions = SubscriptionExtensions(

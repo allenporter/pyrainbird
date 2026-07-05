@@ -11,6 +11,18 @@ from mashumaro import DataClassDictMixin, field_options
 from mashumaro.config import BaseConfig
 
 
+SUBSCRIBE_DEVICE_STATE_QUERY = (
+    "subscription onUpdateDeviceStateTable($PK : String!) {\n"
+    "  onUpdateDeviceStateTable(PK: $PK) {\n"
+    "    PK\n"
+    "    SK\n"
+    "    Data\n"
+    "    TimeStamp\n"
+    "  }\n"
+    "}"
+)
+
+
 @dataclass
 class WebSocketMessage(DataClassDictMixin):
     """Represents a protocol message sent over the AppSync GraphQL WebSocket."""
