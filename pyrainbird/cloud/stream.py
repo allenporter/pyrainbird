@@ -284,7 +284,13 @@ class AsyncRainbirdCloudStream:
                     )
                     # Reset force refresh on successful token retrieval
                     self._force_refresh_token = False
-                except Exception as token_err:
+                except (
+                    RainbirdAuthException,
+                    aiohttp.ClientError,
+                    TimeoutError,
+                    ConnectionError,
+                    OSError,
+                ) as token_err:
                     _LOGGER.error(
                         "Failed to retrieve authentication token: %s", token_err
                     )
@@ -311,7 +317,13 @@ class AsyncRainbirdCloudStream:
                     # 3. Read message loop
                     async for msg in ws:
                         if msg.type == aiohttp.WSMsgType.TEXT:
-                            data = msg.json()
+                            try:
+                                data = msg.json()
+                            except (ValueError, TypeError) as json_err:
+                                _LOGGER.warning(
+                                    "Received invalid JSON message: %s", json_err
+                                )
+                                continue
                             msg_type = data.get("type")
 
                             if msg_type == "connection_ack":
@@ -413,7 +425,12 @@ class AsyncRainbirdCloudStream:
                     await ws.close()
                 raise
 
-            except Exception as e:
+            except (
+                aiohttp.ClientError,
+                TimeoutError,
+                ConnectionError,
+                OSError,
+            ) as e:
                 _LOGGER.warning(
                     "WebSocket error encountered: %s. Retrying in %ss...", e, backoff
                 )
