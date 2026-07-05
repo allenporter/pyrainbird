@@ -110,6 +110,29 @@ def mock_ws_app() -> aiohttp.web.Application:
                         await ws.close()
                         break
 
+                    if app["behavior"] == "invalid_json":
+                        await ws.send_str("{invalid_json_here")
+                        await ws.close()
+                        break
+
+                    if app["behavior"] == "complete":
+                        await ws.send_json({"type": "complete"})
+                        await ws.close()
+                        break
+
+                    if app["behavior"] == "server_error":
+                        await ws.send_json(
+                            {
+                                "type": "error",
+                                "id": "sub_device_state",
+                                "payload": {
+                                    "errors": [{"message": "Generic server error"}]
+                                },
+                            }
+                        )
+                        await ws.close()
+                        break
+
                     # Send a keep-alive
                     await ws.send_json({"type": "ka"})
 
@@ -379,13 +402,12 @@ def test_parse_event_snapshot(json_path: str, snapshot: Any) -> None:
     assert event == snapshot
 
 
-def test_parse_event_types() -> None:
-    """Test that _parse_event correctly routes and parses different AppSync messages."""
+def test_parse_event_rssi() -> None:
+    """Test that _parse_event correctly parses RSSI status events."""
     stream = AsyncRainbirdCloudStream(
         MockTokenProvider(), 527302, "7b1ad1ef-91df-4e50-9004-269c139c681c", None
     )  # type: ignore
 
-    # 1. RSSI
     rssi_raw = {
         "payload": {
             "data": {
@@ -402,7 +424,13 @@ def test_parse_event_types() -> None:
     assert isinstance(ev, RssiStateEvent)
     assert ev.rssi == -82
 
-    # 2. RainSensorStateEvent (wet)
+
+def test_parse_event_rain_sensor_wet() -> None:
+    """Test that _parse_event parses wet RainSensorState events."""
+    stream = AsyncRainbirdCloudStream(
+        MockTokenProvider(), 527302, "7b1ad1ef-91df-4e50-9004-269c139c681c", None
+    )  # type: ignore
+
     sensor_wet_raw = {
         "payload": {
             "data": {
@@ -419,7 +447,13 @@ def test_parse_event_types() -> None:
     assert isinstance(ev, RainSensorStateEvent)
     assert ev.is_wet is True
 
-    # 3. RainSensorStateEvent (dry)
+
+def test_parse_event_rain_sensor_dry() -> None:
+    """Test that _parse_event parses dry RainSensorState events."""
+    stream = AsyncRainbirdCloudStream(
+        MockTokenProvider(), 527302, "7b1ad1ef-91df-4e50-9004-269c139c681c", None
+    )  # type: ignore
+
     sensor_dry_raw = {
         "payload": {
             "data": {
@@ -436,7 +470,13 @@ def test_parse_event_types() -> None:
     assert isinstance(ev, RainSensorStateEvent)
     assert ev.is_wet is False
 
-    # 4. StationStateEvent (watering)
+
+def test_parse_event_station_watering() -> None:
+    """Test that _parse_event parses active watering StationState events."""
+    stream = AsyncRainbirdCloudStream(
+        MockTokenProvider(), 527302, "7b1ad1ef-91df-4e50-9004-269c139c681c", None
+    )  # type: ignore
+
     station_on_raw = {
         "payload": {
             "data": {
@@ -453,11 +493,16 @@ def test_parse_event_types() -> None:
     assert isinstance(ev, StationStateEvent)
     assert ev.zone == 3
     assert ev.is_watering is True
-    # remaining_seconds should be adjusted by timestamp (1781393280 - 1781392680 = 600)
     assert ev.remaining_seconds == 600
     assert ev.program_number == 36
 
-    # 5. StationStateEvent (stopped)
+
+def test_parse_event_station_stopped() -> None:
+    """Test that _parse_event parses stopped/idle StationState events."""
+    stream = AsyncRainbirdCloudStream(
+        MockTokenProvider(), 527302, "7b1ad1ef-91df-4e50-9004-269c139c681c", None
+    )  # type: ignore
+
     station_off_raw = {
         "payload": {
             "data": {
@@ -477,7 +522,13 @@ def test_parse_event_types() -> None:
     assert ev.remaining_seconds == 0
     assert ev.program_number == 36
 
-    # 6. GenericCloudStreamEvent
+
+def test_parse_event_generic() -> None:
+    """Test that _parse_event parses other unknown database table records into GenericCloudStreamEvent."""
+    stream = AsyncRainbirdCloudStream(
+        MockTokenProvider(), 527302, "7b1ad1ef-91df-4e50-9004-269c139c681c", None
+    )  # type: ignore
+
     generic_raw = {
         "payload": {
             "data": {
@@ -494,3 +545,291 @@ def test_parse_event_types() -> None:
     assert isinstance(ev, GenericCloudStreamEvent)
     assert ev.event_key == "UnknownKey"
     assert ev.raw_data == '{"foo":"bar"}'
+
+
+def test_parse_event_invalid_payloads() -> None:
+    """Test that _parse_event safely returns None for invalid or incomplete payloads."""
+    stream = AsyncRainbirdCloudStream(
+        MockTokenProvider(), 527302, "7b1ad1ef-91df-4e50-9004-269c139c681c", None
+    )  # type: ignore
+
+    assert stream._parse_event("not_a_dict") is None
+    assert stream._parse_event({}) is None
+    assert stream._parse_event({"payload": {}}) is None
+
+    bad_record = {
+        "payload": {
+            "data": {
+                "onUpdateDeviceStateTable": {
+                    "PK": {},
+                    "SK": "Station1",
+                    "Data": "some_data",
+                }
+            }
+        }
+    }
+    assert stream._parse_event(bad_record) is None
+
+    rssi_no_data = {
+        "payload": {
+            "data": {
+                "onUpdateDeviceStateTable": {
+                    "PK": "uuid",
+                    "SK": "RSSI",
+                    "Data": None,
+                    "TimeStamp": 100,
+                }
+            }
+        }
+    }
+    assert stream._parse_event(rssi_no_data) is None
+
+    rssi_bad_data = {
+        "payload": {
+            "data": {
+                "onUpdateDeviceStateTable": {
+                    "PK": "uuid",
+                    "SK": "RSSI",
+                    "Data": "not_an_int",
+                    "TimeStamp": 100,
+                }
+            }
+        }
+    }
+    assert stream._parse_event(rssi_bad_data) is None
+
+    rain_no_data = {
+        "payload": {
+            "data": {
+                "onUpdateDeviceStateTable": {
+                    "PK": "uuid",
+                    "SK": "Event#RainSensorState",
+                    "Data": None,
+                    "TimeStamp": 100,
+                }
+            }
+        }
+    }
+    assert stream._parse_event(rain_no_data) is None
+
+    rain_bad_data = {
+        "payload": {
+            "data": {
+                "onUpdateDeviceStateTable": {
+                    "PK": "uuid",
+                    "SK": "Event#RainSensorState",
+                    "Data": "not_json{",
+                    "TimeStamp": 100,
+                }
+            }
+        }
+    }
+    assert stream._parse_event(rain_bad_data) is None
+
+    station_bad_suffix = {
+        "payload": {
+            "data": {
+                "onUpdateDeviceStateTable": {
+                    "PK": "uuid",
+                    "SK": "StationABC",
+                    "Data": '{"state": 1}',
+                    "TimeStamp": 100,
+                }
+            }
+        }
+    }
+    assert stream._parse_event(station_bad_suffix) is None
+
+    station_no_data = {
+        "payload": {
+            "data": {
+                "onUpdateDeviceStateTable": {
+                    "PK": "uuid",
+                    "SK": "Station1",
+                    "Data": None,
+                    "TimeStamp": 100,
+                }
+            }
+        }
+    }
+    assert stream._parse_event(station_no_data) is None
+
+    station_bad_parse = {
+        "payload": {
+            "data": {
+                "onUpdateDeviceStateTable": {
+                    "PK": "uuid",
+                    "SK": "Station1",
+                    "Data": "{bad_json",
+                    "TimeStamp": 100,
+                }
+            }
+        }
+    }
+    assert stream._parse_event(station_bad_parse) is None
+
+
+@pytest.mark.asyncio
+async def test_stream_token_retrieval_failure() -> None:
+    """Test that stream.listen() raises RainbirdAuthException when token acquisition fails."""
+    token_provider = mock.MagicMock(spec=RainbirdTokenProvider)
+    token_provider.async_get_token = mock.AsyncMock(
+        side_effect=RainbirdAuthException("Token fetch failed")
+    )
+
+    stream = AsyncRainbirdCloudStream(
+        token_provider, 527302, "7b1ad1ef-91df-4e50-9004-269c139c681c", mock.MagicMock()
+    )  # type: ignore
+
+    with pytest.raises(RainbirdAuthException, match="Token acquisition failed"):
+        async for _ in stream.listen():
+            pass
+
+
+@pytest.mark.asyncio
+async def test_stream_websocket_json_parse_error(
+    mock_ws_app: aiohttp.web.Application, aiohttp_client: Generator
+) -> None:
+    """Test stream does not crash and continues reading when it receives non-JSON WebSocket messages."""
+    mock_ws_app["behavior"] = "invalid_json"
+    client: TestClient = await aiohttp_client(mock_ws_app)
+    token_provider = MockTokenProvider("test_token")
+
+    with (
+        mock.patch(
+            "pyrainbird.cloud.stream.WS_ENDPOINT",
+            f"ws://{client.host}:{client.port}/graphql",
+        ),
+        mock.patch("asyncio.sleep", return_value=None),
+    ):
+        stream = AsyncRainbirdCloudStream(
+            token_provider,
+            527302,
+            "7b1ad1ef-91df-4e50-9004-269c139c681c",
+            client.session,
+        )  # type: ignore
+
+        events = []
+
+        async def consume():
+            async for event in stream.listen():
+                events.append(event)
+
+        await asyncio.wait_for(consume(), timeout=0.5)
+        assert len(events) == 0
+
+
+@pytest.mark.asyncio
+async def test_stream_websocket_close_frames(
+    mock_ws_app: aiohttp.web.Application, aiohttp_client: Generator
+) -> None:
+    """Test that the stream exits reading loop cleanly when receiving socket close messages."""
+    mock_ws_app["behavior"] = "complete"
+    client: TestClient = await aiohttp_client(mock_ws_app)
+    token_provider = MockTokenProvider("test_token")
+
+    with (
+        mock.patch(
+            "pyrainbird.cloud.stream.WS_ENDPOINT",
+            f"ws://{client.host}:{client.port}/graphql",
+        ),
+        mock.patch("asyncio.sleep", return_value=None),
+    ):
+        stream = AsyncRainbirdCloudStream(
+            token_provider,
+            527302,
+            "7b1ad1ef-91df-4e50-9004-269c139c681c",
+            client.session,
+        )  # type: ignore
+
+        events = []
+
+        async def consume():
+            async for event in stream.listen():
+                events.append(event)
+
+        await asyncio.wait_for(consume(), timeout=0.5)
+        assert len(events) == 0
+
+
+@pytest.mark.asyncio
+async def test_stream_websocket_cancelled() -> None:
+    """Test that stream listener cleans up and closes websocket when task is cancelled."""
+    token_provider = MockTokenProvider("test_token")
+    mock_ws = mock.AsyncMock()
+    mock_ws.closed = False
+    mock_ws.close = mock.AsyncMock()
+
+    mock_client = mock.MagicMock(spec=aiohttp.ClientSession)
+    mock_client.ws_connect = mock.MagicMock()
+    mock_cm = mock.AsyncMock()
+    mock_cm.__aenter__ = mock.AsyncMock(return_value=mock_ws)
+    mock_cm.__aexit__ = mock.AsyncMock(return_value=None)
+    mock_client.ws_connect.return_value = mock_cm
+
+    stream = AsyncRainbirdCloudStream(
+        token_provider, 527302, "7b1ad1ef-91df-4e50-9004-269c139c681c", mock_client
+    )  # type: ignore
+
+    async def mock_iter(*args: Any, **kwargs: Any) -> Any:
+        raise asyncio.CancelledError()
+        yield
+
+    mock_ws.__aiter__ = mock_iter
+
+    async for _ in stream.listen():
+        pass
+
+    mock_ws.close.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_stream_auth_error_refresh_forced(
+    mock_ws_app: aiohttp.web.Application, aiohttp_client: Generator
+) -> None:
+    """Test that stream forces token refresh when receiving authentication errors from AppSync."""
+    mock_ws_app["behavior"] = "server_error"
+    client: TestClient = await aiohttp_client(mock_ws_app)
+    token_provider = MockTokenProvider("test_token")
+
+    with mock.patch(
+        "pyrainbird.cloud.stream.WS_ENDPOINT",
+        f"ws://{client.host}:{client.port}/graphql",
+    ):
+        stream = AsyncRainbirdCloudStream(
+            token_provider,
+            527302,
+            "7b1ad1ef-91df-4e50-9004-269c139c681c",
+            client.session,
+        )  # type: ignore
+
+        with pytest.raises(
+            RainbirdAuthException,
+            match="WebSocket protocol error: Generic server error",
+        ):
+            async for _ in stream.listen():
+                pass
+
+
+@pytest.mark.asyncio
+async def test_stream_connection_error_retry_backoff() -> None:
+    """Test that stream retries and applies backoff when receiving ClientError, TimeoutError, or OSError."""
+    token_provider = MockTokenProvider("test_token")
+    mock_client = mock.MagicMock(spec=aiohttp.ClientSession)
+
+    err = aiohttp.ClientResponseError(
+        request_info=mock.Mock(), history=(), status=401, message="Unauthorized"
+    )
+    mock_client.ws_connect = mock.MagicMock(side_effect=[err, asyncio.CancelledError()])
+
+    stream = AsyncRainbirdCloudStream(
+        token_provider, 527302, "7b1ad1ef-91df-4e50-9004-269c139c681c", mock_client
+    )  # type: ignore
+
+    with mock.patch("asyncio.sleep", return_value=None) as mock_sleep:
+        async for _ in stream.listen():
+            pass
+
+    assert token_provider.calls == 2
+    assert "refreshed_token" in token_provider.token
+    mock_sleep.assert_called_once()

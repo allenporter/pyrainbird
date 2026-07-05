@@ -92,6 +92,9 @@ def mock_cloud_app() -> aiohttp.web.Application:
         if not app["token_valid"] or auth_header != "Bearer valid_access_token_abc123":
             return aiohttp.web.json_response({"error": "unauthorized"}, status=401)
 
+        if "satellites_payload" in app:
+            return aiohttp.web.json_response(app["satellites_payload"])
+
         satellites = [
             {
                 "id": 527302,
@@ -529,3 +532,428 @@ async def test_caching_token_provider_waf_retry_limit_exceeded(
             ):
                 await provider.async_get_token()
             assert mock_sleep.call_count == 3
+
+
+async def test_login_missing_credentials(aiohttp_client: TestClient) -> None:
+    """Test calling login without providing username and password raises RainbirdAuthException."""
+    client = AsyncRainbirdCloudClient(aiohttp_client, username=None, password=None)
+    with pytest.raises(
+        RainbirdAuthException, match="Username and password are required to log in."
+    ):
+        await client.login()
+
+
+async def test_get_csrf_token_non_200_error(aiohttp_client: TestClient) -> None:
+    """Test _get_csrf_token when requesting CSRF token returns a non-200 status code."""
+    mock_app = aiohttp.web.Application()
+
+    async def get_login(request: aiohttp.web.Request) -> aiohttp.web.Response:
+        return aiohttp.web.Response(status=500)
+
+    mock_app.router.add_get("/Account/Login", get_login)
+
+    client_session = await aiohttp_client(mock_app)
+    mock_auth_base = ""
+    with mock.patch("pyrainbird.cloud.client.AUTH_BASE", new=mock_auth_base):
+        client = AsyncRainbirdCloudClient(
+            client_session, "user@example.com", "correct_password"
+        )
+        with pytest.raises(
+            RainbirdApiException, match="Failed to fetch login page, HTTP status: 500"
+        ):
+            await client._get_csrf_token("http://return.url", {})
+
+
+async def test_get_csrf_token_connection_error(aiohttp_client: TestClient) -> None:
+    """Test _get_csrf_token when requesting CSRF token triggers a connection error."""
+    client_session = await aiohttp_client(aiohttp.web.Application())
+    client = AsyncRainbirdCloudClient(
+        client_session, "user@example.com", "correct_password"
+    )
+    with mock.patch.object(
+        client_session, "get", side_effect=aiohttp.ClientError("connection refused")
+    ):
+        with pytest.raises(
+            RainbirdApiException,
+            match="Connection error fetching login page: connection refused",
+        ):
+            await client._get_csrf_token("http://return.url", {})
+
+
+def test_parse_login_validation_error_captcha_challenge() -> None:
+    """Test _parse_login_validation_error parses HTML containing a captcha challenge."""
+    from pyrainbird.cloud.client import _parse_login_validation_error
+
+    html = "<html><body>Please solve this captcha to continue</body></html>"
+    assert _parse_login_validation_error(html) == "WAF_CHALLENGE"
+
+
+def test_parse_login_validation_error_waf_block() -> None:
+    """Test _parse_login_validation_error parses HTML containing an AWS WAF block page."""
+    from pyrainbird.cloud.client import _parse_login_validation_error
+
+    html = "<html><body>Request blocked by AWS WAF ruleset</body></html>"
+    assert _parse_login_validation_error(html) == "WAF_CHALLENGE"
+
+
+def test_parse_login_validation_error_validation_summary() -> None:
+    """Test _parse_login_validation_error parses HTML containing a validation-summary-errors block."""
+    from pyrainbird.cloud.client import _parse_login_validation_error
+
+    html = """
+    <div class="validation-summary-errors">
+      <ul>
+        <li>Username not found</li>
+      </ul>
+    </div>
+    """
+    assert _parse_login_validation_error(html) == "Username not found"
+
+
+def test_parse_login_validation_error_field_level() -> None:
+    """Test _parse_login_validation_error parses HTML containing field validation errors."""
+    from pyrainbird.cloud.client import _parse_login_validation_error
+
+    html = '<span class="field-validation-error">Invalid password format</span>'
+    assert _parse_login_validation_error(html) == "Invalid password format"
+
+
+def test_parse_login_validation_error_text_danger() -> None:
+    """Test _parse_login_validation_error parses HTML containing text-danger errors."""
+    from pyrainbird.cloud.client import _parse_login_validation_error
+
+    html = '<div class="text-danger">Internal authentication system offline</div>'
+    assert (
+        _parse_login_validation_error(html) == "Internal authentication system offline"
+    )
+
+
+def test_parse_login_validation_error_none() -> None:
+    """Test _parse_login_validation_error returns None when HTML does not contain any errors."""
+    from pyrainbird.cloud.client import _parse_login_validation_error
+
+    html = "<html><body>Enter username/password to sign in</body></html>"
+    assert _parse_login_validation_error(html) is None
+
+
+async def test_submit_credentials_waf_captcha_error(aiohttp_client: TestClient) -> None:
+    """Test credentials submission returning a 200 containing a WAF captcha challenge raises RainbirdApiException."""
+    mock_app = aiohttp.web.Application()
+
+    async def post_login(request: aiohttp.web.Request) -> aiohttp.web.Response:
+        return aiohttp.web.Response(
+            text="Solve the captcha", content_type="text/html", status=200
+        )
+
+    mock_app.router.add_post("/Account/Login", post_login)
+
+    client_session = await aiohttp_client(mock_app)
+    mock_auth_base = ""
+    with mock.patch("pyrainbird.cloud.client.AUTH_BASE", new=mock_auth_base):
+        client = AsyncRainbirdCloudClient(
+            client_session, "user@example.com", "correct_password"
+        )
+        with pytest.raises(
+            RainbirdApiException, match="AWS WAF challenge or captcha page detected"
+        ):
+            await client._submit_credentials("http://return.url", "csrf_token_abc", {})
+
+
+async def test_submit_credentials_validation_error(aiohttp_client: TestClient) -> None:
+    """Test credentials submission returning a 200 containing a field error raises RainbirdAuthException."""
+    mock_app = aiohttp.web.Application()
+
+    async def post_login(request: aiohttp.web.Request) -> aiohttp.web.Response:
+        return aiohttp.web.Response(
+            text='<span class="text-danger">Account is locked</span>',
+            content_type="text/html",
+            status=200,
+        )
+
+    mock_app.router.add_post("/Account/Login", post_login)
+
+    client_session = await aiohttp_client(mock_app)
+    mock_auth_base = ""
+    with mock.patch("pyrainbird.cloud.client.AUTH_BASE", new=mock_auth_base):
+        client = AsyncRainbirdCloudClient(
+            client_session, "user@example.com", "correct_password"
+        )
+        with pytest.raises(
+            RainbirdAuthException,
+            match="Invalid credentials or authentication failure: Account is locked",
+        ):
+            await client._submit_credentials("http://return.url", "csrf_token_abc", {})
+
+
+async def test_submit_credentials_unknown_validation_error(
+    aiohttp_client: TestClient,
+) -> None:
+    """Test credentials submission returning a 200 containing no parseable error raises general RainbirdAuthException."""
+    mock_app = aiohttp.web.Application()
+
+    async def post_login(request: aiohttp.web.Request) -> aiohttp.web.Response:
+        return aiohttp.web.Response(
+            text="<html><body>Welcome</body></html>",
+            content_type="text/html",
+            status=200,
+        )
+
+    mock_app.router.add_post("/Account/Login", post_login)
+
+    client_session = await aiohttp_client(mock_app)
+    mock_auth_base = ""
+    with mock.patch("pyrainbird.cloud.client.AUTH_BASE", new=mock_auth_base):
+        client = AsyncRainbirdCloudClient(
+            client_session, "user@example.com", "correct_password"
+        )
+        with pytest.raises(
+            RainbirdAuthException,
+            match="Invalid credentials or authentication failure.",
+        ):
+            await client._submit_credentials("http://return.url", "csrf_token_abc", {})
+
+
+async def test_submit_credentials_non_redirect_error(
+    aiohttp_client: TestClient,
+) -> None:
+    """Test credentials submission returning an unexpected non-redirect status code raises RainbirdAuthException."""
+    mock_app = aiohttp.web.Application()
+
+    async def post_login(request: aiohttp.web.Request) -> aiohttp.web.Response:
+        return aiohttp.web.Response(status=500)
+
+    mock_app.router.add_post("/Account/Login", post_login)
+
+    client_session = await aiohttp_client(mock_app)
+    mock_auth_base = ""
+    with mock.patch("pyrainbird.cloud.client.AUTH_BASE", new=mock_auth_base):
+        client = AsyncRainbirdCloudClient(
+            client_session, "user@example.com", "correct_password"
+        )
+        with pytest.raises(
+            RainbirdAuthException,
+            match="Unexpected response status submitting credentials: 500",
+        ):
+            await client._submit_credentials("http://return.url", "csrf_token_abc", {})
+
+
+async def test_submit_credentials_missing_location_header_error(
+    aiohttp_client: TestClient,
+) -> None:
+    """Test credentials submission returning a redirect status but no Location header raises RainbirdAuthException."""
+    mock_app = aiohttp.web.Application()
+
+    async def post_login(request: aiohttp.web.Request) -> aiohttp.web.Response:
+        return aiohttp.web.Response(status=302)
+
+    mock_app.router.add_post("/Account/Login", post_login)
+
+    client_session = await aiohttp_client(mock_app)
+    mock_auth_base = ""
+    with mock.patch("pyrainbird.cloud.client.AUTH_BASE", new=mock_auth_base):
+        client = AsyncRainbirdCloudClient(
+            client_session, "user@example.com", "correct_password"
+        )
+        with pytest.raises(
+            RainbirdAuthException,
+            match="No redirect location returned after credentials submission.",
+        ):
+            await client._submit_credentials("http://return.url", "csrf_token_abc", {})
+
+
+async def test_submit_credentials_connection_error(aiohttp_client: TestClient) -> None:
+    """Test credentials submission triggering a connection exception raises RainbirdApiException."""
+    client_session = await aiohttp_client(aiohttp.web.Application())
+    client = AsyncRainbirdCloudClient(
+        client_session, "user@example.com", "correct_password"
+    )
+    with mock.patch.object(
+        client_session, "post", side_effect=aiohttp.ClientError("network failure")
+    ):
+        with pytest.raises(
+            RainbirdApiException,
+            match="Connection error submitting credentials: network failure",
+        ):
+            await client._submit_credentials("http://return.url", "csrf_token_abc", {})
+
+
+async def test_follow_redirects_max_limit_error(aiohttp_client: TestClient) -> None:
+    """Test following redirects raises RainbirdAuthException when maximum redirect limit is hit."""
+    mock_app = aiohttp.web.Application()
+
+    async def get_redirect(request: aiohttp.web.Request) -> aiohttp.web.Response:
+        return aiohttp.web.Response(status=302, headers={"Location": "/step1"})
+
+    mock_app.router.add_get("/step1", get_redirect)
+
+    client_session = await aiohttp_client(mock_app)
+    mock_auth_base = ""
+    with mock.patch("pyrainbird.cloud.client.AUTH_BASE", new=mock_auth_base):
+        client = AsyncRainbirdCloudClient(
+            client_session, "user@example.com", "correct_password"
+        )
+        with pytest.raises(
+            RainbirdAuthException, match="Maximum redirect limit reached during login."
+        ):
+            await client._follow_redirects("/step1", {})
+
+
+async def test_follow_redirects_absolute_url_success(
+    aiohttp_client: TestClient,
+) -> None:
+    """Test following redirect chains with absolute URLs in Location headers."""
+    mock_app = aiohttp.web.Application()
+
+    async def get_redirect(request: aiohttp.web.Request) -> aiohttp.web.Response:
+        return aiohttp.web.Response(
+            status=302,
+            headers={
+                "Location": "https://iq4.rainbird.com/auth.html#access_token=token123"
+            },
+        )
+
+    mock_app.router.add_get("/step1", get_redirect)
+
+    client_session = await aiohttp_client(mock_app)
+    mock_auth_base = ""
+    with mock.patch("pyrainbird.cloud.client.AUTH_BASE", new=mock_auth_base):
+        client = AsyncRainbirdCloudClient(
+            client_session, "user@example.com", "correct_password"
+        )
+        token = await client._follow_redirects("/step1", {})
+        assert token == "token123"
+
+
+async def test_follow_redirects_missing_token_error(aiohttp_client: TestClient) -> None:
+    """Test redirect follow flow raises RainbirdAuthException if redirect URI contains no access_token."""
+    mock_app = aiohttp.web.Application()
+
+    async def get_redirect(request: aiohttp.web.Request) -> aiohttp.web.Response:
+        return aiohttp.web.Response(
+            status=302,
+            headers={
+                "Location": "https://iq4.rainbird.com/auth.html#code=no_token_here"
+            },
+        )
+
+    mock_app.router.add_get("/step1", get_redirect)
+
+    client_session = await aiohttp_client(mock_app)
+    mock_auth_base = ""
+    with mock.patch("pyrainbird.cloud.client.AUTH_BASE", new=mock_auth_base):
+        client = AsyncRainbirdCloudClient(
+            client_session, "user@example.com", "correct_password"
+        )
+        with pytest.raises(
+            RainbirdAuthException,
+            match="Reached redirect URI but could not find access_token in fragment.",
+        ):
+            await client._follow_redirects("/step1", {})
+
+
+async def test_follow_redirects_premature_status_error(
+    aiohttp_client: TestClient,
+) -> None:
+    """Test redirect follow flow raises RainbirdAuthException when redirection status stops at non-redirect code."""
+    mock_app = aiohttp.web.Application()
+
+    async def get_redirect(request: aiohttp.web.Request) -> aiohttp.web.Response:
+        return aiohttp.web.Response(status=200, headers={"Location": "/step2"})
+
+    mock_app.router.add_get("/step1", get_redirect)
+
+    client_session = await aiohttp_client(mock_app)
+    mock_auth_base = ""
+    with mock.patch("pyrainbird.cloud.client.AUTH_BASE", new=mock_auth_base):
+        client = AsyncRainbirdCloudClient(
+            client_session, "user@example.com", "correct_password"
+        )
+        with pytest.raises(
+            RainbirdAuthException,
+            match="Redirection stopped prematurely at status 200.",
+        ):
+            await client._follow_redirects("/step1", {})
+
+
+async def test_follow_redirects_connection_error(aiohttp_client: TestClient) -> None:
+    """Test redirect follow flow raises RainbirdApiException when network exceptions occur."""
+    client_session = await aiohttp_client(aiohttp.web.Application())
+    client = AsyncRainbirdCloudClient(
+        client_session, "user@example.com", "correct_password"
+    )
+    with mock.patch.object(
+        client_session, "get", side_effect=aiohttp.ClientError("ssl protocol error")
+    ):
+        with pytest.raises(
+            RainbirdApiException,
+            match="Connection error following login redirect: ssl protocol error",
+        ):
+            await client._follow_redirects("/step1", {})
+
+
+async def test_get_satellites_dict_instead_of_list_error(
+    mock_cloud_app: aiohttp.web.Application,
+    aiohttp_client: TestClient,
+) -> None:
+    """Test get_satellites raises RainbirdApiException when endpoint returns a dictionary instead of a list."""
+    mock_cloud_app["satellites_payload"] = {"not": "a_list"}
+    client_session = await aiohttp_client(mock_cloud_app)
+    mock_auth_base = "/coreidentityserver"
+    mock_api_base = "/coreapi/api"
+
+    with (
+        mock.patch("pyrainbird.cloud.client.AUTH_BASE", new=mock_auth_base),
+        mock.patch("pyrainbird.cloud.client.API_BASE", new=mock_api_base),
+    ):
+        client = AsyncRainbirdCloudClient(
+            client_session, "user@example.com", "correct_password"
+        )
+        await client.login()
+        with pytest.raises(
+            RainbirdApiException, match="Expected satellite list response to be a list."
+        ):
+            await client.get_satellites()
+
+
+async def test_get_satellites_parsing_error(
+    mock_cloud_app: aiohttp.web.Application,
+    aiohttp_client: TestClient,
+) -> None:
+    """Test get_satellites raises RainbirdApiException when record model conversion fails."""
+    mock_cloud_app["satellites_payload"] = [
+        {"id": "invalid_type_str", "name": "Test Controller"}
+    ]
+    client_session = await aiohttp_client(mock_cloud_app)
+    mock_auth_base = "/coreidentityserver"
+    mock_api_base = "/coreapi/api"
+
+    with (
+        mock.patch("pyrainbird.cloud.client.AUTH_BASE", new=mock_auth_base),
+        mock.patch("pyrainbird.cloud.client.API_BASE", new=mock_api_base),
+    ):
+        client = AsyncRainbirdCloudClient(
+            client_session, "user@example.com", "correct_password"
+        )
+        await client.login()
+        with pytest.raises(RainbirdApiException, match="Error parsing satellite data"):
+            await client.get_satellites()
+
+
+async def test_token_provider_getter_setter(aiohttp_client: TestClient) -> None:
+    """Test the token_provider getter and setter methods."""
+    client = AsyncRainbirdCloudClient(
+        aiohttp_client, "user@example.com", "correct_password"
+    )
+    assert client.token_provider is None
+
+    from pyrainbird.cloud.client import RainbirdCloudTokenProvider
+
+    provider = RainbirdCloudTokenProvider(client)
+    client.token_provider = provider
+    assert client.token_provider is provider
+
+    with pytest.raises(
+        RainbirdAuthException, match="Could not retrieve a valid Bearer token."
+    ):
+        with mock.patch.object(client, "login", return_value=None):
+            await provider.async_get_token()
