@@ -353,7 +353,7 @@ async def test_stream_sub_error_raise(
                 pass
 
 
-TEST_DATA_DIR = pathlib.Path(__file__).parent / "cloud" / "testdata"
+TEST_DATA_DIR = pathlib.Path(__file__).parent / "testdata"
 JSON_FILES = sorted(glob.glob(str(TEST_DATA_DIR / "*.json")))
 JSON_IDS = [pathlib.Path(f).stem for f in JSON_FILES]
 
