@@ -100,8 +100,12 @@ class CachingTokenProvider(async_client.RainbirdTokenProvider):
 
 def create_cloud_client(session: aiohttp.ClientSession) -> AsyncRainbirdCloudClient:
     """Create AsyncRainbirdCloudClient from environment variables."""
-    username = os.environ.get("RAINBIRD_CLOUD_USERNAME")
-    password = os.environ.get("RAINBIRD_CLOUD_PASSWORD")
+    username = os.environ.get("RAINBIRD_CLOUD_USERNAME") or os.environ.get(
+        "RAINBIRD_USERNAME"
+    )
+    password = os.environ.get("RAINBIRD_CLOUD_PASSWORD") or os.environ.get(
+        "RAINBIRD_PASSWORD"
+    )
     return AsyncRainbirdCloudClient(session, username=username, password=password)
 
 
@@ -423,8 +427,12 @@ async def main():
         satellite_id_str = os.environ.get("RAINBIRD_SATELLITE_ID")
         if satellite_id_str:
             satellite_id = int(satellite_id_str)
-            username = os.environ.get("RAINBIRD_USERNAME")
-            password = os.environ.get("RAINBIRD_PASSWORD")
+            username = os.environ.get("RAINBIRD_CLOUD_USERNAME") or os.environ.get(
+                "RAINBIRD_USERNAME"
+            )
+            password = os.environ.get("RAINBIRD_CLOUD_PASSWORD") or os.environ.get(
+                "RAINBIRD_PASSWORD"
+            )
 
             client = AsyncRainbirdCloudClient(session, username, password)
             token_provider = CachingTokenProvider(client, args.config_file)
