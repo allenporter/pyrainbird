@@ -36,9 +36,25 @@ line tool for querying the device.
 
 # Compatibility
 
-This library has been tested with the following devices:
+This library interacts with Rain Bird controllers using either **LNK1** (legacy) or **LNK2** (modern) Wi-Fi modules.
 
-  - ESP-TM2
+### LNK1 vs. LNK2 Modules
+- **LNK1 Modules:** Communicate over plaintext HTTP (port 80) and do not enforce local payload encryption.
+- **LNK2 Modules:** Communicate over HTTPS (port 443) and enforce local symmetric AES-128 payload encryption using the controller's password.
+
+### Local Connection Resiliency
+Modern LNK2 modules (running firmware v4.x+) synchronize their state with the Rain Bird cloud shadow periodically (typically every 5 minutes). Because the ESP32 chip has highly constrained memory and runs a single serial Manchester line mutex, concurrent local polling during this cloud sync window can overload the hardware or cause watchdog crashes.
+
+To smooth this over, this library implements:
+- **Inter-Request Pacing:** A default 100ms pacing delay (`LOCAL_MIN_DELAY`) between consecutive local requests to prevent stack exhaustion.
+- **Robust Retry & Backoff:** A 5-attempt exponential backoff retry wrapper to handle transient `503 Service Unavailable`, `Controller Busy` (`-32002`), and connection timeout states.
+
+### Supported Controllers
+We attempt to support all standard controllers compatible with LNK1/LNK2 modules. However, because we do not own every controller hardware configuration, compatibility is not fully guaranteed for all models. Tested/supported models include:
+
+- **ESP-TM2** (Fully tested & supported)
+- **ESP-ME3 / ESP-ME** (Attempted support)
+- **ESP-RZXe / ST8** (Attempted support)
 
 You are welcome to file an issue for improved compatibility with your device especially if you
 include debug logs that capture the API responses form the device.
