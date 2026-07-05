@@ -1,6 +1,7 @@
 """Cloud client for rainbird IQ4 service."""
 
 import asyncio
+from collections.abc import Callable, Awaitable
 import datetime
 import json
 import logging
@@ -26,7 +27,6 @@ API_BASE = "https://iq4server.rainbird.com/coreapi/api"
 CLIENT_ID = "C5A6F324-3CD3-4B22-9F78-B4835BA55D25"
 REDIRECT_URI = "https://iq4.rainbird.com/auth.html"
 DEFAULT_USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-
 
 WAF_RETRY_INITIAL_BACKOFF = 10.0
 WAF_RETRY_BACKOFF_INCREMENT = 10.0
@@ -68,57 +68,41 @@ def _parse_login_validation_error(html: str) -> str | None:
     return None
 
 
-class AsyncRainbirdCloudClient:
-    """Rainbird cloud API client handling OIDC authentication and REST endpoints."""
+class RainbirdCloudTokenProvider(RainbirdTokenProvider):
+    """Token provider wrapping OIDC credentials authentication."""
 
     def __init__(
         self,
         session: aiohttp.ClientSession,
-        username: str | None = None,
-        password: str | None = None,
+        username: str,
+        password: str,
+        *,
         token: str | None = None,
-        token_provider: RainbirdTokenProvider | None = None,
+        token_update_callback: Callable[[str], Awaitable[None]] | None = None,
     ) -> None:
-        """Initialize AsyncRainbirdCloudClient."""
+        """Initialize RainbirdCloudTokenProvider."""
         self._session = session
         self._username = username
         self._password = password
         self._token = token
-        self._token_provider = token_provider
-        self._headers = {
-            "Accept": "application/json",
-            "User-Agent": DEFAULT_USER_AGENT,
-        }
-        if token:
-            self._headers["Authorization"] = f"Bearer {token}"
+        self._token_update_callback = token_update_callback
 
     @property
     def token(self) -> str | None:
-        """Return the cached access token."""
+        """Return the active bearer token."""
         return self._token
 
-    @property
-    def token_provider(self) -> RainbirdTokenProvider | None:
-        """Return the token provider."""
-        return self._token_provider
-
-    @token_provider.setter
-    def token_provider(self, provider: RainbirdTokenProvider | None) -> None:
-        """Set the token provider."""
-        self._token_provider = provider
+    async def async_get_token(self, force_refresh: bool = False) -> str:
+        """Return a valid Bearer token, refreshing if necessary or forced."""
+        if force_refresh or not self._token:
+            token = await self.login()
+            self._token = token
+            if self._token_update_callback:
+                await self._token_update_callback(token)
+        return self._token
 
     async def login(self, max_retries: int = 3) -> str:
-        """Authenticate using the OIDC Implicit Grant flow against ASP.NET Core Identity.
-
-        This emulates a standard browser sign-in process required by Microsoft identity
-        backends when direct REST credentials endpoints are unavailable. It performs the
-        following steps:
-        1. Initiates the OIDC authorize flow request.
-        2. Retrieves the standard ASP.NET Antiforgery CSRF verification token
-           (`__RequestVerificationToken`) from the HTML login form response.
-        3. Form-posts the username, password, return URL, and verification token.
-        4. Intercepts the final redirection fragment containing the JWT access token.
-        """
+        """Authenticate using the OIDC Implicit Grant flow against ASP.NET Core Identity."""
         if not self._username or not self._password:
             raise RainbirdAuthException("Username and password are required to log in.")
 
@@ -181,8 +165,7 @@ class AsyncRainbirdCloudClient:
                     raise
 
         self._token = access_token_value
-        self._headers["Authorization"] = f"Bearer {self._token}"
-        return self._token
+        return access_token_value
 
     async def _get_csrf_token(self, return_url: str, headers: dict[str, str]) -> str:
         """Fetch the login page and extract the CSRF token."""
@@ -318,20 +301,97 @@ class AsyncRainbirdCloudClient:
             "Could not retrieve access token from redirect chain."
         )
 
-    async def _async_get_token(self, force_refresh: bool = False) -> str:
-        """Resolve the active bearer token, either via provider or stored token."""
-        provider = self._token_provider or RainbirdCloudTokenProvider(self)
-        token = await provider.async_get_token(force_refresh=force_refresh)
+
+class CachingTokenProvider(RainbirdTokenProvider):
+    """Token provider that persists the Bearer token in a JSON file cache."""
+
+    def __init__(
+        self,
+        config_path: str,
+        auth_provider: RainbirdTokenProvider,
+    ) -> None:
+        """Initialize CachingTokenProvider."""
+        self._config_path = config_path
+        self._auth_provider = auth_provider
+        self._token: str | None = None
+
+    @property
+    def token(self) -> str | None:
+        """Return the active cached token."""
+        return self._token
+
+    def _save_token_to_cache(self, token: str) -> None:
+        """Save the token to the JSON config file."""
+        try:
+            os.makedirs(os.path.dirname(self._config_path), exist_ok=True)
+            with open(self._config_path, "w", encoding="utf-8") as f:
+                json.dump({"token": token}, f, indent=2)
+            os.chmod(self._config_path, 0o600)
+        except Exception as err:
+            _LOGGER.warning("Failed to save token to cache: %s", err)
+
+    async def async_get_token(self, force_refresh: bool = False) -> str:
+        """Return a valid token, reading from environment, cache file, or auth provider."""
+        env_token = os.environ.get("RAINBIRD_CLOUD_TOKEN")
+        if env_token:
+            return env_token
+
+        if not force_refresh and self._token:
+            return self._token
+
+        if not force_refresh and os.path.exists(self._config_path):
+            try:
+                with open(self._config_path, "r", encoding="utf-8") as f:
+                    config = json.load(f)
+                    token = config.get("token")
+                if token:
+                    self._token = token
+                    return token
+            except Exception as err:
+                _LOGGER.warning("Failed to read token from cache: %s", err)
+
+        token = await self._auth_provider.async_get_token(force_refresh=force_refresh)
         self._token = token
-        self._headers["Authorization"] = f"Bearer {token}"
+        self._save_token_to_cache(token)
         return token
+
+
+class AsyncRainbirdCloudClient:
+    """Rainbird cloud API client handling REST endpoints."""
+
+    def __init__(
+        self,
+        session: aiohttp.ClientSession,
+        token_provider: RainbirdTokenProvider,
+    ) -> None:
+        """Initialize AsyncRainbirdCloudClient."""
+        self._session = session
+        self._token_provider = token_provider
+        self._headers = {
+            "Accept": "application/json",
+            "User-Agent": DEFAULT_USER_AGENT,
+        }
+
+    @property
+    def token_provider(self) -> RainbirdTokenProvider:
+        """Return the token provider."""
+        return self._token_provider
+
+    @token_provider.setter
+    def token_provider(self, provider: RainbirdTokenProvider) -> None:
+        """Set the token provider."""
+        self._token_provider = provider
 
     async def request(self, method: str, path: str, **kwargs: Any) -> Any:
         """Perform a REST API request with automatic 401 token refresh retries."""
         url = f"{API_BASE}/{path}"
-        await self._async_get_token()
+        token = await self._token_provider.async_get_token()
 
-        headers = {**self._headers, **kwargs.pop("headers", {})}
+        headers = {
+            **self._headers,
+            "Authorization": f"Bearer {token}",
+            **kwargs.pop("headers", {}),
+        }
 
         try:
             async with self._session.request(
@@ -343,8 +403,10 @@ class AsyncRainbirdCloudClient:
                         method,
                         path,
                     )
-                    await self._async_get_token(force_refresh=True)
-                    headers["Authorization"] = f"Bearer {self._token}"
+                    token = await self._token_provider.async_get_token(
+                        force_refresh=True
+                    )
+                    headers["Authorization"] = f"Bearer {token}"
                     async with self._session.request(
                         method, url, headers=headers, **kwargs
                     ) as retry_resp:
@@ -466,88 +528,15 @@ class AsyncRainbirdCloudClient:
         return data
 
 
-class RainbirdCloudTokenProvider(RainbirdTokenProvider):
-    """Token provider wrapping AsyncRainbirdCloudClient to manage Bearer tokens."""
-
-    def __init__(self, client: AsyncRainbirdCloudClient) -> None:
-        """Initialize RainbirdCloudTokenProvider."""
-        self._client = client
-
-    async def async_get_token(self, force_refresh: bool = False) -> str:
-        """Return a valid Bearer token, refreshing if necessary or forced."""
-        if force_refresh or not self._client.token:
-            await self._client.login()
-        token = self._client.token
-        if not token:
-            raise RainbirdAuthException("Could not retrieve a valid Bearer token.")
-        return token
-
-
-class CachingTokenProvider(RainbirdTokenProvider):
-    """Token provider that persists the Bearer token in a JSON file."""
-
-    def __init__(
-        self,
-        client: AsyncRainbirdCloudClient,
-        config_path: str,
-    ) -> None:
-        """Initialize CachingTokenProvider."""
-        self._client = client
-        self._config_path = config_path
-        self._client.token_provider = self
-
-    def _save_token_to_cache(self, token: str) -> None:
-        """Save the token to the JSON config file."""
-        try:
-            os.makedirs(os.path.dirname(self._config_path), exist_ok=True)
-            with open(self._config_path, "w", encoding="utf-8") as f:
-                json.dump({"token": token}, f, indent=2)
-            os.chmod(self._config_path, 0o600)
-        except Exception as err:
-            _LOGGER.warning("Failed to save token to cache: %s", err)
-
-    async def async_get_token(self, force_refresh: bool = False) -> str:
-        """Return a valid token, reading from environment, cache file, or credentials login."""
-        env_token = os.environ.get("RAINBIRD_CLOUD_TOKEN")
-        if env_token:
-            self._client._token = env_token
-            self._client._headers["Authorization"] = f"Bearer {env_token}"
-            return env_token
-
-        if not force_refresh and self._client.token:
-            return self._client.token
-
-        if not force_refresh and os.path.exists(self._config_path):
-            try:
-                with open(self._config_path, "r", encoding="utf-8") as f:
-                    config = json.load(f)
-                    token = config.get("token")
-                if token:
-                    self._client._token = token
-                    self._client._headers["Authorization"] = f"Bearer {token}"
-                    return token
-            except Exception as err:
-                _LOGGER.warning("Failed to read token from cache: %s", err)
-
-        if not self._client._username or not self._client._password:
-            raise RainbirdAuthException(
-                "No cached token found and credentials (RAINBIRD_CLOUD_USERNAME/RAINBIRD_CLOUD_PASSWORD) are not set."
-            )
-
-        _LOGGER.info("Logging in to obtain a new token...")
-        token = await self._client.login()
-        self._save_token_to_cache(token)
-        return token
-
-
 async def async_authenticate_cloud(
     session: aiohttp.ClientSession,
     username: str,
     password: str,
 ) -> tuple[str, list[CloudSatellite]]:
     """Helper function to authenticate and fetch satellites in one call."""
-    client = AsyncRainbirdCloudClient(session, username, password)
-    token = await client.login()
+    token_provider = RainbirdCloudTokenProvider(session, username, password)
+    client = AsyncRainbirdCloudClient(session, token_provider)
+    token = await token_provider.async_get_token()
     satellites = await client.get_satellites()
     return token, satellites
 
@@ -677,8 +666,9 @@ class AsyncRainbirdCloudController(RainbirdController):
 
 def create_cloud_controller(
     session: aiohttp.ClientSession,
-    token_provider: RainbirdTokenProvider,
     satellite_id: int,
+    *,
+    token_provider: RainbirdTokenProvider,
 ) -> AsyncRainbirdCloudController:
     """Create an AsyncRainbirdCloudController with the specified token provider."""
     client = AsyncRainbirdCloudClient(session, token_provider=token_provider)
