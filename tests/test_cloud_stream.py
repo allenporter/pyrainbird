@@ -15,7 +15,7 @@ import pytest
 from aiohttp.test_utils import TestClient
 
 from pyrainbird.async_client import RainbirdTokenProvider
-from pyrainbird.cloud.stream import (
+from pyrainbird.cloud import (
     AsyncRainbirdCloudStream,
     ConnectionStatusEvent,
     GenericCloudStreamEvent,

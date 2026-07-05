@@ -57,7 +57,7 @@ class TestSequence(unittest.TestCase):
             assert active == bit
             i = i + 1
 
-    def test_update_zone(self):
+    def test_update_zone(self) -> None:
         states = States("0000")
         assert not any(states.states)
 

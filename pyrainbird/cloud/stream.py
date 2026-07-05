@@ -43,13 +43,25 @@ import datetime
 import json
 import logging
 from collections.abc import AsyncIterator
-from dataclasses import dataclass
 from typing import Any
 
 import aiohttp
 
 from pyrainbird.async_client import RainbirdTokenProvider
 from pyrainbird.exceptions import RainbirdAuthException
+
+from .models import (
+    CloudStreamEvent,
+    ConnectedData,
+    ConnectionStatusEvent,
+    DeviceStateRecord,
+    GenericCloudStreamEvent,
+    RainSensorStateEvent,
+    RainSensorStateData,
+    RssiStateEvent,
+    StationStateData,
+    StationStateEvent,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -63,57 +75,6 @@ WS_ENDPOINT = f"wss://{REALTIME_HOST}/graphql"
 INITIAL_BACKOFF = 2.0
 MAX_BACKOFF = 60.0
 BACKOFF_FACTOR = 2.0
-
-
-@dataclass
-class CloudStreamEvent:
-    """Base class for real-time cloud satellite events."""
-
-    satellite_id: int
-    device_uuid: str
-    updated_at: datetime.datetime
-
-
-@dataclass
-class StationStateEvent(CloudStreamEvent):
-    """Fired when a specific zone/station starts or stops watering."""
-
-    zone: int
-    is_watering: bool
-    remaining_seconds: int | None
-    program_number: int | None
-
-
-@dataclass
-class RainSensorStateEvent(CloudStreamEvent):
-    """Fired when the rain sensor detects wet/dry status changes."""
-
-    is_wet: bool
-
-
-@dataclass
-class ConnectionStatusEvent(CloudStreamEvent):
-    """Fired with overall connection and active status details."""
-
-    is_connected: bool
-    active_station: int | None
-    remaining_seconds: int | None
-    rain_delay: int | None
-
-
-@dataclass
-class RssiStateEvent(CloudStreamEvent):
-    """Fired when device RSSI (signal strength) changes."""
-
-    rssi: int
-
-
-@dataclass
-class GenericCloudStreamEvent(CloudStreamEvent):
-    """Catch-all event for any unknown/new sort keys (future-proofing)."""
-
-    event_key: str
-    raw_data: str | None
 
 
 class AsyncRainbirdCloudStream:
@@ -153,58 +114,66 @@ class AsyncRainbirdCloudStream:
             if not device_state:
                 return None
 
-            device_uuid = device_state.get("PK", "")
-            sk = device_state.get("SK", "")
-            timestamp_val = device_state.get("TimeStamp")
-
             try:
-                if timestamp_val:
+                record = DeviceStateRecord.from_dict(device_state)
+            except (ValueError, TypeError) as err:
+                _LOGGER.warning("Failed to parse device state record: %s", err)
+                return None
+
+            if record.timestamp:
+                try:
                     updated_at = datetime.datetime.fromtimestamp(
-                        int(timestamp_val), datetime.timezone.utc
+                        record.timestamp, datetime.timezone.utc
                     )
-                else:
+                except (ValueError, OSError, OverflowError):
                     updated_at = datetime.datetime.now(datetime.timezone.utc)
-            except (ValueError, TypeError):
+            else:
                 updated_at = datetime.datetime.now(datetime.timezone.utc)
 
-            inner_data_str = device_state.get("Data")
-
             # Route parsing based on Sort Key (SK) type
-            if sk == "RSSI":
+            if record.sk == "RSSI":
                 rssi_val = 0
-                if inner_data_str:
+                if record.data:
                     try:
-                        rssi_val = int(inner_data_str)
+                        rssi_val = int(record.data)
                     except ValueError:
                         pass
                 return RssiStateEvent(
                     satellite_id=self._satellite_id,
-                    device_uuid=device_uuid,
+                    device_uuid=record.pk,
                     updated_at=updated_at,
                     rssi=rssi_val,
                 )
 
-            elif sk == "Event#RainSensorState":
+            elif record.sk == "Event#RainSensorState":
                 is_wet = False
-                if inner_data_str:
+                if record.data:
                     try:
-                        inner_data = json.loads(inner_data_str)
-                        if isinstance(inner_data, dict):
-                            is_wet = str(inner_data.get("state")) == "1"
-                        else:
-                            is_wet = str(inner_data) == "1"
-                    except Exception:
-                        pass
+                        sensor_data = RainSensorStateData.from_dict(
+                            json.loads(record.data)
+                        )
+                        is_wet = sensor_data.state == 1
+                    except (ValueError, TypeError, KeyError):
+                        # Fallback for raw/scalar string format if not strict json dict
+                        try:
+                            # Parse as a dictionary manually to be safe
+                            parsed_data = json.loads(record.data)
+                            if isinstance(parsed_data, dict):
+                                is_wet = str(parsed_data.get("state")) == "1"
+                            else:
+                                is_wet = str(parsed_data) == "1"
+                        except (ValueError, TypeError, json.JSONDecodeError):
+                            is_wet = str(record.data) == "1"
                 return RainSensorStateEvent(
                     satellite_id=self._satellite_id,
-                    device_uuid=device_uuid,
+                    device_uuid=record.pk,
                     updated_at=updated_at,
                     is_wet=is_wet,
                 )
 
-            elif sk.startswith("Station"):
+            elif record.sk.startswith("Station"):
                 try:
-                    zone_num = int(sk[7:])
+                    zone_num = int(record.sk[7:])
                 except ValueError:
                     return None
 
@@ -212,32 +181,37 @@ class AsyncRainbirdCloudStream:
                 remain_seconds = None
                 program_number = None
 
-                if inner_data_str:
+                if record.data:
                     try:
-                        inner_data = json.loads(inner_data_str)
-                        if isinstance(inner_data, dict):
-                            is_watering = str(inner_data.get("state")) == "1"
-                            remain_seconds = inner_data.get("remainSec")
-                            program_number = inner_data.get("programNumber")
-                    except Exception:
-                        pass
+                        station_data = StationStateData.from_dict(
+                            json.loads(record.data)
+                        )
+                        is_watering = station_data.state == 1
+                        remain_seconds = station_data.remain_sec
+                        program_number = station_data.program_number
+                    except (ValueError, TypeError, KeyError):
+                        try:
+                            # Fallback if structure changes or is slightly different
+                            parsed_data = json.loads(record.data)
+                            if isinstance(parsed_data, dict):
+                                is_watering = str(parsed_data.get("state")) == "1"
+                                remain_seconds = parsed_data.get("remainSec")
+                                program_number = parsed_data.get("programNumber")
+                        except (ValueError, TypeError, json.JSONDecodeError):
+                            pass
 
                 # If remain_seconds is an epoch timestamp, convert to relative duration
                 if (
                     remain_seconds is not None
                     and remain_seconds > 1000000000
-                    and timestamp_val
+                    and record.timestamp
                 ):
-                    try:
-                        server_ts = int(timestamp_val)
-                        if remain_seconds >= server_ts:
-                            remain_seconds -= server_ts
-                    except (ValueError, TypeError):
-                        pass
+                    if remain_seconds >= record.timestamp:
+                        remain_seconds -= record.timestamp
 
                 return StationStateEvent(
                     satellite_id=self._satellite_id,
-                    device_uuid=device_uuid,
+                    device_uuid=record.pk,
                     updated_at=updated_at,
                     zone=zone_num,
                     is_watering=is_watering,
@@ -245,43 +219,47 @@ class AsyncRainbirdCloudStream:
                     program_number=program_number,
                 )
 
-            elif sk == "Connected":
+            elif record.sk == "Connected":
                 is_connected = True
                 active_station = None
                 remain_seconds = None
                 rain_delay = None
 
-                if inner_data_str:
+                if record.data:
                     try:
-                        inner_data = json.loads(inner_data_str)
-                        if isinstance(inner_data, dict):
-                            active_station = inner_data.get("activeStation")
-                            remain_seconds = inner_data.get("remainSec")
-                            rain_delay = inner_data.get("rainDelay")
-                            if str(inner_data.get("state")) in ("0", "offline"):
-                                is_connected = False
-                        else:
-                            if str(inner_data) in ("0", "offline"):
-                                is_connected = False
-                    except Exception:
-                        pass
+                        conn_data = ConnectedData.from_dict(json.loads(record.data))
+                        active_station = conn_data.active_station
+                        remain_seconds = conn_data.remain_sec
+                        rain_delay = conn_data.rain_delay
+                        if str(conn_data.state) in ("0", "offline"):
+                            is_connected = False
+                    except (ValueError, TypeError, KeyError):
+                        try:
+                            parsed_data = json.loads(record.data)
+                            if isinstance(parsed_data, dict):
+                                active_station = parsed_data.get("activeStation")
+                                remain_seconds = parsed_data.get("remainSec")
+                                rain_delay = parsed_data.get("rainDelay")
+                                if str(parsed_data.get("state")) in ("0", "offline"):
+                                    is_connected = False
+                            else:
+                                if str(parsed_data) in ("0", "offline"):
+                                    is_connected = False
+                        except (ValueError, TypeError, json.JSONDecodeError):
+                            pass
 
                 # Epoch check for remaining seconds
                 if (
                     remain_seconds is not None
                     and remain_seconds > 1000000000
-                    and timestamp_val
+                    and record.timestamp
                 ):
-                    try:
-                        server_ts = int(timestamp_val)
-                        if remain_seconds >= server_ts:
-                            remain_seconds -= server_ts
-                    except (ValueError, TypeError):
-                        pass
+                    if remain_seconds >= record.timestamp:
+                        remain_seconds -= record.timestamp
 
                 return ConnectionStatusEvent(
                     satellite_id=self._satellite_id,
-                    device_uuid=device_uuid,
+                    device_uuid=record.pk,
                     updated_at=updated_at,
                     is_connected=is_connected,
                     active_station=active_station,
@@ -292,12 +270,12 @@ class AsyncRainbirdCloudStream:
             # Fallback for unrecognized sort keys (future proofing)
             return GenericCloudStreamEvent(
                 satellite_id=self._satellite_id,
-                device_uuid=device_uuid,
+                device_uuid=record.pk,
                 updated_at=updated_at,
-                event_key=sk,
-                raw_data=inner_data_str,
+                event_key=record.sk,
+                raw_data=record.data,
             )
-        except Exception as e:
+        except (ValueError, TypeError, KeyError, json.JSONDecodeError) as e:
             _LOGGER.error("Error parsing stream event: %s", e)
             return None
 

@@ -5,8 +5,8 @@ from .client import (
     RainbirdCloudTokenProvider,
     async_authenticate_cloud,
 )
-from .stream import (
-    AsyncRainbirdCloudStream,
+from .stream import AsyncRainbirdCloudStream
+from .models import (
     CloudStreamEvent,
     ConnectionStatusEvent,
     GenericCloudStreamEvent,
