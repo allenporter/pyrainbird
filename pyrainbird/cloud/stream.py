@@ -151,12 +151,10 @@ class AsyncRainbirdCloudStream:
                 is_wet = False
                 if record.data:
                     try:
-                        parsed_data = json.loads(record.data)
-                        if isinstance(parsed_data, dict):
-                            sensor_data = RainSensorStateData.from_dict(parsed_data)
-                            is_wet = sensor_data.state == 1
-                        elif str(parsed_data) == "1":
-                            is_wet = True
+                        sensor_data = RainSensorStateData.from_dict(
+                            json.loads(record.data)
+                        )
+                        is_wet = sensor_data.state == 1
                     except (ValueError, TypeError, KeyError, json.JSONDecodeError):
                         pass
                 return RainSensorStateEvent(
@@ -178,12 +176,12 @@ class AsyncRainbirdCloudStream:
 
                 if record.data:
                     try:
-                        parsed_data = json.loads(record.data)
-                        if isinstance(parsed_data, dict):
-                            station_data = StationStateData.from_dict(parsed_data)
-                            is_watering = station_data.state == 1
-                            remain_seconds = station_data.remain_sec
-                            program_number = station_data.program_number
+                        station_data = StationStateData.from_dict(
+                            json.loads(record.data)
+                        )
+                        is_watering = station_data.state == 1
+                        remain_seconds = station_data.remain_sec
+                        program_number = station_data.program_number
                     except (ValueError, TypeError, KeyError, json.JSONDecodeError):
                         pass
 

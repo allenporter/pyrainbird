@@ -118,6 +118,11 @@ class RainSensorStateData(DataClassDictMixin):
 
     state: int
 
+    @property
+    def is_wet(self) -> bool:
+        """Return True if the rain sensor is wet."""
+        return self.state == 1
+
 
 @dataclass
 class StationStateData(DataClassDictMixin):
