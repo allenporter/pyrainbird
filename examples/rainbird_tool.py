@@ -32,6 +32,7 @@ from pyrainbird.cloud import (
     RainSensorStateEvent,
     RssiStateEvent,
     StationStateEvent,
+    create_cloud_controller,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -419,9 +420,21 @@ async def main():
             print(result)
             return
 
-        host = os.environ["RAINBIRD_SERVER"]
-        password = os.environ["RAINBIRD_PASSWORD"]
-        controller = await async_client.create_controller(session, host, password)
+        satellite_id_str = os.environ.get("RAINBIRD_SATELLITE_ID")
+        if satellite_id_str:
+            satellite_id = int(satellite_id_str)
+            username = os.environ.get("RAINBIRD_USERNAME")
+            password = os.environ.get("RAINBIRD_PASSWORD")
+
+            client = AsyncRainbirdCloudClient(session, username, password)
+            token_provider = CachingTokenProvider(client, args.config_file)
+            client.token_provider = token_provider
+
+            controller = create_cloud_controller(session, token_provider, satellite_id)
+        else:
+            host = os.environ["RAINBIRD_SERVER"]
+            password = os.environ["RAINBIRD_PASSWORD"]
+            controller = await async_client.create_controller(session, host, password)
         method_args = {
             k: parse_value(v)
             for k, v in vars(args).items()
