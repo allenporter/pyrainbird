@@ -4,8 +4,18 @@ from __future__ import annotations
 
 import datetime
 from dataclasses import dataclass, field
+import enum
 
 from mashumaro import DataClassDictMixin, field_options
+
+
+class CloudStreamSortKey(enum.StrEnum):
+    """Sort Key identifiers in the AWS AppSync DeviceStateTable."""
+
+    RSSI = "RSSI"
+    RAIN_SENSOR = "Event#RainSensorState"
+    CONNECTED = "Connected"
+    STATION_PREFIX = "Station"
 
 
 @dataclass

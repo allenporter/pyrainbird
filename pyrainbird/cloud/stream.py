@@ -52,6 +52,7 @@ from pyrainbird.exceptions import RainbirdAuthException
 
 from .models import (
     CloudStreamEvent,
+    CloudStreamSortKey,
     ConnectedData,
     ConnectionStatusEvent,
     DeviceStateRecord,
@@ -107,177 +108,172 @@ class AsyncRainbirdCloudStream:
 
     def _parse_event(self, data: dict[str, Any]) -> CloudStreamEvent | None:
         """Parse a pushed GraphQL subscription message payload."""
+        if not isinstance(data, dict):
+            return None
+
+        device_state = (
+            data.get("payload", {}).get("data", {}).get("onUpdateDeviceStateTable")
+        )
+        if not isinstance(device_state, dict):
+            return None
+
         try:
-            device_state = (
-                data.get("payload", {}).get("data", {}).get("onUpdateDeviceStateTable")
-            )
-            if not device_state:
-                return None
+            record = DeviceStateRecord.from_dict(device_state)
+        except (ValueError, TypeError) as err:
+            _LOGGER.warning("Failed to parse device state record: %s", err)
+            return None
 
+        if record.timestamp:
             try:
-                record = DeviceStateRecord.from_dict(device_state)
-            except (ValueError, TypeError) as err:
-                _LOGGER.warning("Failed to parse device state record: %s", err)
-                return None
-
-            if record.timestamp:
-                try:
-                    updated_at = datetime.datetime.fromtimestamp(
-                        record.timestamp, datetime.timezone.utc
-                    )
-                except (ValueError, OSError, OverflowError):
-                    updated_at = datetime.datetime.now(datetime.timezone.utc)
-            else:
+                updated_at = datetime.datetime.fromtimestamp(
+                    record.timestamp, datetime.timezone.utc
+                )
+            except (ValueError, OSError, OverflowError):
                 updated_at = datetime.datetime.now(datetime.timezone.utc)
+        else:
+            updated_at = datetime.datetime.now(datetime.timezone.utc)
 
-            # Route parsing based on Sort Key (SK) type
-            if record.sk == "RSSI":
-                rssi_val = 0
-                if record.data:
-                    try:
-                        rssi_val = int(record.data)
-                    except ValueError:
-                        pass
-                return RssiStateEvent(
-                    satellite_id=self._satellite_id,
-                    device_uuid=record.pk,
-                    updated_at=updated_at,
-                    rssi=rssi_val,
-                )
-
-            elif record.sk == "Event#RainSensorState":
-                is_wet = False
-                if record.data:
-                    try:
-                        sensor_data = RainSensorStateData.from_dict(
-                            json.loads(record.data)
-                        )
-                        is_wet = sensor_data.state == 1
-                    except (ValueError, TypeError, KeyError):
-                        # Fallback for raw/scalar string format if not strict json dict
-                        try:
-                            # Parse as a dictionary manually to be safe
-                            parsed_data = json.loads(record.data)
-                            if isinstance(parsed_data, dict):
-                                is_wet = str(parsed_data.get("state")) == "1"
-                            else:
-                                is_wet = str(parsed_data) == "1"
-                        except (ValueError, TypeError, json.JSONDecodeError):
-                            is_wet = str(record.data) == "1"
-                return RainSensorStateEvent(
-                    satellite_id=self._satellite_id,
-                    device_uuid=record.pk,
-                    updated_at=updated_at,
-                    is_wet=is_wet,
-                )
-
-            elif record.sk.startswith("Station"):
+        # Route parsing based on Sort Key (SK) type
+        if record.sk == CloudStreamSortKey.RSSI:
+            rssi_val = 0
+            if record.data:
                 try:
-                    zone_num = int(record.sk[7:])
+                    rssi_val = int(record.data)
                 except ValueError:
-                    return None
-
-                is_watering = False
-                remain_seconds = None
-                program_number = None
-
-                if record.data:
-                    try:
-                        station_data = StationStateData.from_dict(
-                            json.loads(record.data)
-                        )
-                        is_watering = station_data.state == 1
-                        remain_seconds = station_data.remain_sec
-                        program_number = station_data.program_number
-                    except (ValueError, TypeError, KeyError):
-                        try:
-                            # Fallback if structure changes or is slightly different
-                            parsed_data = json.loads(record.data)
-                            if isinstance(parsed_data, dict):
-                                is_watering = str(parsed_data.get("state")) == "1"
-                                remain_seconds = parsed_data.get("remainSec")
-                                program_number = parsed_data.get("programNumber")
-                        except (ValueError, TypeError, json.JSONDecodeError):
-                            pass
-
-                # If remain_seconds is an epoch timestamp, convert to relative duration
-                if (
-                    remain_seconds is not None
-                    and remain_seconds > 1000000000
-                    and record.timestamp
-                ):
-                    if remain_seconds >= record.timestamp:
-                        remain_seconds -= record.timestamp
-
-                return StationStateEvent(
-                    satellite_id=self._satellite_id,
-                    device_uuid=record.pk,
-                    updated_at=updated_at,
-                    zone=zone_num,
-                    is_watering=is_watering,
-                    remaining_seconds=remain_seconds,
-                    program_number=program_number,
-                )
-
-            elif record.sk == "Connected":
-                is_connected = True
-                active_station = None
-                remain_seconds = None
-                rain_delay = None
-
-                if record.data:
-                    try:
-                        conn_data = ConnectedData.from_dict(json.loads(record.data))
-                        active_station = conn_data.active_station
-                        remain_seconds = conn_data.remain_sec
-                        rain_delay = conn_data.rain_delay
-                        if str(conn_data.state) in ("0", "offline"):
-                            is_connected = False
-                    except (ValueError, TypeError, KeyError):
-                        try:
-                            parsed_data = json.loads(record.data)
-                            if isinstance(parsed_data, dict):
-                                active_station = parsed_data.get("activeStation")
-                                remain_seconds = parsed_data.get("remainSec")
-                                rain_delay = parsed_data.get("rainDelay")
-                                if str(parsed_data.get("state")) in ("0", "offline"):
-                                    is_connected = False
-                            else:
-                                if str(parsed_data) in ("0", "offline"):
-                                    is_connected = False
-                        except (ValueError, TypeError, json.JSONDecodeError):
-                            pass
-
-                # Epoch check for remaining seconds
-                if (
-                    remain_seconds is not None
-                    and remain_seconds > 1000000000
-                    and record.timestamp
-                ):
-                    if remain_seconds >= record.timestamp:
-                        remain_seconds -= record.timestamp
-
-                return ConnectionStatusEvent(
-                    satellite_id=self._satellite_id,
-                    device_uuid=record.pk,
-                    updated_at=updated_at,
-                    is_connected=is_connected,
-                    active_station=active_station,
-                    remaining_seconds=remain_seconds,
-                    rain_delay=rain_delay,
-                )
-
-            # Fallback for unrecognized sort keys (future proofing)
-            return GenericCloudStreamEvent(
+                    pass
+            return RssiStateEvent(
                 satellite_id=self._satellite_id,
                 device_uuid=record.pk,
                 updated_at=updated_at,
-                event_key=record.sk,
-                raw_data=record.data,
+                rssi=rssi_val,
             )
-        except (ValueError, TypeError, KeyError, json.JSONDecodeError) as e:
-            _LOGGER.error("Error parsing stream event: %s", e)
-            return None
+
+        elif record.sk == CloudStreamSortKey.RAIN_SENSOR:
+            is_wet = False
+            if record.data:
+                try:
+                    sensor_data = RainSensorStateData.from_dict(json.loads(record.data))
+                    is_wet = sensor_data.state == 1
+                except (ValueError, TypeError, KeyError):
+                    # Fallback for raw/scalar string format if not strict json dict
+                    try:
+                        # Parse as a dictionary manually to be safe
+                        parsed_data = json.loads(record.data)
+                        if isinstance(parsed_data, dict):
+                            is_wet = str(parsed_data.get("state")) == "1"
+                        else:
+                            is_wet = str(parsed_data) == "1"
+                    except (ValueError, TypeError, json.JSONDecodeError):
+                        is_wet = str(record.data) == "1"
+            return RainSensorStateEvent(
+                satellite_id=self._satellite_id,
+                device_uuid=record.pk,
+                updated_at=updated_at,
+                is_wet=is_wet,
+            )
+
+        elif record.sk.startswith(CloudStreamSortKey.STATION_PREFIX):
+            try:
+                zone_num = int(record.sk[len(CloudStreamSortKey.STATION_PREFIX) :])
+            except ValueError:
+                return None
+
+            is_watering = False
+            remain_seconds = None
+            program_number = None
+
+            if record.data:
+                try:
+                    station_data = StationStateData.from_dict(json.loads(record.data))
+                    is_watering = station_data.state == 1
+                    remain_seconds = station_data.remain_sec
+                    program_number = station_data.program_number
+                except (ValueError, TypeError, KeyError):
+                    try:
+                        # Fallback if structure changes or is slightly different
+                        parsed_data = json.loads(record.data)
+                        if isinstance(parsed_data, dict):
+                            is_watering = str(parsed_data.get("state")) == "1"
+                            remain_seconds = parsed_data.get("remainSec")
+                            program_number = parsed_data.get("programNumber")
+                    except (ValueError, TypeError, json.JSONDecodeError):
+                        pass
+
+            # If remain_seconds is an epoch timestamp, convert to relative duration
+            if (
+                remain_seconds is not None
+                and remain_seconds > 1000000000
+                and record.timestamp
+            ):
+                if remain_seconds >= record.timestamp:
+                    remain_seconds -= record.timestamp
+
+            return StationStateEvent(
+                satellite_id=self._satellite_id,
+                device_uuid=record.pk,
+                updated_at=updated_at,
+                zone=zone_num,
+                is_watering=is_watering,
+                remaining_seconds=remain_seconds,
+                program_number=program_number,
+            )
+
+        elif record.sk == CloudStreamSortKey.CONNECTED:
+            is_connected = True
+            active_station = None
+            remain_seconds = None
+            rain_delay = None
+
+            if record.data:
+                try:
+                    conn_data = ConnectedData.from_dict(json.loads(record.data))
+                    active_station = conn_data.active_station
+                    remain_seconds = conn_data.remain_sec
+                    rain_delay = conn_data.rain_delay
+                    if str(conn_data.state) in ("0", "offline"):
+                        is_connected = False
+                except (ValueError, TypeError, KeyError):
+                    try:
+                        parsed_data = json.loads(record.data)
+                        if isinstance(parsed_data, dict):
+                            active_station = parsed_data.get("activeStation")
+                            remain_seconds = parsed_data.get("remainSec")
+                            rain_delay = parsed_data.get("rainDelay")
+                            if str(parsed_data.get("state")) in ("0", "offline"):
+                                is_connected = False
+                        else:
+                            if str(parsed_data) in ("0", "offline"):
+                                is_connected = False
+                    except (ValueError, TypeError, json.JSONDecodeError):
+                        pass
+
+            # Epoch check for remaining seconds
+            if (
+                remain_seconds is not None
+                and remain_seconds > 1000000000
+                and record.timestamp
+            ):
+                if remain_seconds >= record.timestamp:
+                    remain_seconds -= record.timestamp
+
+            return ConnectionStatusEvent(
+                satellite_id=self._satellite_id,
+                device_uuid=record.pk,
+                updated_at=updated_at,
+                is_connected=is_connected,
+                active_station=active_station,
+                remaining_seconds=remain_seconds,
+                rain_delay=rain_delay,
+            )
+
+        # Fallback for unrecognized sort keys (future proofing)
+        return GenericCloudStreamEvent(
+            satellite_id=self._satellite_id,
+            device_uuid=record.pk,
+            updated_at=updated_at,
+            event_key=record.sk,
+            raw_data=record.data,
+        )
 
     async def listen(self) -> AsyncIterator[CloudStreamEvent]:
         """Establish a connection to the WebSocket and yield events in real-time.
