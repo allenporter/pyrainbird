@@ -39,17 +39,36 @@ Protocol Overview:
 
 import asyncio
 import base64
-import datetime
 import json
 import logging
 from collections.abc import AsyncIterator
-from dataclasses import dataclass
 from typing import Any
 
 import aiohttp
 
 from pyrainbird.async_client import RainbirdTokenProvider
 from pyrainbird.exceptions import RainbirdAuthException
+
+from .models import (
+    SUBSCRIBE_DEVICE_STATE_QUERY,
+    CloudStreamEvent,
+    CloudStreamMessageType,
+    CloudStreamSortKey,
+    ConnectedData,
+    ConnectionStatusEvent,
+    DeviceStateRecord,
+    GenericCloudStreamEvent,
+    RainSensorStateEvent,
+    RainSensorStateData,
+    RssiStateEvent,
+    StationStateData,
+    StationStateEvent,
+    SubscriptionAuthorization,
+    SubscriptionExtensions,
+    SubscriptionQueryData,
+    SubscriptionStartPayload,
+    WebSocketMessage,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -63,19 +82,6 @@ WS_ENDPOINT = f"wss://{REALTIME_HOST}/graphql"
 INITIAL_BACKOFF = 2.0
 MAX_BACKOFF = 60.0
 BACKOFF_FACTOR = 2.0
-
-
-@dataclass
-class CloudStreamEvent:
-    """Represents a real-time status update from a cloud satellite."""
-
-    satellite_id: int
-    device_uuid: str
-    state: str
-    active_station: int | None
-    remain_seconds: int | None
-    rain_delay: int | None
-    updated_at: datetime.datetime
 
 
 class AsyncRainbirdCloudStream:
@@ -108,78 +114,98 @@ class AsyncRainbirdCloudStream:
 
     def _parse_event(self, data: dict[str, Any]) -> CloudStreamEvent | None:
         """Parse a pushed GraphQL subscription message payload."""
-        try:
-            device_state = (
-                data.get("payload", {}).get("data", {}).get("onUpdateDeviceStateTable")
-            )
-            if not device_state:
-                return None
-
-            device_uuid = device_state.get("PK", "")
-            sk = device_state.get("SK", "")
-            timestamp_val = device_state.get("TimeStamp")
-
-            try:
-                if timestamp_val:
-                    updated_at = datetime.datetime.fromtimestamp(
-                        int(timestamp_val), datetime.timezone.utc
-                    )
-                else:
-                    updated_at = datetime.datetime.now(datetime.timezone.utc)
-            except (ValueError, TypeError):
-                updated_at = datetime.datetime.now(datetime.timezone.utc)
-
-            inner_data_str = device_state.get("Data")
-            active_station = None
-            remain_seconds = None
-            rain_delay = None
-            state = sk
-
-            if inner_data_str:
-                try:
-                    inner_data = json.loads(inner_data_str)
-                    if isinstance(inner_data, dict):
-                        active_station = inner_data.get("activeStation")
-                        remain_seconds = inner_data.get("remainSec")
-                        rain_delay = inner_data.get("rainDelay")
-                        if "state" in inner_data:
-                            state = str(inner_data["state"])
-                    elif inner_data is not None:
-                        state = str(inner_data)
-                except json.JSONDecodeError as err:
-                    _LOGGER.warning("Failed to parse inner state data JSON: %s", err)
-
-            if sk.startswith("Station") and active_station is None:
-                try:
-                    active_station = int(sk[7:])
-                except ValueError:
-                    pass
-
-            # If remain_seconds is a Unix epoch timestamp, calculate relative remaining seconds
-            if (
-                remain_seconds is not None
-                and remain_seconds > 1000000000
-                and timestamp_val
-            ):
-                try:
-                    server_ts = int(timestamp_val)
-                    if remain_seconds >= server_ts:
-                        remain_seconds -= server_ts
-                except (ValueError, TypeError):
-                    pass
-
-            return CloudStreamEvent(
-                satellite_id=self._satellite_id,
-                device_uuid=device_uuid,
-                state=state,
-                active_station=active_station,
-                remain_seconds=remain_seconds,
-                rain_delay=rain_delay,
-                updated_at=updated_at,
-            )
-        except Exception as e:
-            _LOGGER.error("Error parsing stream event: %s", e)
+        if not isinstance(data, dict):
             return None
+
+        device_state = (
+            data.get("payload", {}).get("data", {}).get("onUpdateDeviceStateTable")
+        )
+        if not isinstance(device_state, dict):
+            return None
+
+        try:
+            record = DeviceStateRecord.from_dict(device_state)
+        except (ValueError, TypeError) as err:
+            _LOGGER.warning("Failed to parse device state record: %s", err)
+            return None
+
+        updated_at = record.updated_at
+
+        # Route parsing based on Sort Key (SK) type
+        match record.sk:
+            case CloudStreamSortKey.RSSI:
+                if not record.data:
+                    return None
+                try:
+                    rssi_val = int(record.data)
+                except ValueError:
+                    return None
+                return RssiStateEvent(
+                    satellite_id=self._satellite_id,
+                    device_uuid=record.pk,
+                    updated_at=updated_at,
+                    rssi=rssi_val,
+                )
+
+            case CloudStreamSortKey.RAIN_SENSOR:
+                if not record.data:
+                    return None
+                try:
+                    sensor_data = RainSensorStateData.from_dict(json.loads(record.data))
+                except (ValueError, TypeError, KeyError, json.JSONDecodeError):
+                    return None
+                return RainSensorStateEvent(
+                    satellite_id=self._satellite_id,
+                    device_uuid=record.pk,
+                    updated_at=updated_at,
+                    data=sensor_data,
+                )
+
+            case sk if sk.startswith(CloudStreamSortKey.STATION_PREFIX):
+                try:
+                    zone_num = int(sk[len(CloudStreamSortKey.STATION_PREFIX) :])
+                except ValueError:
+                    return None
+                if not record.data:
+                    return None
+
+                try:
+                    station_data = StationStateData.parse_record(record)
+                except ValueError:
+                    return None
+
+                return StationStateEvent(
+                    satellite_id=self._satellite_id,
+                    device_uuid=record.pk,
+                    updated_at=updated_at,
+                    zone=zone_num,
+                    data=station_data,
+                )
+
+            case CloudStreamSortKey.CONNECTED:
+                if not record.data:
+                    return None
+                try:
+                    conn_data = ConnectedData.parse_record(record)
+                except ValueError:
+                    return None
+
+                return ConnectionStatusEvent(
+                    satellite_id=self._satellite_id,
+                    device_uuid=record.pk,
+                    updated_at=updated_at,
+                    data=conn_data,
+                )
+
+            case _:
+                # Fallback for unrecognized sort keys (future proofing)
+                return GenericCloudStreamEvent(
+                    satellite_id=self._satellite_id,
+                    device_uuid=record.pk,
+                    updated_at=updated_at,
+                    event_key=record.sk,
+                    raw_data=record.data,
+                )
 
     async def listen(self) -> AsyncIterator[CloudStreamEvent]:
         """Establish a connection to the WebSocket and yield events in real-time.
@@ -199,7 +225,13 @@ class AsyncRainbirdCloudStream:
                     )
                     # Reset force refresh on successful token retrieval
                     self._force_refresh_token = False
-                except Exception as token_err:
+                except (
+                    RainbirdAuthException,
+                    aiohttp.ClientError,
+                    TimeoutError,
+                    ConnectionError,
+                    OSError,
+                ) as token_err:
                     _LOGGER.error(
                         "Failed to retrieve authentication token: %s", token_err
                     )
@@ -221,51 +253,65 @@ class AsyncRainbirdCloudStream:
                     )
 
                     # 2. Send connection_init
-                    await ws.send_json({"type": "connection_init"})
+                    await ws.send_json(
+                        WebSocketMessage(
+                            type=CloudStreamMessageType.CONNECTION_INIT
+                        ).to_dict()
+                    )
 
                     # 3. Read message loop
                     async for msg in ws:
                         if msg.type == aiohttp.WSMsgType.TEXT:
-                            data = msg.json()
+                            try:
+                                data = msg.json()
+                            except (ValueError, TypeError) as json_err:
+                                _LOGGER.warning(
+                                    "Received invalid JSON message: %s", json_err
+                                )
+                                continue
                             msg_type = data.get("type")
 
-                            if msg_type == "connection_ack":
+                            if msg_type == CloudStreamMessageType.CONNECTION_ACK:
                                 _LOGGER.info(
                                     "Connection acknowledged. Registering subscription..."
                                 )
                                 # Subscribe once connection is acknowledged
-                                sub_payload = {
-                                    "id": "sub_device_state",
-                                    "type": "start",
-                                    "payload": {
-                                        "data": json.dumps(
-                                            {
-                                                "query": "subscription onUpdateDeviceStateTable($PK : String!) {\n  onUpdateDeviceStateTable(PK: $PK) {\n    PK\n    SK\n    Data\n    TimeStamp\n  }\n}",
-                                                "variables": {"PK": self._device_uuid},
-                                            }
-                                        ),
-                                        "extensions": {
-                                            "authorization": {
-                                                "host": API_HOST,
-                                                "Authorization": token,
-                                            }
-                                        },
-                                    },
-                                }
-                                await ws.send_json(sub_payload)
+                                query_data = SubscriptionQueryData(
+                                    query=SUBSCRIBE_DEVICE_STATE_QUERY,
+                                    variables={"PK": self._device_uuid},
+                                )
+                                extensions = SubscriptionExtensions(
+                                    authorization=SubscriptionAuthorization(
+                                        host=API_HOST,
+                                        authorization=token,
+                                    )
+                                )
+                                start_payload = SubscriptionStartPayload(
+                                    data=json.dumps(query_data.to_dict()),
+                                    extensions=extensions,
+                                )
+                                sub_message = WebSocketMessage(
+                                    id="sub_device_state",
+                                    type=CloudStreamMessageType.START,
+                                    payload=start_payload.to_dict(),
+                                )
+                                await ws.send_json(sub_message.to_dict())
 
-                            elif msg_type == "data":
+                            elif msg_type == CloudStreamMessageType.DATA:
                                 event = self._parse_event(data)
                                 if event:
                                     yield event
 
-                            elif msg_type == "ka":
+                            elif msg_type == CloudStreamMessageType.KEEP_ALIVE:
                                 # Keep-alive heartbeat received
                                 _LOGGER.debug(
                                     "AppSync WebSocket keep-alive heartbeat received."
                                 )
 
-                            elif msg_type in ("connection_error", "error"):
+                            elif msg_type in (
+                                CloudStreamMessageType.CONNECTION_ERROR,
+                                CloudStreamMessageType.ERROR,
+                            ):
                                 payload = data.get("payload", {})
                                 errors = payload.get("errors", [])
                                 error_msg = (
@@ -300,7 +346,7 @@ class AsyncRainbirdCloudStream:
                                         f"WebSocket protocol error: {error_msg}"
                                     )
 
-                            elif msg_type == "complete":
+                            elif msg_type == CloudStreamMessageType.COMPLETE:
                                 _LOGGER.info(
                                     "Subscription registration was terminated by server."
                                 )
@@ -328,7 +374,12 @@ class AsyncRainbirdCloudStream:
                     await ws.close()
                 raise
 
-            except Exception as e:
+            except (
+                aiohttp.ClientError,
+                TimeoutError,
+                ConnectionError,
+                OSError,
+            ) as e:
                 _LOGGER.warning(
                     "WebSocket error encountered: %s. Retrying in %ss...", e, backoff
                 )
