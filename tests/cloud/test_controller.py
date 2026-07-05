@@ -5,7 +5,6 @@ from aiohttp import web
 from pyrainbird.cloud import (
     create_cloud_controller,
     RainbirdCloudTokenProvider,
-    AsyncRainbirdCloudClient,
 )
 
 SATELLITE_ID = 12345
@@ -137,18 +136,15 @@ async def test_cloud_controller_operations(mock_cloud_api, monkeypatch) -> None:
             self._token = "mock-access-token"
         else:
             self._token = "mock-access-token-refreshed"
-        self._headers["Authorization"] = f"Bearer {self._token}"
         return self._token
 
-    monkeypatch.setattr(AsyncRainbirdCloudClient, "login", mock_login)
+    monkeypatch.setattr(RainbirdCloudTokenProvider, "login", mock_login)
 
-    cloud_client = AsyncRainbirdCloudClient(
+    token_provider = RainbirdCloudTokenProvider(
         client_app.session, "user@example.com", PASSWORD
     )
-    token_provider = RainbirdCloudTokenProvider(cloud_client)
-
     controller = create_cloud_controller(
-        client_app.session, token_provider, SATELLITE_ID
+        client_app.session, SATELLITE_ID, token_provider=token_provider
     )
 
     # 1. Verify basic properties

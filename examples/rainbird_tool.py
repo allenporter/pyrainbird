@@ -30,6 +30,7 @@ from pyrainbird.cloud import (
     ConnectionStatusEvent,
     GenericCloudStreamEvent,
     RainSensorStateEvent,
+    RainbirdCloudTokenProvider,
     RssiStateEvent,
     StationStateEvent,
     create_cloud_controller,
@@ -38,24 +39,30 @@ from pyrainbird.cloud import (
 _LOGGER = logging.getLogger(__name__)
 
 
-def create_cloud_client(session: aiohttp.ClientSession) -> AsyncRainbirdCloudClient:
-    """Create AsyncRainbirdCloudClient from environment variables."""
+def create_cloud_token_provider(
+    session: aiohttp.ClientSession, config_file: str
+) -> CachingTokenProvider:
+    """Create a CachingTokenProvider wrapped around a RainbirdCloudTokenProvider."""
     username = os.environ.get("RAINBIRD_CLOUD_USERNAME") or os.environ.get(
         "RAINBIRD_USERNAME"
     )
     password = os.environ.get("RAINBIRD_CLOUD_PASSWORD") or os.environ.get(
         "RAINBIRD_PASSWORD"
     )
-    return AsyncRainbirdCloudClient(session, username=username, password=password)
+    if not username or not password:
+        raise ValueError(
+            "Username and password are required in environment variables "
+            "(RAINBIRD_CLOUD_USERNAME / RAINBIRD_CLOUD_PASSWORD)."
+        )
+    auth_provider = RainbirdCloudTokenProvider(session, username, password)
+    return CachingTokenProvider(config_file, auth_provider)
 
 
 async def discover_cloud(session: aiohttp.ClientSession, config_file: str) -> None:
     """Authenticate with the cloud and list registered satellites/controllers."""
-    client = create_cloud_client(session)
-    token_provider = CachingTokenProvider(client, config_file)
-    client.token_provider = token_provider
-
     try:
+        token_provider = create_cloud_token_provider(session, config_file)
+        client = AsyncRainbirdCloudClient(session, token_provider)
         satellites = await client.get_satellites()
         token = await token_provider.async_get_token()
         print(f"Authentication successful! Token: {token[:10]}...")
@@ -76,11 +83,9 @@ async def stream_cloud(
     session: aiohttp.ClientSession, config_file: str, satellite_id: int
 ) -> None:
     """Connect to the cloud real-time updates WebSocket stream."""
-    client = create_cloud_client(session)
-    token_provider = CachingTokenProvider(client, config_file)
-    client.token_provider = token_provider
-
     try:
+        token_provider = create_cloud_token_provider(session, config_file)
+        client = AsyncRainbirdCloudClient(session, token_provider)
         satellites = await client.get_satellites()
 
         # Find the device_uuid for the given satellite_id
@@ -373,12 +378,18 @@ async def main():
             password = os.environ.get("RAINBIRD_CLOUD_PASSWORD") or os.environ.get(
                 "RAINBIRD_PASSWORD"
             )
+            if not username or not password:
+                raise ValueError(
+                    "Username and password are required in environment variables "
+                    "(RAINBIRD_CLOUD_USERNAME / RAINBIRD_CLOUD_PASSWORD)."
+                )
 
-            client = AsyncRainbirdCloudClient(session, username, password)
-            token_provider = CachingTokenProvider(client, args.config_file)
-            client.token_provider = token_provider
+            auth_provider = RainbirdCloudTokenProvider(session, username, password)
+            token_provider = CachingTokenProvider(args.config_file, auth_provider)
 
-            controller = create_cloud_controller(session, token_provider, satellite_id)
+            controller = create_cloud_controller(
+                session, satellite_id, token_provider=token_provider
+            )
         else:
             host = os.environ["RAINBIRD_SERVER"]
             password = os.environ["RAINBIRD_PASSWORD"]
