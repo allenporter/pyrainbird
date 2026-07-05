@@ -6,6 +6,7 @@ import datetime
 from dataclasses import dataclass, field
 import enum
 from typing import Any
+import json
 
 from mashumaro import DataClassDictMixin, field_options
 from mashumaro.config import BaseConfig
@@ -134,6 +135,27 @@ class StationStateData(DataClassDictMixin):
         default=None, metadata=field_options(alias="programNumber")
     )
 
+    @classmethod
+    def parse_record(cls, record: DeviceStateRecord) -> StationStateData:
+        """Parse a StationStateData from a DeviceStateRecord."""
+        if not record.data:
+            raise ValueError("No data found in record")
+        try:
+            record_data = json.loads(record.data)
+        except json.JSONDecodeError as err:
+            raise ValueError(f"Failed to parse record data: {err}")
+        if (
+            remain_sec := record_data.get("remainSec", 0)
+        ) > 1000000000 and record.timestamp:
+            if remain_sec >= record.timestamp:
+                record_data["remainSec"] = remain_sec - record.timestamp
+        return cls.from_dict(record_data)
+
+    @property
+    def is_watering(self) -> bool:
+        """Return True if the station is watering."""
+        return self.state == 1
+
 
 @dataclass
 class ConnectedData(DataClassDictMixin):
@@ -149,6 +171,31 @@ class ConnectedData(DataClassDictMixin):
     rain_delay: int | None = field(
         default=None, metadata=field_options(alias="rainDelay")
     )
+
+    @classmethod
+    def parse_record(cls, record: DeviceStateRecord) -> ConnectedData:
+        """Parse a ConnectedData from a DeviceStateRecord."""
+        if not record.data:
+            raise ValueError("No data found in record")
+        try:
+            record_data = json.loads(record.data)
+        except json.JSONDecodeError as err:
+            raise ValueError(f"Failed to parse record data: {err}")
+
+        if isinstance(record_data, dict):
+            if (remain_sec := record_data.get("remainSec")) is not None:
+                if remain_sec > 1000000000 and record.timestamp:
+                    if remain_sec >= record.timestamp:
+                        record_data["remainSec"] = remain_sec - record.timestamp
+            return cls.from_dict(record_data)
+
+        # Handle scalar (e.g. 0, "offline")
+        return cls(state=record_data)
+
+    @property
+    def is_connected(self) -> bool:
+        """Return True if the state indicates a connected status."""
+        return str(self.state) not in ("0", "offline")
 
 
 @dataclass

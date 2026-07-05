@@ -134,12 +134,12 @@ class AsyncRainbirdCloudStream:
         # Route parsing based on Sort Key (SK) type
         match record.sk:
             case CloudStreamSortKey.RSSI:
-                rssi_val = 0
-                if record.data:
-                    try:
-                        rssi_val = int(record.data)
-                    except ValueError:
-                        pass
+                if not record.data:
+                    return None
+                try:
+                    rssi_val = int(record.data)
+                except ValueError:
+                    return None
                 return RssiStateEvent(
                     satellite_id=self._satellite_id,
                     device_uuid=record.pk,
@@ -148,20 +148,17 @@ class AsyncRainbirdCloudStream:
                 )
 
             case CloudStreamSortKey.RAIN_SENSOR:
-                is_wet = False
-                if record.data:
-                    try:
-                        sensor_data = RainSensorStateData.from_dict(
-                            json.loads(record.data)
-                        )
-                        is_wet = sensor_data.state == 1
-                    except (ValueError, TypeError, KeyError, json.JSONDecodeError):
-                        pass
+                if not record.data:
+                    return None
+                try:
+                    sensor_data = RainSensorStateData.from_dict(json.loads(record.data))
+                except (ValueError, TypeError, KeyError, json.JSONDecodeError):
+                    return None
                 return RainSensorStateEvent(
                     satellite_id=self._satellite_id,
                     device_uuid=record.pk,
                     updated_at=updated_at,
-                    is_wet=is_wet,
+                    is_wet=sensor_data.is_wet,
                 )
 
             case sk if sk.startswith(CloudStreamSortKey.STATION_PREFIX):
@@ -169,79 +166,41 @@ class AsyncRainbirdCloudStream:
                     zone_num = int(sk[len(CloudStreamSortKey.STATION_PREFIX) :])
                 except ValueError:
                     return None
+                if not record.data:
+                    return None
 
-                is_watering = False
-                remain_seconds = None
-                program_number = None
-
-                if record.data:
-                    try:
-                        station_data = StationStateData.from_dict(
-                            json.loads(record.data)
-                        )
-                        is_watering = station_data.state == 1
-                        remain_seconds = station_data.remain_sec
-                        program_number = station_data.program_number
-                    except (ValueError, TypeError, KeyError, json.JSONDecodeError):
-                        pass
+                try:
+                    station_data = StationStateData.parse_record(record)
+                except ValueError:
+                    return None
 
                 # If remain_seconds is an epoch timestamp, convert to relative duration
-                if (
-                    remain_seconds is not None
-                    and remain_seconds > 1000000000
-                    and record.timestamp
-                ):
-                    if remain_seconds >= record.timestamp:
-                        remain_seconds -= record.timestamp
-
                 return StationStateEvent(
                     satellite_id=self._satellite_id,
                     device_uuid=record.pk,
                     updated_at=updated_at,
                     zone=zone_num,
-                    is_watering=is_watering,
-                    remaining_seconds=remain_seconds,
-                    program_number=program_number,
+                    is_watering=station_data.is_watering,
+                    remaining_seconds=station_data.remain_sec,
+                    program_number=station_data.program_number,
                 )
 
             case CloudStreamSortKey.CONNECTED:
-                is_connected = True
-                active_station = None
-                remain_seconds = None
-                rain_delay = None
-
-                if record.data:
-                    try:
-                        parsed_data = json.loads(record.data)
-                        if isinstance(parsed_data, dict):
-                            conn_data = ConnectedData.from_dict(parsed_data)
-                            active_station = conn_data.active_station
-                            remain_seconds = conn_data.remain_sec
-                            rain_delay = conn_data.rain_delay
-                            if str(conn_data.state) in ("0", "offline"):
-                                is_connected = False
-                        elif str(parsed_data) in ("0", "offline"):
-                            is_connected = False
-                    except (ValueError, TypeError, KeyError, json.JSONDecodeError):
-                        pass
-
-                # Epoch check for remaining seconds
-                if (
-                    remain_seconds is not None
-                    and remain_seconds > 1000000000
-                    and record.timestamp
-                ):
-                    if remain_seconds >= record.timestamp:
-                        remain_seconds -= record.timestamp
+                if not record.data:
+                    return None
+                try:
+                    conn_data = ConnectedData.parse_record(record)
+                except ValueError:
+                    return None
 
                 return ConnectionStatusEvent(
                     satellite_id=self._satellite_id,
                     device_uuid=record.pk,
                     updated_at=updated_at,
-                    is_connected=is_connected,
-                    active_station=active_station,
-                    remaining_seconds=remain_seconds,
-                    rain_delay=rain_delay,
+                    is_connected=conn_data.is_connected,
+                    active_station=conn_data.active_station,
+                    remaining_seconds=conn_data.remain_sec,
+                    rain_delay=conn_data.rain_delay,
                 )
 
             case _:
