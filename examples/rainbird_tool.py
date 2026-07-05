@@ -16,7 +16,6 @@ import argparse
 import asyncio
 import datetime
 import inspect
-import json
 import logging
 import os
 from typing import Any
@@ -27,6 +26,7 @@ from pyrainbird import async_client
 from pyrainbird.cloud import (
     AsyncRainbirdCloudClient,
     AsyncRainbirdCloudStream,
+    CachingTokenProvider,
     ConnectionStatusEvent,
     GenericCloudStreamEvent,
     RainSensorStateEvent,
@@ -36,66 +36,6 @@ from pyrainbird.cloud import (
 )
 
 _LOGGER = logging.getLogger(__name__)
-
-
-CACHE_FILE_MODE = 0o600
-
-
-class CachingTokenProvider(async_client.RainbirdTokenProvider):
-    """Token provider that caches the cloud token in a JSON file."""
-
-    def __init__(
-        self,
-        client: AsyncRainbirdCloudClient,
-        config_path: str,
-    ) -> None:
-        """Initialize CachingTokenProvider."""
-        self._client = client
-        self._config_path = config_path
-        self._client.token_provider = self
-
-    def _save_token_to_cache(self, token: str) -> None:
-        """Save the token to the JSON config file."""
-        try:
-            os.makedirs(os.path.dirname(self._config_path), exist_ok=True)
-            with open(self._config_path, "w", encoding="utf-8") as f:
-                json.dump({"token": token}, f, indent=2)
-            os.chmod(self._config_path, CACHE_FILE_MODE)
-        except Exception as err:
-            _LOGGER.warning("Failed to save token to cache: %s", err)
-
-    async def async_get_token(self, force_refresh: bool = False) -> str:
-        """Return a valid token, checking env, reading cache, or logging in."""
-        env_token = os.environ.get("RAINBIRD_CLOUD_TOKEN")
-        if env_token:
-            self._client._token = env_token
-            self._client._headers["Authorization"] = f"Bearer {env_token}"
-            return env_token
-
-        if not force_refresh and self._client.token:
-            return self._client.token
-
-        if not force_refresh and os.path.exists(self._config_path):
-            try:
-                with open(self._config_path, "r", encoding="utf-8") as f:
-                    config = json.load(f)
-                    token = config.get("token")
-                if token:
-                    self._client._token = token
-                    self._client._headers["Authorization"] = f"Bearer {token}"
-                    return token
-            except Exception as err:
-                _LOGGER.warning("Failed to read token from cache: %s", err)
-
-        if not self._client._username or not self._client._password:
-            raise async_client.RainbirdAuthException(
-                "No cached token found and credentials (RAINBIRD_CLOUD_USERNAME/RAINBIRD_CLOUD_PASSWORD) are not set."
-            )
-
-        _LOGGER.info("Logging in to obtain a new token...")
-        token = await self._client.login()
-        self._save_token_to_cache(token)
-        return token
 
 
 def create_cloud_client(session: aiohttp.ClientSession) -> AsyncRainbirdCloudClient:

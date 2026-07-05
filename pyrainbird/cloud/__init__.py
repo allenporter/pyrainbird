@@ -3,6 +3,7 @@
 from .client import (
     AsyncRainbirdCloudClient,
     AsyncRainbirdCloudController,
+    CachingTokenProvider,
     RainbirdCloudTokenProvider,
     async_authenticate_cloud,
     create_cloud_controller,
@@ -20,6 +21,7 @@ from .models import (
 __all__ = [
     "AsyncRainbirdCloudClient",
     "AsyncRainbirdCloudController",
+    "CachingTokenProvider",
     "RainbirdCloudTokenProvider",
     "async_authenticate_cloud",
     "create_cloud_controller",
