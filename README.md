@@ -39,8 +39,8 @@ line tool for querying the device.
 This library interacts with Rain Bird controllers using either **LNK1** (legacy) or **LNK2** (modern) Wi-Fi modules.
 
 ### LNK1 vs. LNK2 Modules
-- **LNK1 Modules:** Communicate over plaintext HTTP (port 80) and do not enforce local payload encryption.
-- **LNK2 Modules:** Communicate over HTTPS (port 443) and enforce local symmetric AES-128 payload encryption using the controller's password.
+- **LNK1 Modules:** Communicate over plaintext HTTP (port 80).
+- **LNK2 Modules:** Communicate over HTTPS (port 443).
 
 ### Local Connection Resiliency
 Modern LNK2 modules (running firmware v4.x+) synchronize their state with the Rain Bird cloud shadow periodically (typically every 5 minutes). Because the ESP32 chip has highly constrained memory and runs a single serial Manchester line mutex, concurrent local polling during this cloud sync window can overload the hardware or cause watchdog crashes.
