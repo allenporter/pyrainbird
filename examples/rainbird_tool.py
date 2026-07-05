@@ -399,7 +399,8 @@ async def main():
             for k, v in vars(args).items()
             if k not in {"func", "command", "log_level", "config_file"}
         }
-        result = await args.func(controller, **method_args)
+        func = getattr(controller, args.command)
+        result = await func(**method_args)
         print(result)
 
 

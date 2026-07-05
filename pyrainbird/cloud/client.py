@@ -13,7 +13,23 @@ from typing import Any
 import aiohttp
 
 from ..async_client import ControllerFeature, RainbirdController, RainbirdTokenProvider
-from ..data import CloudSatellite, Schedule, States
+from ..data import (
+    CloudSatellite,
+    Schedule,
+    States,
+    Program,
+    ZoneDuration,
+    ControllerInfo,
+)
+from ..const import DayOfWeek, ProgramFrequency
+from .models import (
+    CloudProgram,
+    CloudStationRuntime,
+    CloudStation,
+    CloudSeasonalAdjust,
+    CloudFlowElement,
+    CloudFirmwareVersions,
+)
 from ..exceptions import (
     RainbirdApiException,
     RainbirdAuthException,
@@ -66,6 +82,40 @@ def _parse_login_validation_error(html: str) -> str | None:
         return re_match.group(1).strip()
 
     return None
+
+
+def _parse_iso_time(time_str: str | None) -> datetime.time | None:
+    """Parse ISO-8601 start time to datetime.time."""
+    if not time_str or time_str.startswith("0001"):
+        return None
+    try:
+        clean_str = time_str.replace("Z", "+00:00")
+        dt = datetime.datetime.fromisoformat(clean_str)
+        return dt.time()
+    except ValueError:
+        try:
+            parts = time_str.split("T")
+            if len(parts) > 1:
+                t_parts = parts[1].split(":")
+                return datetime.time(hour=int(t_parts[0]), minute=int(t_parts[1]))
+        except (IndexError, ValueError):
+            pass
+    return None
+
+
+def _parse_program_index(
+    short_name: str | None, name: str | None, fallback_index: int
+) -> int:
+    """Parse the program letter (e.g. A=0, B=1) from name or shortName."""
+    for val in (short_name, name):
+        if val:
+            match = re.search(r"\bPGM\s+([A-Z])\b", val, re.IGNORECASE)
+            if match:
+                return ord(match.group(1).upper()) - ord("A")
+            match = re.search(r"\bProgram\s+([A-Z])\b", val, re.IGNORECASE)
+            if match:
+                return ord(match.group(1).upper()) - ord("A")
+    return fallback_index
 
 
 class RainbirdCloudTokenProvider(RainbirdTokenProvider):
@@ -141,7 +191,7 @@ class RainbirdCloudTokenProvider(RainbirdTokenProvider):
                 )
                 access_token_value = await self._follow_redirects(location, headers)
                 break
-            except Exception as err:
+            except RainbirdApiException as err:
                 if (
                     "202" in str(err)
                     or "challenge" in str(err).lower()
@@ -327,7 +377,7 @@ class CachingTokenProvider(RainbirdTokenProvider):
             with open(self._config_path, "w", encoding="utf-8") as f:
                 json.dump({"token": token}, f, indent=2)
             os.chmod(self._config_path, 0o600)
-        except Exception as err:
+        except OSError as err:
             _LOGGER.warning("Failed to save token to cache: %s", err)
 
     async def async_get_token(self, force_refresh: bool = False) -> str:
@@ -347,7 +397,7 @@ class CachingTokenProvider(RainbirdTokenProvider):
                 if token:
                     self._token = token
                     return token
-            except Exception as err:
+            except (OSError, json.JSONDecodeError) as err:
                 _LOGGER.warning("Failed to read token from cache: %s", err)
 
         token = await self._auth_provider.async_get_token(force_refresh=force_refresh)
@@ -448,7 +498,7 @@ class AsyncRainbirdCloudClient:
         for sat_dict in data:
             try:
                 satellites.append(CloudSatellite.from_dict(sat_dict))
-            except Exception as err:
+            except (ValueError, TypeError, KeyError) as err:
                 raise RainbirdApiException(
                     f"Error parsing satellite data: {err}. Source: {sat_dict}"
                 ) from err
@@ -461,7 +511,7 @@ class AsyncRainbirdCloudClient:
             "GET", "Satellite/GetSatellite", params={"satelliteId": satellite_id}
         )
 
-    async def get_station_list(self, satellite_id: int) -> list[dict[str, Any]]:
+    async def get_station_list(self, satellite_id: int) -> list[CloudStation]:
         """Retrieve the list of stations/zones for a specific satellite."""
         data = await self.request(
             "GET",
@@ -470,7 +520,99 @@ class AsyncRainbirdCloudClient:
         )
         if not isinstance(data, list):
             raise RainbirdApiException("Expected station list response to be a list.")
-        return data
+        return [CloudStation.from_dict(s) for s in data]
+
+    async def get_program_list(self, satellite_id: int) -> list[CloudProgram]:
+        """Retrieve the list of scheduled programs for a specific satellite."""
+        data = await self.request(
+            "GET",
+            "Program/GetProgramList",
+            params={"satelliteId": satellite_id},
+        )
+        if not isinstance(data, list):
+            raise RainbirdApiException("Expected program list response to be a list.")
+        return [CloudProgram.from_dict(p) for p in data]
+
+    async def get_programs_assigned_runtime(
+        self, satellite_id: int
+    ) -> list[CloudStationRuntime]:
+        """Retrieve the assigned program runtimes per zone for a specific satellite."""
+        data = await self.request(
+            "GET",
+            "ProgramStep/GetProgramsAssignedAndRunTimeBySatelliteId",
+            params={"satelliteId": satellite_id},
+        )
+        if not isinstance(data, list):
+            raise RainbirdApiException(
+                "Expected assigned runtimes response to be a list."
+            )
+        return [CloudStationRuntime.from_dict(item) for item in data]
+
+    async def get_seasonal_adjust(self, site_id: int) -> CloudSeasonalAdjust:
+        """Retrieve the seasonal watering adjust configurations for a site."""
+        data = await self.request(
+            "GET",
+            "SeasonalAdjust/GetSeasonalAdjustForSite",
+            params={"siteId": site_id},
+        )
+        if not isinstance(data, dict):
+            raise RainbirdApiException(
+                "Expected seasonal adjust response to be a dict."
+            )
+        return CloudSeasonalAdjust.from_dict(data)
+
+    async def get_flow_elements(self, satellite_id: int) -> list[CloudFlowElement]:
+        """Retrieve the list of flow sensors/zones for a specific satellite."""
+        data = await self.request(
+            "GET",
+            "FlowElement/GetFlowElements",
+            params={"satelliteId": satellite_id},
+        )
+        if not isinstance(data, list):
+            raise RainbirdApiException("Expected flow elements response to be a list.")
+        return [CloudFlowElement.from_dict(item) for item in data]
+
+    async def get_firmware_versions(self, satellite_id: int) -> CloudFirmwareVersions:
+        """Retrieve firmware and modular system versions for a specific satellite."""
+        data = await self.request(
+            "GET",
+            "ManualOps/GetSatelliteFirmwareVersions",
+            params={"satelliteId": satellite_id},
+        )
+        if not isinstance(data, dict):
+            raise RainbirdApiException(
+                "Expected firmware versions response to be a dict."
+            )
+        return CloudFirmwareVersions.from_dict(data)
+
+    async def is_connected(self, satellite_id: int) -> bool:
+        """Return True if the satellite is connected to the cloud servers."""
+        data = await self.request(
+            "GET",
+            "Satellite/isConnected",
+            params={"satelliteId": satellite_id},
+        )
+        if isinstance(data, dict):
+            connected_list = data.get("satellites")
+            if isinstance(connected_list, list):
+                return satellite_id in connected_list
+        return False
+
+    async def stop_all_irrigation(self, satellite_id: int) -> None:
+        """Send a command to stop all active irrigation on a satellite."""
+        await self.request(
+            "POST",
+            "Satellite/StopAllIrrigation",
+            json=[satellite_id],
+        )
+
+    async def start_programs(self, program_ids: list[int]) -> None:
+        """Send a command to trigger execution of specific programs by ID."""
+        await self.request(
+            "POST",
+            "ManualOps/StartPrograms",
+            json=program_ids,
+        )
 
     async def get_run_station_status(self, satellite_id: int) -> list[dict[str, Any]]:
         """Retrieve real-time execution status for all zones on a satellite."""
@@ -556,6 +698,7 @@ class AsyncRainbirdCloudController(RainbirdController):
         return {
             ControllerFeature.ZONE_IRRIGATION,
             ControllerFeature.RAIN_DELAY,
+            ControllerFeature.SEASONAL_ADJUST,
         }
 
     @property
@@ -575,10 +718,10 @@ class AsyncRainbirdCloudController(RainbirdController):
 
         stations = await self._client.get_station_list(self._satellite_id)
         for station in stations:
-            station_num = station.get("stationNumber") or station.get("number")
+            station_num = station.station_number or station.number
             if station_num == zone:
-                self._station_id_map[zone] = station["id"]
-                return station["id"]
+                self._station_id_map[zone] = station.id
+                return station.id
 
         raise RainbirdApiException(
             f"Zone {zone} not found on the controller satellite."
@@ -591,24 +734,16 @@ class AsyncRainbirdCloudController(RainbirdController):
 
     async def stop_irrigation(self) -> None:
         """Turn off all active irrigation zones."""
-        running_statuses = await self._client.get_run_station_status(self._satellite_id)
-        for status in running_statuses:
-            if (
-                status.get("isIrrigating")
-                or status.get("status") == "running"
-                or status.get("state") == "active"
-            ):
-                station_id = status["stationId"]
-                await self._client.advance_stations(station_id)
+        await self._client.stop_all_irrigation(self._satellite_id)
 
     async def get_zone_states(self) -> States:
         """Return which zones are currently active."""
         if not self._station_id_map:
             stations = await self._client.get_station_list(self._satellite_id)
             for s in stations:
-                num = s.get("stationNumber") or s.get("number")
+                num = s.station_number or s.number
                 if num is not None:
-                    self._station_id_map[num] = s["id"]
+                    self._station_id_map[num] = s.id
 
         reverse_map = {sid: zone for zone, sid in self._station_id_map.items()}
 
@@ -659,9 +794,111 @@ class AsyncRainbirdCloudController(RainbirdController):
 
     async def get_schedule(self) -> Schedule:
         """Return the controller's irrigation schedule."""
-        raise NotImplementedError(
-            "Mapping cloud schedule/program is not implemented yet"
+        stations, programs_list, assigned_list = await asyncio.gather(
+            self._client.get_station_list(self._satellite_id),
+            self._client.get_program_list(self._satellite_id),
+            self._client.get_programs_assigned_runtime(self._satellite_id),
         )
+
+        station_id_to_num = {}
+        for s in stations:
+            num = s.station_number or s.number
+            if num is not None:
+                station_id_to_num[s.id] = num
+
+        durations_by_program: dict[int, list[ZoneDuration]] = {}
+        for item in assigned_list:
+            zone_num = station_id_to_num.get(item.station_id)
+            if zone_num is None:
+                continue
+            for assigned_prog in item.runtime_program_assigned_list:
+                prog_id = assigned_prog.program_id
+                duration = assigned_prog.adjusted_run_time
+                if duration.total_seconds() > 0:
+                    durations_by_program.setdefault(prog_id, []).append(
+                        ZoneDuration(zone=zone_num, duration=duration)
+                    )
+
+        for prog_id in durations_by_program:
+            durations_by_program[prog_id].sort(key=lambda zd: zd.zone)
+
+        try:
+            rain_delay = await self.get_rain_delay()
+        except RainbirdApiException as err:
+            _LOGGER.warning("Could not fetch rain delay: %s", err)
+            rain_delay = 0
+
+        try:
+            rain_sensor = await self.get_rain_sensor_state()
+        except RainbirdApiException as err:
+            _LOGGER.warning("Could not fetch rain sensor state: %s", err)
+            rain_sensor = False
+
+        controller_info = ControllerInfo(
+            station_delay=0,
+            rain_delay=rain_delay,
+            rain_sensor=rain_sensor,
+        )
+
+        def program_sort_key(p: CloudProgram) -> str:
+            return p.short_name or p.name or str(p.id)
+
+        sorted_programs = sorted(programs_list, key=program_sort_key)
+
+        programs = []
+        for idx, p in enumerate(sorted_programs):
+            starts = []
+            if (start_time := _parse_iso_time(p.start_time)) is not None:
+                starts.append(start_time)
+
+            days_of_week = set()
+            if len(p.week_days) == 7:
+                for i, bit in enumerate(p.week_days):
+                    if bit == "1":
+                        days_of_week.add(DayOfWeek(i))
+
+            program_num = _parse_program_index(p.short_name, p.name, idx)
+
+            program = Program(
+                program=program_num,
+                frequency=ProgramFrequency.CUSTOM,
+                days_of_week=days_of_week,
+                starts=starts,
+                durations=durations_by_program.get(p.id, []),
+                controller_info=controller_info,
+            )
+            programs.append(program)
+
+        return Schedule(
+            controller_info=controller_info,
+            programs=programs,
+        )
+
+    async def get_seasonal_adjust(self) -> CloudSeasonalAdjust:
+        """Return the seasonal watering adjust configuration for the site."""
+        sat_data = await self._client.get_satellite(self._satellite_id)
+        site_id = sat_data.get("siteId")
+        if not site_id:
+            raise RainbirdApiException(
+                "Could not retrieve siteId from satellite details."
+            )
+        return await self._client.get_seasonal_adjust(site_id)
+
+    async def get_flow_elements(self) -> list[CloudFlowElement]:
+        """Return the list of flow sensors/zones for the controller."""
+        return await self._client.get_flow_elements(self._satellite_id)
+
+    async def get_firmware_versions(self) -> CloudFirmwareVersions:
+        """Return firmware and system module versions for the controller."""
+        return await self._client.get_firmware_versions(self._satellite_id)
+
+    async def is_connected(self) -> bool:
+        """Return True if the controller is connected to the cloud servers."""
+        return await self._client.is_connected(self._satellite_id)
+
+    async def start_programs(self, program_ids: list[int]) -> None:
+        """Trigger execution of specific programs on the controller by ID."""
+        await self._client.start_programs(program_ids)
 
 
 def create_cloud_controller(
