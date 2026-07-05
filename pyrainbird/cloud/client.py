@@ -1,14 +1,16 @@
 """Cloud client for rainbird IQ4 service."""
 
 import asyncio
+import datetime
 import logging
 import re
 import urllib.parse
 import uuid
+from typing import Any
 import aiohttp
 
-from ..async_client import RainbirdTokenProvider
-from ..data import CloudSatellite
+from ..async_client import ControllerFeature, RainbirdController, RainbirdTokenProvider
+from ..data import CloudSatellite, Schedule, States
 from ..exceptions import (
     RainbirdApiException,
     RainbirdAuthException,
@@ -312,44 +314,59 @@ class AsyncRainbirdCloudClient:
         self._headers["Authorization"] = f"Bearer {token}"
         return token
 
-    async def get_satellites(self) -> list[CloudSatellite]:
-        """Retrieve the list of registered satellites/controllers under the user account."""
+    async def request(self, method: str, path: str, **kwargs: Any) -> Any:
+        """Perform a REST API request with automatic 401 token refresh retries."""
+        url = f"{API_BASE}/{path}"
         await self._async_get_token()
 
-        api_url = f"{API_BASE}/Satellite/GetSatelliteList"
-        params = {"includeInvisibleToCurrentUser": "false"}
+        headers = {**self._headers, **kwargs.pop("headers", {})}
 
         try:
-            async with self._session.get(
-                api_url, headers=self._headers, params=params
+            async with self._session.request(
+                method, url, headers=headers, **kwargs
             ) as resp:
                 if resp.status == 401:
-                    # Token might be expired, attempt to refresh token
-                    _LOGGER.info("Token expired (401), attempting to refresh token...")
+                    _LOGGER.info(
+                        "Token expired (401) on %s %s, attempting refresh...",
+                        method,
+                        path,
+                    )
                     await self._async_get_token(force_refresh=True)
-                    async with self._session.get(
-                        api_url, headers=self._headers, params=params
+                    headers["Authorization"] = f"Bearer {self._token}"
+                    async with self._session.request(
+                        method, url, headers=headers, **kwargs
                     ) as retry_resp:
                         if retry_resp.status == 401:
                             raise RainbirdAuthException(
                                 "Token expired or unauthorized even after refresh."
                             )
-                        if retry_resp.status != 200:
+                        if retry_resp.status not in (200, 201, 204):
                             raise RainbirdApiException(
-                                f"Failed to fetch satellite list after refresh, HTTP status: {retry_resp.status}"
+                                f"Request failed with HTTP {retry_resp.status}"
                             )
-                        data = await retry_resp.json()
-                else:
-                    if resp.status != 200:
-                        raise RainbirdApiException(
-                            f"Failed to fetch satellite list, HTTP status: {resp.status}"
-                        )
-                    data = await resp.json()
+                        if retry_resp.status == 204:
+                            return None
+                        return await retry_resp.json()
+
+                if resp.status not in (200, 201, 204):
+                    raise RainbirdApiException(
+                        f"Request failed with HTTP {resp.status}"
+                    )
+                if resp.status == 204:
+                    return None
+                return await resp.json()
         except aiohttp.ClientError as err:
             raise RainbirdConnectionError(
-                f"Connection error fetching satellite list: {err}"
+                f"Connection error requesting {path}: {err}"
             ) from err
 
+    async def get_satellites(self) -> list[CloudSatellite]:
+        """Retrieve the list of registered satellites/controllers under the user account."""
+        data = await self.request(
+            "GET",
+            "Satellite/GetSatelliteList",
+            params={"includeInvisibleToCurrentUser": "false"},
+        )
         if not isinstance(data, list):
             raise RainbirdApiException("Expected satellite list response to be a list.")
 
@@ -363,6 +380,78 @@ class AsyncRainbirdCloudClient:
                 ) from err
 
         return satellites
+
+    async def get_satellite(self, satellite_id: int) -> dict[str, Any]:
+        """Retrieve details of a specific satellite controller."""
+        return await self.request(
+            "GET", "Satellite/GetSatellite", params={"satelliteId": satellite_id}
+        )
+
+    async def get_station_list(self, satellite_id: int) -> list[dict[str, Any]]:
+        """Retrieve the list of stations/zones for a specific satellite."""
+        data = await self.request(
+            "GET",
+            "Station/GetStationListForSatellite",
+            params={"satelliteId": satellite_id},
+        )
+        if not isinstance(data, list):
+            raise RainbirdApiException("Expected station list response to be a list.")
+        return data
+
+    async def get_run_station_status(self, satellite_id: int) -> list[dict[str, Any]]:
+        """Retrieve real-time execution status for all zones on a satellite."""
+        data = await self.request(
+            "GET",
+            "ProgramStep/GetRunStationStatusForSatellite",
+            params={"satelliteId": satellite_id},
+        )
+        if not isinstance(data, list):
+            raise RainbirdApiException(
+                "Expected run station status response to be a list."
+            )
+        return data
+
+    async def start_stations(self, station_ids: list[int], seconds: list[int]) -> None:
+        """Start manual irrigation on specified stations."""
+        await self.request(
+            "POST",
+            "ManualOps/StartStations",
+            json={
+                "stationIds": station_ids,
+                "seconds": seconds,
+                "isGroupStart": False,
+            },
+        )
+
+    async def advance_stations(self, station_id: int) -> None:
+        """Advance or stop a running station."""
+        await self.request(
+            "POST",
+            "ManualOps/AdvanceStations",
+            params={"isProgramIndex": "true"},
+            json=[{"programId": -1, "stationId": station_id}],
+        )
+
+    async def patch_satellite(
+        self, satellite_id: int, patch_ops: list[dict[str, Any]]
+    ) -> None:
+        """Update satellite configuration (e.g. rain delay) via JSON patch."""
+        await self.request(
+            "PATCH",
+            "Satellite/v2/UpdateBatches",
+            json={"ids": [satellite_id], "patch": patch_ops},
+        )
+
+    async def get_sensor_list(self, satellite_id: int) -> list[dict[str, Any]]:
+        """Retrieve the list of sensors connected to a satellite."""
+        data = await self.request(
+            "GET",
+            "Sensor/GetSensorListBySatelliteId",
+            params={"satelliteId": satellite_id},
+        )
+        if not isinstance(data, list):
+            raise RainbirdApiException("Expected sensor list response to be a list.")
+        return data
 
 
 class RainbirdCloudTokenProvider(RainbirdTokenProvider):
@@ -392,3 +481,136 @@ async def async_authenticate_cloud(
     token = await client.login()
     satellites = await client.get_satellites()
     return token, satellites
+
+
+class AsyncRainbirdCloudController(RainbirdController):
+    """Rainbird cloud controller communicating with the IQ4 REST API."""
+
+    def __init__(self, client: AsyncRainbirdCloudClient, satellite_id: int) -> None:
+        """Initialize AsyncRainbirdCloudController."""
+        self._client = client
+        self._satellite_id = satellite_id
+        self._station_id_map: dict[int, int] = {}
+
+    @property
+    def supported_features(self) -> set[ControllerFeature]:
+        """Return features supported by this controller."""
+        return {
+            ControllerFeature.ZONE_IRRIGATION,
+            ControllerFeature.RAIN_DELAY,
+        }
+
+    @property
+    def max_zones(self) -> int:
+        """Return the maximum number of stations supported."""
+        return 32
+
+    @property
+    def max_programs(self) -> int:
+        """Return the maximum number of programs supported."""
+        return 4
+
+    async def _resolve_station_id(self, zone: int) -> int:
+        """Map local zone/station number to the cloud station database ID."""
+        if zone in self._station_id_map:
+            return self._station_id_map[zone]
+
+        stations = await self._client.get_station_list(self._satellite_id)
+        for station in stations:
+            station_num = station.get("stationNumber") or station.get("number")
+            if station_num == zone:
+                self._station_id_map[zone] = station["id"]
+                return station["id"]
+
+        raise RainbirdApiException(
+            f"Zone {zone} not found on the controller satellite."
+        )
+
+    async def irrigate_zone(self, zone: int, minutes: int) -> None:
+        """Turn on irrigation for a single zone."""
+        station_id = await self._resolve_station_id(zone)
+        await self._client.start_stations([station_id], [minutes * 60])
+
+    async def stop_irrigation(self) -> None:
+        """Turn off all active irrigation zones."""
+        running_statuses = await self._client.get_run_station_status(self._satellite_id)
+        for status in running_statuses:
+            if (
+                status.get("isIrrigating")
+                or status.get("status") == "running"
+                or status.get("state") == "active"
+            ):
+                station_id = status["stationId"]
+                await self._client.advance_stations(station_id)
+
+    async def get_zone_states(self) -> States:
+        """Return which zones are currently active."""
+        if not self._station_id_map:
+            stations = await self._client.get_station_list(self._satellite_id)
+            for s in stations:
+                num = s.get("stationNumber") or s.get("number")
+                if num is not None:
+                    self._station_id_map[num] = s["id"]
+
+        reverse_map = {sid: zone for zone, sid in self._station_id_map.items()}
+
+        running_statuses = await self._client.get_run_station_status(self._satellite_id)
+        active_zones = set()
+        for status in running_statuses:
+            if (
+                status.get("isIrrigating")
+                or status.get("status") == "running"
+                or status.get("state") == "active"
+            ):
+                sid = status["stationId"]
+                if sid in reverse_map:
+                    active_zones.add(reverse_map[sid])
+
+        mask_bytes = []
+        for i in range(0, 32, 8):
+            chunk = [bool(z in active_zones) for z in range(i + 1, i + 9)]
+            byte_val = sum((1 << j) for j, val in enumerate(chunk) if val)
+            mask_bytes.append(f"{byte_val:02X}")
+        mask_str = "".join(mask_bytes)
+        return States(mask_str)
+
+    async def get_rain_sensor_state(self) -> bool:
+        """Return True if the rain sensor is active."""
+        sensors = await self._client.get_sensor_list(self._satellite_id)
+        for sensor in sensors:
+            if sensor.get("type") == "Rain" or "rain" in sensor.get("name", "").lower():
+                return bool(sensor.get("state"))
+        return False
+
+    async def get_rain_delay(self) -> int:
+        """Return the remaining rain delay in days."""
+        data = await self._client.get_satellite(self._satellite_id)
+        ticks = data.get("rainDelayLong") or 0
+        days = int(ticks / (10_000_000 * 3600 * 24))
+        return days
+
+    async def set_rain_delay(self, days: int) -> None:
+        """Set or clear a rain delay."""
+        ticks = days * 24 * 3600 * 10_000_000
+        utc_now = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+        patch_ops = [
+            {"op": "replace", "path": "/rainDelayLong", "value": ticks},
+            {"op": "replace", "path": "/rainDelayStart", "value": utc_now},
+        ]
+        await self._client.patch_satellite(self._satellite_id, patch_ops)
+
+    async def get_schedule(self) -> Schedule:
+        """Return the controller's irrigation schedule."""
+        raise NotImplementedError(
+            "Mapping cloud schedule/program is not implemented yet"
+        )
+
+
+def create_cloud_controller(
+    session: aiohttp.ClientSession,
+    token_provider: RainbirdTokenProvider,
+    satellite_id: int,
+) -> AsyncRainbirdCloudController:
+    """Create an AsyncRainbirdCloudController with the specified token provider."""
+    client = AsyncRainbirdCloudClient(session, token_provider=token_provider)
+    return AsyncRainbirdCloudController(client, satellite_id)

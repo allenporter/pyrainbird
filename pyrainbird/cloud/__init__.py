@@ -2,8 +2,10 @@
 
 from .client import (
     AsyncRainbirdCloudClient,
+    AsyncRainbirdCloudController,
     RainbirdCloudTokenProvider,
     async_authenticate_cloud,
+    create_cloud_controller,
 )
 from .stream import AsyncRainbirdCloudStream
 from .models import (
@@ -17,8 +19,10 @@ from .models import (
 
 __all__ = [
     "AsyncRainbirdCloudClient",
+    "AsyncRainbirdCloudController",
     "RainbirdCloudTokenProvider",
     "async_authenticate_cloud",
+    "create_cloud_controller",
     "AsyncRainbirdCloudStream",
     "CloudStreamEvent",
     "ConnectionStatusEvent",
