@@ -282,3 +282,110 @@ class GenericCloudStreamEvent(CloudStreamEvent):
 
     event_key: str
     raw_data: str | None
+
+
+def deserialize_hhmmss(val: str | None) -> datetime.timedelta:
+    """Parse a duration string formatted as HH:MM:SS into a timedelta."""
+    if not val:
+        return datetime.timedelta()
+    try:
+        parts = val.split(":")
+        if len(parts) == 3:
+            h, m, s = map(int, parts)
+            return datetime.timedelta(hours=h, minutes=m, seconds=s)
+    except (ValueError, TypeError, OverflowError):
+        pass
+    return datetime.timedelta()
+
+
+@dataclass
+class CloudProgram(DataClassDictMixin):
+    id: int
+    name: str
+    short_name: str = field(metadata=field_options(alias="shortName"))
+    is_enabled: bool = field(metadata=field_options(alias="isEnabled"))
+    start_time: str = field(metadata=field_options(alias="startTime"))
+    week_days: str = field(metadata=field_options(alias="weekDays"))
+    program_adjust: int = field(metadata=field_options(alias="programAdjust"))
+
+
+@dataclass
+class CloudProgramRuntime(DataClassDictMixin):
+    program_id: int = field(metadata=field_options(alias="programId"))
+    program_short_name: str = field(metadata=field_options(alias="programShortName"))
+    base_run_time: datetime.timedelta = field(
+        metadata=field_options(alias="baseRunTime", deserialize=deserialize_hhmmss)
+    )
+    adjusted_run_time: datetime.timedelta = field(
+        metadata=field_options(alias="adjustedRunTime", deserialize=deserialize_hhmmss)
+    )
+
+
+@dataclass
+class CloudStationRuntime(DataClassDictMixin):
+    station_id: int = field(metadata=field_options(alias="stationId"))
+    runtime_program_assigned_list: list[CloudProgramRuntime] = field(
+        metadata=field_options(alias="runtimeProgramAssignedList"),
+        default_factory=list,
+    )
+
+
+@dataclass
+class CloudStation(DataClassDictMixin):
+    id: int
+    station_number: int | None = field(
+        default=None, metadata=field_options(alias="stationNumber")
+    )
+    number: int | None = field(default=None)
+    name: str | None = field(default=None)
+    terminal: int | None = field(default=None)
+
+
+@dataclass
+class CloudSeasonalAdjust(DataClassDictMixin):
+    id: int
+    site_id: int = field(metadata=field_options(alias="siteId"))
+    seasonal_adjust_pct: int = field(metadata=field_options(alias="seasonalAdjustPct"))
+    adjust_type_id: int = field(metadata=field_options(alias="adjustTypeId"))
+    jan_adjust: int = field(metadata=field_options(alias="janAdjust"))
+    feb_adjust: int = field(metadata=field_options(alias="febAdjust"))
+    mar_adjust: int = field(metadata=field_options(alias="marAdjust"))
+    apr_adjust: int = field(metadata=field_options(alias="aprAdjust"))
+    may_adjust: int = field(metadata=field_options(alias="mayAdjust"))
+    jun_adjust: int = field(metadata=field_options(alias="junAdjust"))
+    jul_adjust: int = field(metadata=field_options(alias="julAdjust"))
+    aug_adjust: int = field(metadata=field_options(alias="augAdjust"))
+    sep_adjust: int = field(metadata=field_options(alias="sepAdjust"))
+    oct_adjust: int = field(metadata=field_options(alias="octAdjust"))
+    nov_adjust: int = field(metadata=field_options(alias="novAdjust"))
+    dec_adjust: int = field(metadata=field_options(alias="decAdjust"))
+
+
+@dataclass
+class CloudFlowElement(DataClassDictMixin):
+    id: int
+    name: str
+    flow_rate: float = field(metadata=field_options(alias="flowRate"))
+    has_flow_alarm: bool = field(metadata=field_options(alias="hasFlowAlarm"))
+    flow_capacity: float = field(metadata=field_options(alias="flowCapacity"))
+    satellite_id: int = field(metadata=field_options(alias="satelliteId"))
+    description: str | None = None
+    ordinal: int | None = None
+
+
+@dataclass
+class CurrentFirmware(DataClassDictMixin):
+    id: int
+    type: int
+    version: str
+    site_id: int = field(metadata=field_options(alias="siteID"))
+    company_id: int = field(metadata=field_options(alias="companyID"))
+    bootloader_version: str = field(metadata=field_options(alias="bootloaderVersion"))
+    cic_type: int = field(metadata=field_options(alias="cicType"))
+    cic_version: str = field(metadata=field_options(alias="cicVersion"))
+    has_mrm: bool = field(metadata=field_options(alias="hasMrm"))
+
+
+@dataclass
+class CloudFirmwareVersions(DataClassDictMixin):
+    current: CurrentFirmware
