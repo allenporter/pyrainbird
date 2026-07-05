@@ -55,9 +55,9 @@ We attempt to support standard controllers compatible with LNK1/LNK2 modules. Ho
 #### Tier 1: Confirmed & Fully Supported
 - **ESP-TM2** (Fully tested & verified against physical hardware)
 
-#### Tier 2: Highly Likely to Work (Same Protocol Family)
+#### Tier 2: Likely to Work (Same Protocol Family)
 These devices use the same JSON-RPC/SIP encapsulation (`tunnelSip`), standard program-based scheduling structures, and command sets as the ESP-TM2:
-- **ESP-Me / ESP-ME3 / ESP-Me2** (Highly expected to work out-of-the-box; schedule formats are covered by library unit test mocks)
+- **ESP-Me / ESP-ME3 / ESP-Me2** (Expected to work out-of-the-box; schedule formats are covered by library unit test mocks)
 - **RC2 / ARC8** (Modern residential controllers sharing the standard TM2 family protocol layout)
 - **TM2R / TRU**
 
