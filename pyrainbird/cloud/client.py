@@ -2,7 +2,9 @@
 
 import asyncio
 import datetime
+import json
 import logging
+import os
 import re
 import urllib.parse
 import uuid
@@ -497,9 +499,6 @@ class CachingTokenProvider(RainbirdTokenProvider):
     def _save_token_to_cache(self, token: str) -> None:
         """Save the token to the JSON config file."""
         try:
-            import json
-            import os
-
             os.makedirs(os.path.dirname(self._config_path), exist_ok=True)
             with open(self._config_path, "w", encoding="utf-8") as f:
                 json.dump({"token": token}, f, indent=2)
@@ -509,9 +508,6 @@ class CachingTokenProvider(RainbirdTokenProvider):
 
     async def async_get_token(self, force_refresh: bool = False) -> str:
         """Return a valid token, reading from environment, cache file, or credentials login."""
-        import json
-        import os
-
         env_token = os.environ.get("RAINBIRD_CLOUD_TOKEN")
         if env_token:
             self._client._token = env_token
