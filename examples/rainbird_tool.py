@@ -160,6 +160,82 @@ async def stream_cloud(
         print(f"Stream error: {err}")
 
 
+async def discover_local(timeout: float = 5.0) -> None:
+    """Broadcast UDP discovery ping to find controllers on the local network."""
+    import socket
+    import select
+
+    DISCOVERY_PAYLOAD = "RBD-ANDROID"
+    PORTS = [33667, 33668]
+
+    def do_discover():
+        # Ephemeral broadcast socket
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        sock.setblocking(False)
+
+        # Upgraded socket listening on port 33668
+        upgraded_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            upgraded_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            try:
+                upgraded_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+            except AttributeError:
+                pass
+            upgraded_sock.bind(("0.0.0.0", 33668))
+            upgraded_sock.setblocking(False)
+            has_upgraded = True
+        except Exception as e:
+            _LOGGER.warning(
+                "Could not bind to port 33668 for upgraded discovery: %s", e
+            )
+            has_upgraded = False
+
+        print("Sending discovery broadcast for local Rain Bird devices...")
+        try:
+            import time
+
+            for port in PORTS:
+                sock.sendto(DISCOVERY_PAYLOAD.encode(), ("255.255.255.255", port))
+
+            print(f"Listening for responses for {timeout} seconds...")
+            start_time = time.time()
+            sockets_to_watch = [sock]
+            if has_upgraded:
+                sockets_to_watch.append(upgraded_sock)
+
+            while True:
+                elapsed = time.time() - start_time
+                remaining = timeout - elapsed
+                if remaining <= 0:
+                    break
+
+                readable, _, _ = select.select(
+                    sockets_to_watch, [], [], max(0.1, remaining)
+                )
+                for r_sock in readable:
+                    data, addr = r_sock.recvfrom(1024)
+                    mode = "Upgraded" if r_sock is upgraded_sock else "Legacy"
+                    print(f"\n[+] Found Device ({mode} Mode)!")
+                    print(f"    IP Address: {addr[0]}")
+                    print(f"    Response (Hex): {data.hex().upper()}")
+                    try:
+                        decoded = data.decode("utf-8")
+                        print(f"    Response (String): {decoded}")
+                    except Exception:
+                        pass
+        except Exception as e:
+            print(f"Error during discovery: {e}")
+        finally:
+            sock.close()
+            if has_upgraded:
+                upgraded_sock.close()
+        print("\n--- Local discovery finished. ---")
+
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(None, do_discover)
+
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -177,6 +253,43 @@ def parse_args():
     subcommand_parsers = parser.add_subparsers(
         title="Commands", dest="command", required=True
     )
+
+    # Add discover_local subcommand
+    discover_local_parser = subcommand_parsers.add_parser(
+        "discover_local",
+        help="Broadcast UDP discovery ping to find controllers on the local network",
+    )
+    discover_local_parser.add_argument(
+        "--timeout",
+        type=float,
+        default=5.0,
+        help="Time to listen for responses (default: 5.0 seconds)",
+    )
+    discover_local_parser.set_defaults(func=None)
+
+    # Add request_fw_update subcommand
+    fw_update_parser = subcommand_parsers.add_parser(
+        "request_fw_update",
+        help="Trigger a firmware update on the controller, pointing to a specific URL",
+    )
+    fw_update_parser.add_argument(
+        "--lnk-update-url",
+        default="",
+        help="URL for LNK module firmware (e.g. http://10.10.38.83:8080/lnkfw/)",
+    )
+    fw_update_parser.add_argument(
+        "--unv-update-url",
+        default="",
+        help="URL for universal panel controller firmware (e.g. http://10.10.38.83:8080/rbfw/firmware.bin)",
+    )
+    fw_update_parser.set_defaults(func=None)
+
+    # Add get_fw_update_status subcommand
+    fw_status_parser = subcommand_parsers.add_parser(
+        "get_fw_update_status",
+        help="Query the current firmware update status on the controller",
+    )
+    fw_status_parser.set_defaults(func=None)
 
     # Add discover_cloud subcommand
     discover_parser = subcommand_parsers.add_parser(
@@ -249,12 +362,38 @@ async def main():
     logging.basicConfig(level=getattr(logging, args.log_level.upper()))
 
     async with aiohttp.ClientSession() as session:
-        if args.command == "discover_cloud":
+        if args.command == "discover_local":
+            await discover_local(args.timeout)
+            return
+
+        elif args.command == "discover_cloud":
             await discover_cloud(session, args.config_file)
             return
 
         elif args.command == "stream_cloud":
             await stream_cloud(session, args.config_file, args.satellite_id)
+            return
+
+        elif args.command == "request_fw_update":
+            host = os.environ["RAINBIRD_SERVER"]
+            password = os.environ["RAINBIRD_PASSWORD"]
+            controller = await async_client.create_controller(session, host, password)
+            result = await controller._local_client.request(
+                "requestFwUpdate",
+                {
+                    "lnk_update_url": args.lnk_update_url,
+                    "unv_update_url": args.unv_update_url,
+                },
+            )
+            print(result)
+            return
+
+        elif args.command == "get_fw_update_status":
+            host = os.environ["RAINBIRD_SERVER"]
+            password = os.environ["RAINBIRD_PASSWORD"]
+            controller = await async_client.create_controller(session, host, password)
+            result = await controller._local_client.request("getFwUpdateStatus")
+            print(result)
             return
 
         host = os.environ["RAINBIRD_SERVER"]
