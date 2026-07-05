@@ -5,7 +5,15 @@ from .client import (
     RainbirdCloudTokenProvider,
     async_authenticate_cloud,
 )
-from .stream import AsyncRainbirdCloudStream, CloudStreamEvent
+from .stream import (
+    AsyncRainbirdCloudStream,
+    CloudStreamEvent,
+    ConnectionStatusEvent,
+    GenericCloudStreamEvent,
+    RainSensorStateEvent,
+    RssiStateEvent,
+    StationStateEvent,
+)
 
 __all__ = [
     "AsyncRainbirdCloudClient",
@@ -13,4 +21,9 @@ __all__ = [
     "async_authenticate_cloud",
     "AsyncRainbirdCloudStream",
     "CloudStreamEvent",
+    "ConnectionStatusEvent",
+    "GenericCloudStreamEvent",
+    "RainSensorStateEvent",
+    "RssiStateEvent",
+    "StationStateEvent",
 ]

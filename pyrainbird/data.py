@@ -165,6 +165,21 @@ class States:
             result += ("%d:%d" % (i + 1, 1 if self.states[i] else 0),)
         return "states: %s" % ", ".join(result)
 
+    def update_zone(self, zone: int, active: bool) -> "States":
+        """Return a new States instance with the specified zone state updated."""
+        new_states = list(self.states)
+        while len(new_states) < zone:
+            new_states.append(False)
+        new_states[zone - 1] = active
+
+        # Recompute mask bytes in groups of 8 states
+        mask_bytes = []
+        for i in range(0, len(new_states), 8):
+            chunk = new_states[i : i + 8]
+            byte_val = sum((1 << j) for j, val in enumerate(chunk) if val)
+            mask_bytes.append(f"{byte_val:02X}")
+        return States("".join(mask_bytes))
+
 
 @dataclass
 class AvailableStations:
