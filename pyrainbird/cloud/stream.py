@@ -158,7 +158,7 @@ class AsyncRainbirdCloudStream:
                     satellite_id=self._satellite_id,
                     device_uuid=record.pk,
                     updated_at=updated_at,
-                    is_wet=sensor_data.is_wet,
+                    data=sensor_data,
                 )
 
             case sk if sk.startswith(CloudStreamSortKey.STATION_PREFIX):
@@ -174,15 +174,12 @@ class AsyncRainbirdCloudStream:
                 except ValueError:
                     return None
 
-                # If remain_seconds is an epoch timestamp, convert to relative duration
                 return StationStateEvent(
                     satellite_id=self._satellite_id,
                     device_uuid=record.pk,
                     updated_at=updated_at,
                     zone=zone_num,
-                    is_watering=station_data.is_watering,
-                    remaining_seconds=station_data.remain_sec,
-                    program_number=station_data.program_number,
+                    data=station_data,
                 )
 
             case CloudStreamSortKey.CONNECTED:
@@ -197,10 +194,7 @@ class AsyncRainbirdCloudStream:
                     satellite_id=self._satellite_id,
                     device_uuid=record.pk,
                     updated_at=updated_at,
-                    is_connected=conn_data.is_connected,
-                    active_station=conn_data.active_station,
-                    remaining_seconds=conn_data.remain_sec,
-                    rain_delay=conn_data.rain_delay,
+                    data=conn_data,
                 )
 
             case _:

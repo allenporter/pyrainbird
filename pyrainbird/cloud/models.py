@@ -212,26 +212,61 @@ class StationStateEvent(CloudStreamEvent):
     """Fired when a specific zone/station starts or stops watering."""
 
     zone: int
-    is_watering: bool
-    remaining_seconds: int | None
-    program_number: int | None
+    data: StationStateData
+
+    @property
+    def is_watering(self) -> bool:
+        """Return True if the station is watering."""
+        return self.data.is_watering
+
+    @property
+    def remaining_seconds(self) -> int | None:
+        """Return the remaining duration in seconds."""
+        return self.data.remain_sec
+
+    @property
+    def program_number(self) -> int | None:
+        """Return the active program number."""
+        return self.data.program_number
 
 
 @dataclass
 class RainSensorStateEvent(CloudStreamEvent):
     """Fired when the rain sensor detects wet/dry status changes."""
 
-    is_wet: bool
+    data: RainSensorStateData
+
+    @property
+    def is_wet(self) -> bool:
+        """Return True if the rain sensor is wet."""
+        return self.data.is_wet
 
 
 @dataclass
 class ConnectionStatusEvent(CloudStreamEvent):
     """Fired with overall connection and active status details."""
 
-    is_connected: bool
-    active_station: int | None
-    remaining_seconds: int | None
-    rain_delay: int | None
+    data: ConnectedData
+
+    @property
+    def is_connected(self) -> bool:
+        """Return True if the state indicates a connected status."""
+        return self.data.is_connected
+
+    @property
+    def active_station(self) -> int | None:
+        """Return the currently active watering station, if any."""
+        return self.data.active_station
+
+    @property
+    def remaining_seconds(self) -> int | None:
+        """Return the remaining duration for the active station."""
+        return self.data.remain_sec
+
+    @property
+    def rain_delay(self) -> int | None:
+        """Return the active rain delay duration."""
+        return self.data.rain_delay
 
 
 @dataclass
