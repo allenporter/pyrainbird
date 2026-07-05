@@ -106,7 +106,17 @@ class AsyncRainbirdCloudClient:
         self._token_provider = provider
 
     async def login(self, max_retries: int = 3) -> str:
-        """Emulate OIDC implicit grant login flow to obtain an access token."""
+        """Authenticate using the OIDC Implicit Grant flow against ASP.NET Core Identity.
+
+        This emulates a standard browser sign-in process required by Microsoft identity
+        backends when direct REST credentials endpoints are unavailable. It performs the
+        following steps:
+        1. Initiates the OIDC authorize flow request.
+        2. Retrieves the standard ASP.NET Antiforgery CSRF verification token
+           (`__RequestVerificationToken`) from the HTML login form response.
+        3. Form-posts the username, password, return URL, and verification token.
+        4. Intercepts the final redirection fragment containing the JWT access token.
+        """
         if not self._username or not self._password:
             raise RainbirdAuthException("Username and password are required to log in.")
 
