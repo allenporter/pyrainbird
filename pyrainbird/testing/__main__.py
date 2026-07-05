@@ -5,7 +5,7 @@ import asyncio
 import logging
 import sys
 
-from pyrainbird.fake.server import RainbirdFakeServer
+from pyrainbird.testing.server import RainbirdFakeServer
 
 # Configure basic logging to stdout
 logging.basicConfig(
@@ -14,7 +14,7 @@ logging.basicConfig(
     handlers=[logging.StreamHandler(sys.stdout)],
 )
 
-_LOGGER = logging.getLogger("pyrainbird.fake")
+_LOGGER = logging.getLogger("pyrainbird.testing")
 
 
 async def main() -> None:

@@ -8,7 +8,7 @@ import pytest
 import aiohttp
 from aiohttp import web
 
-from pyrainbird.fake.server import RainbirdFakeServer
+from pyrainbird.testing.server import RainbirdFakeServer
 
 
 @pytest.mark.asyncio
