@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import datetime
 import json
 from collections.abc import Awaitable, Callable, Generator
@@ -115,7 +116,13 @@ async def test_create_controller_tries_insecure_https_first() -> None:
 
     assert client_cls.call_args_list == [
         mock.call(session, mock.ANY, None),
-        mock.call(session, "https://example.com/stick", "password", ssl_context=False),
+        mock.call(
+            session,
+            "https://example.com/stick",
+            "password",
+            ssl_context=False,
+            min_delay=0.1,
+        ),
     ]
 
 
@@ -138,8 +145,20 @@ async def test_create_controller_tries_https_then_http_on_connection_error() -> 
 
     assert client_cls.call_args_list == [
         mock.call(session, mock.ANY, None),
-        mock.call(session, "https://example.com/stick", "password", ssl_context=False),
-        mock.call(session, "http://example.com/stick", "password", ssl_context=None),
+        mock.call(
+            session,
+            "https://example.com/stick",
+            "password",
+            ssl_context=False,
+            min_delay=0.1,
+        ),
+        mock.call(
+            session,
+            "http://example.com/stick",
+            "password",
+            ssl_context=None,
+            min_delay=0.1,
+        ),
     ]
 
 
@@ -158,7 +177,13 @@ async def test_create_controller_does_not_fallback_on_auth_error() -> None:
 
     assert client_cls.call_args_list == [
         mock.call(session, mock.ANY, None),
-        mock.call(session, "https://example.com/stick", "password", ssl_context=False),
+        mock.call(
+            session,
+            "https://example.com/stick",
+            "password",
+            ssl_context=False,
+            min_delay=0.1,
+        ),
     ]
 
 
@@ -296,7 +321,7 @@ async def test_non_retryable_errors(
         await controller.get_available_stations()
 
 
-async def test_device_busy_retries_not_enabled(
+async def test_device_busy_retries_enabled_for_all_local_clients(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
     fake_device: FakeRainbirdDevice,
     rainbird_client: Callable[[], Awaitable[AsyncRainbirdClient]],
@@ -311,9 +336,74 @@ async def test_device_busy_retries_not_enabled(
     assert result.model_name == "ESP-TM2"
     assert not result.model_info.retries
 
+    # Make two attempts then succeed
     response(aiohttp.web.Response(status=503))
+    response(aiohttp.web.Response(status=503))
+    fake_device.stations = set(range(1, 8))
 
-    with pytest.raises(RainbirdDeviceBusyException):
+    stations = await controller.get_available_stations()
+    assert stations.active_set == {1, 2, 3, 4, 5, 6, 7}
+
+
+async def test_jsonrpc_busy_retries_and_succeeds(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    fake_device: FakeRainbirdDevice,
+    response: ResponseResult,
+) -> None:
+    """Test retrying on JSON-RPC -32002 busy response."""
+    controller = await rainbird_controller()
+    fake_device.set_model("ESP_TM2v2")
+    await controller.get_model_and_version()
+
+    # Queue a busy response first, then a success
+    busy_body = json.dumps(
+        {
+            "jsonrpc": "2.0",
+            "error": {"code": -32002, "message": "Controller Busy"},
+            "id": 1,
+        }
+    )
+    encrypted_busy = encrypt(busy_body, PASSWORD)
+    response(aiohttp.web.Response(body=encrypted_busy))
+
+    fake_device.stations = set(range(1, 8))
+
+    stations = await controller.get_available_stations()
+    assert stations.active_set == {1, 2, 3, 4, 5, 6, 7}
+
+
+async def test_connection_timeout_retries_and_fails(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+) -> None:
+    """Test retrying on connection timeout error."""
+    controller = await rainbird_controller()
+    with (
+        mock.patch("aiohttp.ClientSession.request", side_effect=asyncio.TimeoutError),
+        mock.patch("pyrainbird.async_client._retry_attempts", return_value=3),
+        mock.patch("pyrainbird.async_client._retry_delay", return_value=0.01),
+    ):
+        with pytest.raises(RainbirdConnectionError):
+            await controller.get_available_stations()
+
+
+async def test_lockout_error_aborts_immediately(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    response: ResponseResult,
+) -> None:
+    """Test that LOCKOUT_ACTIVE -32001 fails immediately without retrying."""
+    controller = await rainbird_controller()
+
+    lockout_body = json.dumps(
+        {
+            "jsonrpc": "2.0",
+            "error": {"code": -32001, "message": "Lockout Active"},
+            "id": 1,
+        }
+    )
+    encrypted_lockout = encrypt(lockout_body, PASSWORD)
+    response(aiohttp.web.Response(body=encrypted_lockout))
+
+    with pytest.raises(RainbirdAuthException):
         await controller.get_available_stations()
 
 

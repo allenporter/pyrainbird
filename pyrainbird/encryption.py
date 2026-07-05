@@ -11,7 +11,11 @@ from Crypto import Random
 from Crypto.Cipher import AES
 from Crypto.Hash import SHA256
 
-from .exceptions import RainbirdApiException
+from .exceptions import (
+    RainbirdApiException,
+    RainbirdAuthException,
+    RainbirdDeviceBusyException,
+)
 
 
 BLOCK_SIZE = 16
@@ -28,6 +32,8 @@ class ErrorCode(enum.IntEnum):
     CHECKSUM_ERROR = 3
     UNKNOWN = 4
     METOD_NOT_SUPPORTED = -32601
+    LOCKOUT_ACTIVE = -32001
+    CONTROLLER_BUSY = -32002
 
 
 def _add_padding(data):
@@ -121,15 +127,25 @@ class PayloadCoder:
         response = json.loads(content)
         if error := response.get("error"):
             msg = ["Error from controller"]
-            if code := error.get("code"):
+            code = error.get("code")
+            message = error.get("message", "")
+            if code is not None:
                 try:
                     value = ErrorCode(code)
                 except ValueError:
                     value = ErrorCode.UNKNOWN
                 msg.append(f"Code: {str(value)}({code})")
-            if message := error.get("message"):
+            if message:
                 msg.append(f"Message: {message}")
             ", ".join(msg)
             self._logger.debug("Error from controller: %s", msg)
+            if code == ErrorCode.CONTROLLER_BUSY:
+                raise RainbirdDeviceBusyException(
+                    f"Rain Bird responded with an error: {message}"
+                )
+            if code == ErrorCode.LOCKOUT_ACTIVE:
+                raise RainbirdAuthException(
+                    f"Rain Bird responded with an error: {message}"
+                )
             raise RainbirdApiException(f"Rain Bird responded with an error: {message}")
         return response["result"]
