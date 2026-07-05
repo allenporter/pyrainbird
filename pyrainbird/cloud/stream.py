@@ -144,19 +144,14 @@ class AsyncRainbirdCloudStream:
             is_wet = False
             if record.data:
                 try:
-                    sensor_data = RainSensorStateData.from_dict(json.loads(record.data))
-                    is_wet = sensor_data.state == 1
-                except (ValueError, TypeError, KeyError):
-                    # Fallback for raw/scalar string format if not strict json dict
-                    try:
-                        # Parse as a dictionary manually to be safe
-                        parsed_data = json.loads(record.data)
-                        if isinstance(parsed_data, dict):
-                            is_wet = str(parsed_data.get("state")) == "1"
-                        else:
-                            is_wet = str(parsed_data) == "1"
-                    except (ValueError, TypeError, json.JSONDecodeError):
-                        is_wet = str(record.data) == "1"
+                    parsed_data = json.loads(record.data)
+                    if isinstance(parsed_data, dict):
+                        sensor_data = RainSensorStateData.from_dict(parsed_data)
+                        is_wet = sensor_data.state == 1
+                    elif str(parsed_data) == "1":
+                        is_wet = True
+                except (ValueError, TypeError, KeyError, json.JSONDecodeError):
+                    pass
             return RainSensorStateEvent(
                 satellite_id=self._satellite_id,
                 device_uuid=record.pk,
@@ -176,20 +171,14 @@ class AsyncRainbirdCloudStream:
 
             if record.data:
                 try:
-                    station_data = StationStateData.from_dict(json.loads(record.data))
-                    is_watering = station_data.state == 1
-                    remain_seconds = station_data.remain_sec
-                    program_number = station_data.program_number
-                except (ValueError, TypeError, KeyError):
-                    try:
-                        # Fallback if structure changes or is slightly different
-                        parsed_data = json.loads(record.data)
-                        if isinstance(parsed_data, dict):
-                            is_watering = str(parsed_data.get("state")) == "1"
-                            remain_seconds = parsed_data.get("remainSec")
-                            program_number = parsed_data.get("programNumber")
-                    except (ValueError, TypeError, json.JSONDecodeError):
-                        pass
+                    parsed_data = json.loads(record.data)
+                    if isinstance(parsed_data, dict):
+                        station_data = StationStateData.from_dict(parsed_data)
+                        is_watering = station_data.state == 1
+                        remain_seconds = station_data.remain_sec
+                        program_number = station_data.program_number
+                except (ValueError, TypeError, KeyError, json.JSONDecodeError):
+                    pass
 
             # If remain_seconds is an epoch timestamp, convert to relative duration
             if (
@@ -218,26 +207,18 @@ class AsyncRainbirdCloudStream:
 
             if record.data:
                 try:
-                    conn_data = ConnectedData.from_dict(json.loads(record.data))
-                    active_station = conn_data.active_station
-                    remain_seconds = conn_data.remain_sec
-                    rain_delay = conn_data.rain_delay
-                    if str(conn_data.state) in ("0", "offline"):
+                    parsed_data = json.loads(record.data)
+                    if isinstance(parsed_data, dict):
+                        conn_data = ConnectedData.from_dict(parsed_data)
+                        active_station = conn_data.active_station
+                        remain_seconds = conn_data.remain_sec
+                        rain_delay = conn_data.rain_delay
+                        if str(conn_data.state) in ("0", "offline"):
+                            is_connected = False
+                    elif str(parsed_data) in ("0", "offline"):
                         is_connected = False
-                except (ValueError, TypeError, KeyError):
-                    try:
-                        parsed_data = json.loads(record.data)
-                        if isinstance(parsed_data, dict):
-                            active_station = parsed_data.get("activeStation")
-                            remain_seconds = parsed_data.get("remainSec")
-                            rain_delay = parsed_data.get("rainDelay")
-                            if str(parsed_data.get("state")) in ("0", "offline"):
-                                is_connected = False
-                        else:
-                            if str(parsed_data) in ("0", "offline"):
-                                is_connected = False
-                    except (ValueError, TypeError, json.JSONDecodeError):
-                        pass
+                except (ValueError, TypeError, KeyError, json.JSONDecodeError):
+                    pass
 
             # Epoch check for remaining seconds
             if (
