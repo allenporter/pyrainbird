@@ -202,36 +202,6 @@ def _device_busy_retry() -> JitterRetry:
     )
 
 
-def _local_resiliency_retry(client: "AsyncRainbirdClient") -> JitterRetry:
-    exceptions = {
-        aiohttp.ClientError,
-        asyncio.TimeoutError,
-        TimeoutError,
-        RainbirdDeviceBusyException,
-        RainbirdConnectionError,
-    }
-
-    async def evaluate_response(response: aiohttp.ClientResponse) -> bool:
-        if response.status == HTTPStatus.SERVICE_UNAVAILABLE:
-            raise RainbirdDeviceBusyException("Rain Bird device is busy")
-        if response.status == HTTPStatus.FORBIDDEN:
-            raise RainbirdAuthException("Incorrect password")
-
-        response.raise_for_status()
-
-        content = await response.read()
-        client._coder.decode_command(content)
-        return True
-
-    return JitterRetry(
-        attempts=_retry_attempts(),
-        start_timeout=_retry_delay(),
-        exceptions=exceptions,
-        evaluate_response_callback=evaluate_response,
-        statuses=set(),
-    )
-
-
 class AsyncRainbirdClient:
     """An asyncio rainbird client.
 
@@ -412,9 +382,10 @@ class AsyncRainbirdController(RainbirdController):
         )
         if self._model is None:
             self._model = response
-            self._local_client = self._local_client.with_retry_options(
-                _local_resiliency_retry(self._local_client)
-            )
+            if self._model.model_info.retries:
+                self._local_client = self._local_client.with_retry_options(
+                    _device_busy_retry()
+                )
         return response
 
     async def get_available_stations(self) -> AvailableStations:

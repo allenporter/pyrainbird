@@ -20,7 +20,7 @@ from .exceptions import (
 
 BLOCK_SIZE = 16
 INTERRUPT = "\x00"
-PAD = "\x10"
+PAD = "\x00"
 
 
 class ErrorCode(enum.IntEnum):
@@ -36,13 +36,9 @@ class ErrorCode(enum.IntEnum):
     CONTROLLER_BUSY = -32002
 
 
-def _add_padding(data):
-    new_data = data
-    new_data_len = len(new_data)
-    remaining_len = BLOCK_SIZE - new_data_len
-    to_pad_len = remaining_len % BLOCK_SIZE
-    pad_string = PAD * to_pad_len
-    return "".join([new_data, pad_string])
+def _add_padding(data: str) -> str:
+    pad_len = (BLOCK_SIZE - len(data) % BLOCK_SIZE) % BLOCK_SIZE
+    return data + (PAD * pad_len)
 
 
 def decrypt(encrypted_data, decrypt_key):
@@ -60,12 +56,11 @@ def decrypt(encrypted_data, decrypt_key):
 
 
 def encrypt(data, encryptkey):
-    tocodedata = data + "\x00\x10"
     m = SHA256.new()
     m.update(to_bytes(encryptkey))
     b = m.digest()
     iv = Random.new().read(16)
-    c = to_bytes(_add_padding(tocodedata))
+    c = to_bytes(_add_padding(data))
     m = SHA256.new()
     m.update(to_bytes(data))
     b2 = m.digest()
