@@ -7,6 +7,7 @@ from typing import Any
 from unittest import mock
 
 import aiohttp
+import asyncio
 import pytest
 from aiohttp.test_utils import TestClient
 
@@ -441,6 +442,43 @@ async def test_caching_token_provider(
             RainbirdAuthException, match="Username and password are required to log in"
         ):
             await provider_no_creds.async_get_token()
+
+
+async def test_caching_token_provider_non_blocking(
+    mock_cloud_app: aiohttp.web.Application,
+    aiohttp_client: TestClient,
+    tmp_path: Any,
+) -> None:
+    """Test that CachingTokenProvider offloads file I/O to an executor."""
+    client_session = await aiohttp_client(mock_cloud_app)
+    mock_auth_base = "/coreidentityserver"
+
+    with mock.patch("pyrainbird.cloud.client.AUTH_BASE", new=mock_auth_base):
+        auth_provider = RainbirdCloudTokenProvider(
+            client_session, "user@example.com", "correct_password"
+        )
+        config_file = tmp_path / "rainbird.json"
+        provider = CachingTokenProvider(str(config_file), auth_provider)
+
+        loop = asyncio.get_running_loop()
+        with mock.patch.object(
+            loop, "run_in_executor", wraps=loop.run_in_executor
+        ) as mock_run:
+            # First call loads via auth and saves to cache
+            token = await provider.async_get_token()
+            assert token == "valid_access_token_abc123"
+            # Assert _save_token_to_cache_sync was run in the executor
+            mock_run.assert_any_call(
+                None, provider._save_token_to_cache_sync, "valid_access_token_abc123"
+            )
+
+            # Clear token memory cache to force load from file
+            provider._token = None
+            mock_run.reset_mock()
+            token = await provider.async_get_token()
+            assert token == "valid_access_token_abc123"
+            # Assert _load_token_from_cache_sync was run in the executor
+            mock_run.assert_any_call(None, provider._load_token_from_cache_sync)
 
 
 async def test_caching_token_provider_waf_retry(
