@@ -120,7 +120,7 @@ async def test_create_controller_tries_insecure_https_first() -> None:
             "https://example.com/stick",
             "password",
             ssl_context=False,
-            min_delay=0.1,
+            min_delay=0.0,
         ),
     ]
 
@@ -149,14 +149,14 @@ async def test_create_controller_tries_https_then_http_on_connection_error() -> 
             "https://example.com/stick",
             "password",
             ssl_context=False,
-            min_delay=0.1,
+            min_delay=0.0,
         ),
         mock.call(
             session,
             "http://example.com/stick",
             "password",
             ssl_context=None,
-            min_delay=0.1,
+            min_delay=0.0,
         ),
     ]
 
@@ -181,7 +181,31 @@ async def test_create_controller_does_not_fallback_on_auth_error() -> None:
             "https://example.com/stick",
             "password",
             ssl_context=False,
-            min_delay=0.1,
+            min_delay=0.0,
+        ),
+    ]
+
+
+async def test_create_controller_with_custom_min_delay() -> None:
+    session = mock.AsyncMock(spec=aiohttp.ClientSession)
+
+    with (
+        mock.patch("pyrainbird.async_client.AsyncRainbirdClient") as client_cls,
+        mock.patch(
+            "pyrainbird.async_client.AsyncRainbirdController.get_model_and_version",
+            new=mock.AsyncMock(return_value=ModelAndVersion(0x0A, 1, 3)),
+        ),
+    ):
+        await create_controller(session, "example.com", "password", min_delay=0.25)
+
+    assert client_cls.call_args_list == [
+        mock.call(session, mock.ANY, None),
+        mock.call(
+            session,
+            "https://example.com/stick",
+            "password",
+            ssl_context=False,
+            min_delay=0.25,
         ),
     ]
 

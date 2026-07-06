@@ -35,6 +35,10 @@
   list([
   ])
 # ---
+# name: test_create_controller_with_custom_min_delay
+  list([
+  ])
+# ---
 # name: test_custom_schedule
   '''
   [client >]
