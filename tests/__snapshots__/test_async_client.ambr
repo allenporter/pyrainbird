@@ -23,10 +23,6 @@
   }
   '''
 # ---
-# name: test_connection_timeout_retries_and_fails
-  list([
-  ])
-# ---
 # name: test_create_controller_does_not_fallback_on_auth_error
   list([
   ])
@@ -1400,7 +1396,7 @@
   }
   '''
 # ---
-# name: test_device_busy_retries_enabled_for_all_local_clients
+# name: test_device_busy_retries_not_enabled
   '''
   [client >]
   Intent: ModelAndVersionRequest (02)
@@ -1437,42 +1433,6 @@
   
   [error !]
   HTTP Status 503: Response had an error code
-  
-  [client >]
-  Intent: AvailableStationsRequest (0300)
-  Payload: {
-    "id": 2,
-    "jsonrpc": "2.0",
-    "method": "tunnelSip",
-    "params": {
-      "data": "0300",
-      "length": 2
-    }
-  }
-  
-  [error !]
-  HTTP Status 503: Response had an error code
-  
-  [client >]
-  Intent: AvailableStationsRequest (0300)
-  Payload: {
-    "id": 2,
-    "jsonrpc": "2.0",
-    "method": "tunnelSip",
-    "params": {
-      "data": "0300",
-      "length": 2
-    }
-  }
-  
-  [server <]
-  Payload: {
-    "jsonrpc": "2.0",
-    "result": {
-      "data": "83007F000000"
-    },
-    "id": 2
-  }
   '''
 # ---
 # name: test_error_response
@@ -8177,101 +8137,9 @@
   }
   '''
 # ---
-# name: test_jsonrpc_busy_retries_and_succeeds
-  '''
-  [client >]
-  Intent: ModelAndVersionRequest (02)
-  Payload: {
-    "id": 1,
-    "jsonrpc": "2.0",
-    "method": "tunnelSip",
-    "params": {
-      "data": "02",
-      "length": 1
-    }
-  }
-  
-  [server <]
-  Payload: {
-    "jsonrpc": "2.0",
-    "result": {
-      "data": "82000A0103"
-    },
-    "id": 1
-  }
-  
-  [client >]
-  Intent: AvailableStationsRequest (0300)
-  Payload: {
-    "id": 2,
-    "jsonrpc": "2.0",
-    "method": "tunnelSip",
-    "params": {
-      "data": "0300",
-      "length": 2
-    }
-  }
-  
-  [server <]
-  Payload: {
-    "jsonrpc": "2.0",
-    "error": {
-      "code": -32002,
-      "message": "Controller Busy"
-    },
-    "id": 1
-  }
-  
-  [client >]
-  Intent: AvailableStationsRequest (0300)
-  Payload: {
-    "id": 2,
-    "jsonrpc": "2.0",
-    "method": "tunnelSip",
-    "params": {
-      "data": "0300",
-      "length": 2
-    }
-  }
-  
-  [server <]
-  Payload: {
-    "jsonrpc": "2.0",
-    "result": {
-      "data": "83007F000000"
-    },
-    "id": 2
-  }
-  '''
-# ---
 # name: test_local_controller_capabilities
   list([
   ])
-# ---
-# name: test_lockout_error_aborts_immediately
-  '''
-  [client >]
-  Intent: ModelAndVersionRequest (02)
-  Payload: {
-    "id": 1,
-    "jsonrpc": "2.0",
-    "method": "tunnelSip",
-    "params": {
-      "data": "02",
-      "length": 1
-    }
-  }
-  
-  [server <]
-  Payload: {
-    "jsonrpc": "2.0",
-    "error": {
-      "code": -32001,
-      "message": "Lockout Active"
-    },
-    "id": 1
-  }
-  '''
 # ---
 # name: test_non_retryable_errors
   '''

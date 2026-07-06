@@ -470,7 +470,7 @@ class AsyncRainbirdCloudClient:
                             )
                         if retry_resp.status == 204:
                             return None
-                        return await retry_resp.json()
+                        return await retry_resp.json(content_type=None)
 
                 if resp.status not in (200, 201, 204):
                     raise RainbirdApiException(
@@ -478,7 +478,7 @@ class AsyncRainbirdCloudClient:
                     )
                 if resp.status == 204:
                     return None
-                return await resp.json()
+                return await resp.json(content_type=None)
         except aiohttp.ClientError as err:
             raise RainbirdConnectionError(
                 f"Connection error requesting {path}: {err}"
