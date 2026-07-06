@@ -334,7 +334,9 @@ async def main():
     args = parse_args()
     logging.basicConfig(level=getattr(logging, args.log_level.upper()))
 
-    async with aiohttp.ClientSession() as session:
+    async with aiohttp.ClientSession(
+        connector=aiohttp.TCPConnector(limit=1)
+    ) as session:
         if args.command == "discover_local":
             await discover_local(args.timeout)
             return
