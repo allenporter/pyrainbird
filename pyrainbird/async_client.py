@@ -302,19 +302,25 @@ class AsyncRainbirdClient:
 
 
 def CreateController(
-    websession: aiohttp.ClientSession, host: str, password: str
+    websession: aiohttp.ClientSession,
+    host: str,
+    password: str,
+    min_delay: float = 0.0,
 ) -> "AsyncRainbirdController":
     """Create an AsyncRainbirdController."""
     local_url = f"http://{host}/stick"
     local_client = AsyncRainbirdClient(
-        websession, local_url, password, min_delay=LOCAL_MIN_DELAY
+        websession, local_url, password, min_delay=min_delay
     )
     cloud_client = AsyncRainbirdClient(websession, CLOUD_API_URL, None)
     return AsyncRainbirdController(local_client, cloud_client)
 
 
 async def create_controller(
-    websession: aiohttp.ClientSession, host: str, password: str
+    websession: aiohttp.ClientSession,
+    host: str,
+    password: str,
+    min_delay: float = 0.0,
 ) -> "AsyncRainbirdController":
     """Create an AsyncRainbirdController with local HTTP/HTTPS discovery.
 
@@ -341,7 +347,7 @@ async def create_controller(
             url,
             password,
             ssl_context=ssl_context,
-            min_delay=LOCAL_MIN_DELAY,
+            min_delay=min_delay,
         )
         controller = AsyncRainbirdController(local_client, cloud_client)
         await controller.get_model_and_version()

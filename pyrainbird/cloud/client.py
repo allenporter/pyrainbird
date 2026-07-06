@@ -718,7 +718,7 @@ class AsyncRainbirdCloudController(RainbirdController):
 
         stations = await self._client.get_station_list(self._satellite_id)
         for station in stations:
-            station_num = station.station_number or station.number
+            station_num = station.station_number or station.number or station.terminal
             if station_num == zone:
                 self._station_id_map[zone] = station.id
                 return station.id
@@ -741,7 +741,7 @@ class AsyncRainbirdCloudController(RainbirdController):
         if not self._station_id_map:
             stations = await self._client.get_station_list(self._satellite_id)
             for s in stations:
-                num = s.station_number or s.number
+                num = s.station_number or s.number or s.terminal
                 if num is not None:
                     self._station_id_map[num] = s.id
 
