@@ -1,5 +1,5 @@
 -e .
-coverage==7.15.1
+coverage==7.15.2
 mypy==2.3.0
 pdoc==16.0.0
 pip==26.1.2
