@@ -26,9 +26,9 @@ jobs:
             commit-message: "chore: reject new Cruft update"
             title: Reject new updates detected with Cruft
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
       - name: Install Cruft
         run: pip3 install cruft
 
@@ -59,7 +59,7 @@ jobs:
 
       - name: Create pull request
         if: steps.check.outputs.has_changes == '1'
-        uses: peter-evans/create-pull-request@v8
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           add-paths: ${{ matrix.add-paths }}
