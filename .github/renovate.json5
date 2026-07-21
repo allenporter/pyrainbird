@@ -9,12 +9,14 @@
   ],
   packageRules: [
     {
-      description: 'Minor updates are automatic',
+      description: 'Minor, patch, pin, and digest updates are automatic',
       automerge: true,
       automergeType: 'branch',
       matchUpdateTypes: [
         'minor',
         'patch',
+        'pin',
+        'digest',
       ],
     },
     {
