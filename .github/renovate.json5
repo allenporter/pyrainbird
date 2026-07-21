@@ -4,12 +4,9 @@
     'config:recommended',
     'helpers:pinGitHubActionDigests',
   ],
-  assignees: [
-    'allenporter',
-  ],
   packageRules: [
     {
-      description: 'Minor, patch, pin, and digest updates are automatic',
+      description: 'Silent automerge for minor, patch, pin, and digest updates',
       automerge: true,
       automergeType: 'branch',
       matchUpdateTypes: [
@@ -20,11 +17,17 @@
       ],
     },
     {
-      description: 'Automerge major updates for dev-time tools (Actions, pre-commit, requirements_dev.txt)',
+      description: 'Silent automerge major updates for dev-time tools (Actions, pre-commit, requirements_dev.txt)',
       matchUpdateTypes: ['major'],
       matchManagers: ['github-actions', 'pre-commit', 'pip_requirements'],
       automerge: true,
       automergeType: 'branch',
+    },
+    {
+      description: 'Assign allenporter to major dependency review PRs',
+      matchUpdateTypes: ['major'],
+      excludeManagers: ['github-actions', 'pre-commit', 'pip_requirements'],
+      assignees: ['allenporter'],
     },
   ],
   pip_requirements: {
