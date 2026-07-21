@@ -1,0 +1,12 @@
+diff a/.github/workflows/lint.yaml b/.github/workflows/lint.yaml	(rejected hunks)
+@@ -21,6 +21,10 @@ jobs:
+       - uses: codespell-project/actions-codespell@v2.1
+         with:
+           check_hidden: false
++      - name: Validate Renovate configuration
++        run: |
++          npx --package=renovate@38 -- renovate-config-validator .github/renovate.json5
++
+       - name: Run yamllint
+         uses: ibiqlik/action-yamllint@v3
+         with:
