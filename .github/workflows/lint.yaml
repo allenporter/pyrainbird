@@ -22,6 +22,9 @@ jobs:
         with:
           check_hidden: false
           ignore_words_file: .codespellignore
+      - name: Validate Renovate configuration
+        run: |
+          npx --package=renovate@38 -- renovate-config-validator .github/renovate.json5
       - name: Run yamllint
         uses: ibiqlik/action-yamllint@2576378a8e339169678f9939646ee3ee325e845c # v3
         with:
