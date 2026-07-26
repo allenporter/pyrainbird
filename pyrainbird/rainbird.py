@@ -58,7 +58,7 @@ def decode_schedule(data: str, cmd_template: dict[str, Any]) -> dict[str, Any]:
         if len(rest) < 10:
             return {}
         program = subcommand & ~16
-        fields = list(int(rest[i : i + 2], 16) for i in range(0, len(rest), 2))
+        fields = [int(rest[i : i + 2], 16) for i in range(0, len(rest), 2)]
         return {
             "programInfo": {
                 "program": program,
@@ -76,7 +76,7 @@ def decode_schedule(data: str, cmd_template: dict[str, Any]) -> dict[str, Any]:
             return {}
         program = subcommand & ~96
         # Note: 65535 is disabled
-        entries = list(int(rest[i : i + 4], 16) for i in range(0, len(rest), 4))
+        entries = [int(rest[i : i + 4], 16) for i in range(0, len(rest), 4)]
         return {
             "programStartInfo": {
                 "program": program,
@@ -89,7 +89,7 @@ def decode_schedule(data: str, cmd_template: dict[str, Any]) -> dict[str, Any]:
             return {}
         station = subcommand & ~128
         rest = bytes(data[6:], "utf-8")
-        durations = list(int(rest[i : i + 4], 16) for i in range(0, len(rest), 4))
+        durations = [int(rest[i : i + 4], 16) for i in range(0, len(rest), 4)]
         numPrograms = int(len(durations) / 2)
         return {
             "durations": [
@@ -240,29 +240,24 @@ def encode_command(command_set: dict[str, Any], *args) -> str:
 
     if length == 1 or "parameter" in command_set or "parameterOne" in command_set:
         # TODO: Replace old style encoding with new encoding below
-        params = (cmd_code,) + tuple(map(lambda x: int(x), args))
+        params = (cmd_code,) + tuple(int(x) for x in args)
         arg_placeholders = (
-            ("%%0%dX" % ((length - len(args)) * 2)) if len(args) > 0 else ""
+            (f"%0{(length - len(args)) * 2}X") if len(args) > 0 else ""
         ) + ("%02X" * (len(args) - 1))
-        return ("%s" + arg_placeholders) % (params)
+        return (f"%s{arg_placeholders}") % (params)
 
     data = cmd_code + ("00" * (length - 1))
     args_list = list(args)
-    for k in command_set:
+    for k, command_arg in command_set.items():
         if k in RESERVED_FIELDS:
             continue
-        command_arg = command_set[k]
         command_arg_length = command_arg[LENGTH]
         arg = args_list.pop(0)
         if isinstance(arg, str):
             arg = int(arg, 16)
-        param_template = "%%0%dX" % (command_arg_length)
+        param_template = f"%0{command_arg_length}X"
         start_ = command_arg[POSITION]
         end_ = start_ + command_arg_length
-        data = "%s%s%s" % (
-            data[:start_],
-            # TODO: Replace with kwargs
-            (param_template % arg),
-            data[end_:],
-        )
+        param = param_template % arg
+        data = f"{data[:start_]}{param}{data[end_:]}"
     return data

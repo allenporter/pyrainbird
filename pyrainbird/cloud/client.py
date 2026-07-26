@@ -833,8 +833,8 @@ class AsyncRainbirdCloudController(RainbirdController):
                         ZoneDuration(zone=zone_num, duration=duration)
                     )
 
-        for prog_id in durations_by_program:
-            durations_by_program[prog_id].sort(key=lambda zd: zd.zone)
+        for dur_list in durations_by_program.values():
+            dur_list.sort(key=lambda zd: zd.zone)
 
         try:
             rain_delay = await self.get_rain_delay()

@@ -196,7 +196,7 @@ def _device_busy_retry() -> JitterRetry:
     return JitterRetry(
         attempts=_retry_attempts(),
         start_timeout=_retry_delay(),
-        statuses=set([HTTPStatus.SERVICE_UNAVAILABLE.value]),
+        statuses={HTTPStatus.SERVICE_UNAVAILABLE.value},
         retry_all_server_errors=False,
     )
 
@@ -394,10 +394,8 @@ class AsyncRainbirdController(RainbirdController):
         max_stations = model.model_info.max_stations
         pages = math.ceil(max_stations / 32) if max_stations else 1
 
-        mask_format = (
-            "%%0%dX"
-            % RAINBIRD_COMMANDS["AvailableStationsResponse"]["setStations"][LENGTH]
-        )
+        length = RAINBIRD_COMMANDS["AvailableStationsResponse"]["setStations"][LENGTH]
+        mask_format = f"%0{length}X"
         mask = ""
         for page in range(pages):
             mask += await self._cacheable_command(
@@ -511,12 +509,10 @@ class AsyncRainbirdController(RainbirdController):
         max_stations = model.model_info.max_stations
         pages = math.ceil(max_stations / 32) if max_stations else 1
 
-        mask_format = (
-            "%%0%dX"
-            % RAINBIRD_COMMANDS["CurrentStationsActiveResponse"]["activeStations"][
-                LENGTH
-            ]
-        )
+        length = RAINBIRD_COMMANDS["CurrentStationsActiveResponse"]["activeStations"][
+            LENGTH
+        ]
+        mask_format = f"%0{length}X"
         mask = ""
         for page in range(pages):
             mask += await self._process_command(
@@ -645,7 +641,7 @@ class AsyncRainbirdController(RainbirdController):
             _LOGGER.debug("Loading schedule for %d independent zones", max_stations)
             for zone_page in range(1, max_stations + 1):
                 if zone_page in stations.stations.active_set:
-                    commands.append("%04x" % zone_page)
+                    commands.append(f"{zone_page:04x}")
 
         _LOGGER.debug("Sending schedule commands: %s", commands)
         # Run command serially to avoid overwhelming the controller
@@ -670,7 +666,7 @@ class AsyncRainbirdController(RainbirdController):
                 continue
             if not isinstance(result, dict):
                 continue
-            for key in schedule_data:
+            for key, target in schedule_data.items():
                 if (value := result.get(key)) is not None:
                     if key == "durations":
                         for entry in value:
@@ -678,11 +674,11 @@ class AsyncRainbirdController(RainbirdController):
                                 entry.get("zone", 0) + 1
                             ) not in stations.stations.active_set:
                                 continue
-                            schedule_data[key].append(entry)
+                            target.append(entry)
                     elif key == "controllerInfo" or key == "zoneInfo":
-                        schedule_data[key].update(value)
+                        target.update(value)
                     else:
-                        schedule_data[key].append(value)
+                        target.append(value)
         return Schedule.from_dict(schedule_data)
 
     async def get_schedule_command(self, command_code: str) -> dict[str, Any]:
@@ -727,16 +723,13 @@ class AsyncRainbirdController(RainbirdController):
         )
         _LOGGER.debug("Response from line: " + str(decrypted_data))
         decoded = rainbird.decode(decrypted_data)
-        _LOGGER.debug("Response: %s" % decoded)
+        _LOGGER.debug(f"Response: {decoded}")
         response_code = decrypted_data[:2]
-        allowed = set([command_data[RESPONSE]])
+        allowed = {command_data[RESPONSE]}
         if funct is None:
             allowed.add("00")  # Allow NACK
         if response_code not in allowed:
-            msg = (
-                "Request (%s) failed with wrong response! Requested (%s), got %s:\n%s"
-                % (command, allowed, response_code, decoded)
-            )
+            msg = f"Request ({command}) failed with wrong response! Requested ({allowed}), got {response_code}:\n{decoded}"
             if response_code == "00":
                 _LOGGER.debug(msg)
                 raise RainbirdDeviceNackError("Device returned a NACK response")

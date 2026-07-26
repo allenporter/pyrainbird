@@ -142,10 +142,11 @@ class StationStateData(DataClassDictMixin):
         except json.JSONDecodeError as err:
             raise ValueError(f"Failed to parse record data: {err}")
         if (
-            remain_sec := record_data.get("remainSec", 0)
-        ) > 1000000000 and record.timestamp:
-            if remain_sec >= record.timestamp:
-                record_data["remainSec"] = remain_sec - record.timestamp
+            (remain_sec := record_data.get("remainSec", 0)) > 1000000000
+            and record.timestamp
+            and remain_sec >= record.timestamp
+        ):
+            record_data["remainSec"] = remain_sec - record.timestamp
         return cls.from_dict(record_data)
 
     @property
@@ -180,10 +181,13 @@ class ConnectedData(DataClassDictMixin):
             raise ValueError(f"Failed to parse record data: {err}")
 
         if isinstance(record_data, dict):
-            if (remain_sec := record_data.get("remainSec")) is not None:
-                if remain_sec > 1000000000 and record.timestamp:
-                    if remain_sec >= record.timestamp:
-                        record_data["remainSec"] = remain_sec - record.timestamp
+            if (
+                (remain_sec := record_data.get("remainSec")) is not None
+                and remain_sec > 1000000000
+                and record.timestamp
+                and remain_sec >= record.timestamp
+            ):
+                record_data["remainSec"] = remain_sec - record.timestamp
             return cls.from_dict(record_data)
 
         # Handle scalar (e.g. 0, "offline")

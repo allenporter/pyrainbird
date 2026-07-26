@@ -79,9 +79,8 @@ class DecodeRainbirdView(contentviews.View):
         if content_type != "application/octet-stream":
             return 0
         assert isinstance(flow, http.HTTPFlow)
-        if flow.request:
-            if "/stick" in flow.request.path:
-                return 1
+        if flow.request and "/stick" in flow.request.path:
+            return 1
         return 0
 
 

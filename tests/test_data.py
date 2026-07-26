@@ -8,11 +8,7 @@ from pyrainbird.data import ModelAndVersion, States
 
 
 def encode_name_func(testcase_func, param_num, param):
-    return "%s_%s_%s" % (
-        testcase_func.__name__,
-        param_num,
-        parameterized.to_safe_name(param.args[0]),
-    )
+    return f"{testcase_func.__name__}_{param_num}_{parameterized.to_safe_name(param.args[0])}"
 
 
 class TestSequence(unittest.TestCase):

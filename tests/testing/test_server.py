@@ -43,7 +43,7 @@ async def test_fake_server_lifecycle_and_discovery() -> None:
 
             # Recv Legacy response (use executor to avoid blocking the event loop)
             loop = asyncio.get_running_loop()
-            data, addr = await loop.run_in_executor(None, client_sock.recvfrom, 1024)
+            data, _addr = await loop.run_in_executor(None, client_sock.recvfrom, 1024)
             assert data.decode("utf-8") == "442c05001122"
             client_sock.close()
 
@@ -59,7 +59,7 @@ async def test_fake_server_lifecycle_and_discovery() -> None:
 
             # Legacy response will be sent to client_sock2 (which we ignore),
             # but upgraded response should arrive on resp_sock
-            data_upgraded, addr_upgraded = await loop.run_in_executor(
+            data_upgraded, _addr_upgraded = await loop.run_in_executor(
                 None, resp_sock.recvfrom, 1024
             )
             assert (

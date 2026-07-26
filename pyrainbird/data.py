@@ -29,7 +29,7 @@ class Echo:
     """Return the input command."""
 
     def __str__(self):
-        return "echo: %02X" % self.echo
+        return f"echo: {self.echo:02X}"
 
 
 @dataclass
@@ -43,7 +43,7 @@ class CommandSupport:
     """Return the input command."""
 
     def __str__(self):
-        return "command support: %02X, echo: %s" % (self.support, self.echo)
+        return f"command support: {self.support:02X}, echo: {self.echo}"
 
 
 @dataclass
@@ -106,12 +106,7 @@ class ModelAndVersion:
         return ModelInfo(**data)
 
     def __str__(self):
-        return "model: %04X (%s), version: %d.%d" % (
-            self.model,
-            self.model_name,
-            self.major,
-            self.minor,
-        )
+        return f"model: {self.model:04X} ({self.model_name}), version: {self.major}.{self.minor}"
 
 
 @dataclass
@@ -160,10 +155,10 @@ class States:
         return {number for number in range(1, self.count + 1) if self.active(number)}
 
     def __str__(self):
-        result = ()
-        for i in range(self.count):
-            result += ("%d:%d" % (i + 1, 1 if self.states[i] else 0),)
-        return "states: %s" % ", ".join(result)
+        result = tuple(
+            f"{i + 1}:{1 if self.states[i] else 0}" for i in range(self.count)
+        )
+        return f"states: {', '.join(result)}"
 
     def update_zone(self, zone: int, active: bool) -> "States":
         """Return a new States instance with the specified zone state updated."""
@@ -197,10 +192,7 @@ class AvailableStations:
         return self.stations.active_set
 
     def __str__(self):
-        return "available stations: %X, %s" % (
-            self.stations.mask,
-            super().__str__(),
-        )
+        return f"available stations: {self.stations.mask:X}, {super().__str__()}"
 
 
 @dataclass
@@ -453,7 +445,7 @@ class DeviceTime(SerializationStrategy):
         for f in ("year", "month", "day", "hour", "minute", "second"):
             if f not in values:
                 raise ValueError(f"Missing field '{f}' in values")
-        return datetime.datetime(
+        return datetime.datetime(  # noqa: DTZ001
             int(values["year"]),
             int(values["month"]),
             int(values["day"]),
@@ -614,7 +606,7 @@ class Program(DataClassDictMixin):
     @property
     def timeline(self) -> ProgramTimeline:
         """Return a timeline of events for the program."""
-        return self.timeline_tz(datetime.datetime.now().tzinfo)
+        return self.timeline_tz(datetime.datetime.now().tzinfo)  # noqa: DTZ005
 
     def timeline_tz(self, tzinfo: datetime.tzinfo | None) -> ProgramTimeline:
         """Return a timeline of events for the program."""
@@ -640,7 +632,7 @@ class Program(DataClassDictMixin):
     def zone_timeline(self) -> ProgramTimeline:
         """Return a timeline of events for the program."""
         iters: list[Iterable[SortableItem[Timespan, ProgramEvent]]] = []
-        now = datetime.datetime.now()
+        now = datetime.datetime.now()  # noqa: DTZ005
         for start in self.starts:
             dtstart = now.replace(hour=start.hour, minute=start.minute, second=0)
             for zone_duration in self.durations:
@@ -730,7 +722,7 @@ class ZoneSchedule(DataClassDictMixin):
     @property
     def timeline(self) -> ProgramTimeline:
         """Return a timeline of events for the zone."""
-        return self.timeline_tz(datetime.datetime.now().tzinfo)
+        return self.timeline_tz(datetime.datetime.now().tzinfo)  # noqa: DTZ005
 
     def timeline_tz(self, tzinfo: datetime.tzinfo | None) -> ProgramTimeline:
         """Return a timeline of events for the zone."""
@@ -792,7 +784,7 @@ class Schedule(DataClassDictMixin):
     @property
     def timeline(self) -> ProgramTimeline:
         """Return a timeline of all programs."""
-        return self.timeline_tz(datetime.datetime.now().tzinfo)
+        return self.timeline_tz(datetime.datetime.now().tzinfo)  # noqa: DTZ005
 
     def timeline_tz(self, tzinfo: datetime.tzinfo | None) -> ProgramTimeline:
         """Return a timeline of all programs and zones."""

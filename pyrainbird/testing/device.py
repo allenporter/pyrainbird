@@ -330,7 +330,7 @@ class FakeRainbirdDevice:
                             )
 
                         dest_path = os.path.join(self.output_dir, filename)
-                        with open(dest_path, "wb") as f:
+                        with open(dest_path, "wb") as f:  # noqa: ASYNC230
                             chunk_size = 4096
                             downloaded = 0
                             content_length = resp.content_length or 102400
@@ -360,8 +360,8 @@ class FakeRainbirdDevice:
                 self.update_status = 0  # OK
                 self.lnk_progress = 100
                 self.unv_progress = 100
-        except Exception as e:
-            _LOGGER.exception("Error during firmware update download: %s", e)
+        except Exception:
+            _LOGGER.exception("Error during firmware update download")
             self.update_status = 1  # Error
 
     def get_firmware_update_status(self) -> dict[str, int]:
