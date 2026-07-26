@@ -8,7 +8,6 @@ mitm addons.
 import json
 import logging
 import os
-from typing import Optional
 
 from mitmproxy import contentviews, flow, http
 
@@ -24,9 +23,9 @@ class DecodeRainbirdView(contentviews.View):
         self,
         data: bytes,
         *,
-        content_type: Optional[str] = None,
-        flow: Optional[flow.Flow] = None,
-        http_message: Optional[http.Message] = None,
+        content_type: str | None = None,
+        flow: flow.Flow | None = None,
+        http_message: http.Message | None = None,
         **unknown_metadata,
     ) -> contentviews.TViewResult:
         logging.debug("raw %s", data)
@@ -70,9 +69,9 @@ class DecodeRainbirdView(contentviews.View):
         self,
         data: bytes,
         *,
-        content_type: Optional[str] = None,
-        flow: Optional[flow.Flow] = None,
-        http_message: Optional[http.Message] = None,
+        content_type: str | None = None,
+        flow: flow.Flow | None = None,
+        http_message: http.Message | None = None,
         **unknown_metadata,
     ) -> float:
         if not content_type or not http_message:

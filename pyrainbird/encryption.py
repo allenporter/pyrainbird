@@ -5,7 +5,7 @@ import json
 import logging
 import sys
 import time
-from typing import Any, Optional
+from typing import Any
 
 from Crypto import Random
 from Crypto.Cipher import AES
@@ -16,7 +16,6 @@ from .exceptions import (
     RainbirdAuthException,
     RainbirdDeviceBusyException,
 )
-
 
 BLOCK_SIZE = 16
 INTERRUPT = "\x00"
@@ -86,7 +85,7 @@ def _request_id() -> float:
 class PayloadCoder:
     """PayloadCoder holds encoding/decoding information for the client."""
 
-    def __init__(self, password: Optional[str], logger: logging.Logger):
+    def __init__(self, password: str | None, logger: logging.Logger):
         """Initialize RainbirdSession."""
         self._password = password
         self._logger = logger
@@ -129,7 +128,7 @@ class PayloadCoder:
                     value = ErrorCode(code)
                 except ValueError:
                     value = ErrorCode.UNKNOWN
-                msg.append(f"Code: {str(value)}({code})")
+                msg.append(f"Code: {value!s}({code})")
             if message:
                 msg.append(f"Message: {message}")
             ", ".join(msg)

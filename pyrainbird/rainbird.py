@@ -108,7 +108,7 @@ def decode_schedule(data: str, cmd_template: dict[str, Any]) -> dict[str, Any]:
     if 0 < subcommand < 16 and len(data) == 28:
         duration = int(rest[0:2], 16)
         starts = []
-        for i in range(0, 6):
+        for i in range(6):
             val = int(rest[2 + i * 2 : 4 + i * 2], 16)
             if val != 255:
                 starts.append(val * 10)
@@ -162,14 +162,14 @@ def decode_queue(data: str, cmd_template: dict[str, Any]) -> dict[str, Any]:
     if page == 1:
         queue = []
         if len(data) == 70:  # TM2
-            for i in range(0, 11):
+            for i in range(11):
                 base = i * 6
                 zone = int(data[base + 4 : base + 6], 16) & 31
                 runtime = int(data[base + 6 : base + 10], 16)
                 if zone:
                     queue.append({"zone": zone, "seconds": runtime})
         else:  # ME3
-            for i in range(0, 8):
+            for i in range(8):
                 base = i * 8
                 program = int(data[base + 4 : base + 6], 16)
                 zone = int(data[base + 6 : base + 8], 16)
@@ -182,7 +182,7 @@ def decode_queue(data: str, cmd_template: dict[str, Any]) -> dict[str, Any]:
 
     if len(data) == 100:
         queue = []
-        for i in range(0, 8):
+        for i in range(8):
             base = i * 12
             program = int(data[base + 4 : base + 6], 16)
             zone = int(data[base + 6 : base + 8], 16)

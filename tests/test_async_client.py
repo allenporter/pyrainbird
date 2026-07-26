@@ -40,7 +40,7 @@ from .fake_device import FakeRainbirdDevice
 @pytest.fixture(autouse=True)
 def auto_snapshot_request_log(
     request_log: list[dict[str, Any]], snapshot: Any
-) -> Generator[None, None, None]:
+) -> Generator[None]:
     """Automatically snapshot the network requests of every test."""
     yield
     if request_log:
@@ -170,9 +170,9 @@ async def test_create_controller_does_not_fallback_on_auth_error() -> None:
             "pyrainbird.async_client.AsyncRainbirdController.get_model_and_version",
             new=mock.AsyncMock(side_effect=RainbirdAuthException("bad password")),
         ),
+        pytest.raises(RainbirdAuthException),
     ):
-        with pytest.raises(RainbirdAuthException):
-            await create_controller(session, "example.com", "password")
+        await create_controller(session, "example.com", "password")
 
     assert client_cls.call_args_list == [
         mock.call(session, mock.ANY, None),
@@ -1616,7 +1616,7 @@ async def test_get_schedule_non_program_based(
     assert schedule.zone_schedules[5].starts == [datetime.time(12, 40)]
 
     # Test timeline iterates over the active zones natively!
-    tz = datetime.timezone.utc
+    tz = datetime.UTC
     events = list(
         schedule.timeline_tz(tz).overlapping(
             datetime.datetime(2023, 1, 1, 0, 0, 0, tzinfo=tz),

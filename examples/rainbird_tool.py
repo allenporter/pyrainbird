@@ -18,6 +18,9 @@ import datetime
 import inspect
 import logging
 import os
+import select
+import socket
+import time
 from typing import Any
 
 import aiohttp
@@ -29,8 +32,8 @@ from pyrainbird.cloud import (
     CachingTokenProvider,
     ConnectionStatusEvent,
     GenericCloudStreamEvent,
-    RainSensorStateEvent,
     RainbirdCloudTokenProvider,
+    RainSensorStateEvent,
     RssiStateEvent,
     StationStateEvent,
     create_cloud_controller,
@@ -135,9 +138,6 @@ async def stream_cloud(
 
 async def discover_local(timeout: float = 5.0) -> None:
     """Broadcast UDP discovery ping to find controllers on the local network."""
-    import socket
-    import select
-
     DISCOVERY_PAYLOAD = "RBD-ANDROID"
     PORTS = [33667, 33668]
 
@@ -166,8 +166,6 @@ async def discover_local(timeout: float = 5.0) -> None:
 
         print("Sending discovery broadcast for local Rain Bird devices...")
         try:
-            import time
-
             for port in PORTS:
                 sock.sendto(DISCOVERY_PAYLOAD.encode(), ("255.255.255.255", port))
 

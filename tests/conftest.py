@@ -1,5 +1,6 @@
 """Test fixtures for pyrainbird."""
 
+import itertools
 import json
 from collections.abc import Awaitable, Callable, Generator
 from typing import cast
@@ -12,10 +13,7 @@ from aiohttp.test_utils import TestClient
 from pyrainbird import encryption
 from pyrainbird.async_client import AsyncRainbirdClient, AsyncRainbirdController
 
-from .fake_device import FakeRainbirdDevice, CapturedRequestLog
-
-import itertools
-
+from .fake_device import CapturedRequestLog, FakeRainbirdDevice
 
 PASSWORD = "password"
 REQUEST = "example data"
@@ -33,7 +31,7 @@ RESPONSE = encryption.encrypt(RESPONSE, PASSWORD)
 
 
 @pytest.fixture(autouse=True)
-def patch_request_id() -> Generator[None, None, None]:
+def patch_request_id() -> Generator[None]:
     """Patch the request ID to be a deterministic sequence."""
     counter = itertools.count(1)
     with patch("pyrainbird.encryption._request_id", side_effect=lambda: next(counter)):

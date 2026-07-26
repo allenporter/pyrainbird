@@ -32,7 +32,7 @@ import ssl
 import time
 from collections.abc import Callable
 from http import HTTPStatus
-from typing import Any, TypeVar, Union
+from typing import Any, TypeVar
 
 import aiohttp
 from aiohttp.client_exceptions import (
@@ -42,8 +42,7 @@ from aiohttp.client_exceptions import (
     ClientError,
     ClientResponseError,
 )
-from aiohttp_retry import RetryClient, RetryOptions, JitterRetry
-
+from aiohttp_retry import JitterRetry, RetryClient, RetryOptions
 
 from . import encryption, rainbird
 from .data import (
@@ -153,12 +152,12 @@ class RainbirdTokenProvider:
 
 
 __all__ = [
-    "CreateController",
-    "create_controller",
     "AsyncRainbirdController",
     "ControllerFeature",
+    "CreateController",
     "RainbirdController",
     "RainbirdTokenProvider",
+    "create_controller",
 ]
 
 _LOGGER = logging.getLogger(__name__)
@@ -212,7 +211,7 @@ class AsyncRainbirdClient:
         self,
         websession: aiohttp.ClientSession,
         url: str,
-        password: Union[str, None],
+        password: str | None,
         *,
         ssl_context: ssl.SSLContext | bool | None = None,
         min_delay: float = 0.0,
@@ -237,7 +236,7 @@ class AsyncRainbirdClient:
         )
 
     async def request(
-        self, method: str, params: Union[dict[str, Any], None] = None
+        self, method: str, params: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         """Send a request for any command."""
         # Enforce inter-request cooldown pacing if configured
@@ -269,12 +268,7 @@ class AsyncRainbirdClient:
             raise RainbirdCertificateError(
                 "TLS certificate verification error communicating with Rain Bird device"
             ) from err
-        except (
-            ClientConnectorError,
-            ClientConnectorSSLError,
-            asyncio.TimeoutError,
-            TimeoutError,
-        ) as err:
+        except (ClientConnectorError, ClientConnectorSSLError, TimeoutError) as err:
             _LOGGER.debug(
                 "Connection error communicating with Rain Bird device: %s", err
             )
@@ -637,14 +631,14 @@ class AsyncRainbirdController(RainbirdController):
         if max_programs > 0:
             # Legacy ESP-ME / TM2 Schedule Loop
             # Program details
-            for program in range(0, max_programs):
+            for program in range(max_programs):
                 commands.append("%04x" % (0x10 | program))
             # Start times
-            for program in range(0, max_programs):
+            for program in range(max_programs):
                 commands.append("%04x" % (0x60 | program))
             # Run times per zone
             _LOGGER.debug("Loading schedule for %d zones", max_stations)
-            for zone_page in range(0, math.ceil(max_stations / 2)):
+            for zone_page in range(math.ceil(max_stations / 2)):
                 commands.append("%04x" % (0x80 | zone_page))
         else:
             # LCR Series (ESP-RZXe / ST8) Schedule Loop
