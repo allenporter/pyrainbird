@@ -1,13 +1,13 @@
 """Unit tests for the Rainbird cloud client."""
 
-from collections.abc import Generator
+import asyncio
 import json
 import os
+from collections.abc import Generator
 from typing import Any
 from unittest import mock
 
 import aiohttp
-import asyncio
 import pytest
 from aiohttp.test_utils import TestClient
 
@@ -15,12 +15,14 @@ from pyrainbird.cloud.client import (
     AsyncRainbirdCloudClient,
     CachingTokenProvider,
     RainbirdCloudTokenProvider,
+    _parse_login_validation_error,
     async_authenticate_cloud,
 )
 from pyrainbird.data import CloudSatellite
 from pyrainbird.exceptions import (
     RainbirdApiException,
     RainbirdAuthException,
+    RainbirdConnectionError,
 )
 
 # Mocked constants/URLs to override for local testing server
@@ -126,7 +128,7 @@ def mock_cloud_app() -> aiohttp.web.Application:
 def mock_cloud_client(
     mock_cloud_app: aiohttp.web.Application,
     aiohttp_client: TestClient,
-) -> Generator[TestClient, None, None]:
+) -> Generator[TestClient]:
     """Fixture to run the mock cloud server."""
     yield mock_cloud_app
 
@@ -504,8 +506,6 @@ async def test_caching_token_provider_waf_retry(
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                from pyrainbird.exceptions import RainbirdConnectionError
-
                 raise RainbirdConnectionError(
                     "Failed to fetch login page, HTTP status: 202"
                 )
@@ -545,8 +545,6 @@ async def test_caching_token_provider_waf_retry_limit_exceeded(
         provider = CachingTokenProvider(str(config_file), auth_provider)
 
         async def mock_get_csrf(*args: Any, **kwargs: Any) -> str:
-            from pyrainbird.exceptions import RainbirdConnectionError
-
             raise RainbirdConnectionError(
                 "Failed to fetch login page, HTTP status: 202"
             )
@@ -601,36 +599,32 @@ async def test_get_csrf_token_connection_error(aiohttp_client: TestClient) -> No
     provider = RainbirdCloudTokenProvider(
         client_session, "user@example.com", "correct_password"
     )
-    with mock.patch.object(
-        client_session, "get", side_effect=aiohttp.ClientError("connection refused")
-    ):
-        with pytest.raises(
+    with (
+        mock.patch.object(
+            client_session, "get", side_effect=aiohttp.ClientError("connection refused")
+        ),
+        pytest.raises(
             RainbirdApiException,
             match="Connection error fetching login page: connection refused",
-        ):
-            await provider._get_csrf_token("http://return.url", {})
+        ),
+    ):
+        await provider._get_csrf_token("http://return.url", {})
 
 
 def test_parse_login_validation_error_captcha_challenge() -> None:
     """Test _parse_login_validation_error parses HTML containing a captcha challenge."""
-    from pyrainbird.cloud.client import _parse_login_validation_error
-
     html = "<html><body>Please solve this captcha to continue</body></html>"
     assert _parse_login_validation_error(html) == "WAF_CHALLENGE"
 
 
 def test_parse_login_validation_error_waf_block() -> None:
     """Test _parse_login_validation_error parses HTML containing an AWS WAF block page."""
-    from pyrainbird.cloud.client import _parse_login_validation_error
-
     html = "<html><body>Request blocked by AWS WAF ruleset</body></html>"
     assert _parse_login_validation_error(html) == "WAF_CHALLENGE"
 
 
 def test_parse_login_validation_error_validation_summary() -> None:
     """Test _parse_login_validation_error parses HTML containing a validation-summary-errors block."""
-    from pyrainbird.cloud.client import _parse_login_validation_error
-
     html = """
     <div class="validation-summary-errors">
       <ul>
@@ -643,16 +637,12 @@ def test_parse_login_validation_error_validation_summary() -> None:
 
 def test_parse_login_validation_error_field_level() -> None:
     """Test _parse_login_validation_error parses HTML containing field validation errors."""
-    from pyrainbird.cloud.client import _parse_login_validation_error
-
     html = '<span class="field-validation-error">Invalid password format</span>'
     assert _parse_login_validation_error(html) == "Invalid password format"
 
 
 def test_parse_login_validation_error_text_danger() -> None:
     """Test _parse_login_validation_error parses HTML containing text-danger errors."""
-    from pyrainbird.cloud.client import _parse_login_validation_error
-
     html = '<div class="text-danger">Internal authentication system offline</div>'
     assert (
         _parse_login_validation_error(html) == "Internal authentication system offline"
@@ -661,8 +651,6 @@ def test_parse_login_validation_error_text_danger() -> None:
 
 def test_parse_login_validation_error_none() -> None:
     """Test _parse_login_validation_error returns None when HTML does not contain any errors."""
-    from pyrainbird.cloud.client import _parse_login_validation_error
-
     html = "<html><body>Enter username/password to sign in</body></html>"
     assert _parse_login_validation_error(html) is None
 
@@ -808,16 +796,16 @@ async def test_submit_credentials_connection_error(aiohttp_client: TestClient) -
     provider = RainbirdCloudTokenProvider(
         client_session, "user@example.com", "correct_password"
     )
-    with mock.patch.object(
-        client_session, "post", side_effect=aiohttp.ClientError("network failure")
-    ):
-        with pytest.raises(
+    with (
+        mock.patch.object(
+            client_session, "post", side_effect=aiohttp.ClientError("network failure")
+        ),
+        pytest.raises(
             RainbirdApiException,
             match="Connection error submitting credentials: network failure",
-        ):
-            await provider._submit_credentials(
-                "http://return.url", "csrf_token_abc", {}
-            )
+        ),
+    ):
+        await provider._submit_credentials("http://return.url", "csrf_token_abc", {})
 
 
 async def test_follow_redirects_max_limit_error(aiohttp_client: TestClient) -> None:
@@ -924,14 +912,16 @@ async def test_follow_redirects_connection_error(aiohttp_client: TestClient) -> 
     provider = RainbirdCloudTokenProvider(
         client_session, "user@example.com", "correct_password"
     )
-    with mock.patch.object(
-        client_session, "get", side_effect=aiohttp.ClientError("ssl protocol error")
-    ):
-        with pytest.raises(
+    with (
+        mock.patch.object(
+            client_session, "get", side_effect=aiohttp.ClientError("ssl protocol error")
+        ),
+        pytest.raises(
             RainbirdApiException,
             match="Connection error following login redirect: ssl protocol error",
-        ):
-            await provider._follow_redirects("/step1", {})
+        ),
+    ):
+        await provider._follow_redirects("/step1", {})
 
 
 async def test_get_satellites_dict_instead_of_list_error(

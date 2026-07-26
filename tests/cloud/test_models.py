@@ -1,12 +1,13 @@
 """Unit tests for Rain Bird cloud integration data models."""
 
 import datetime
+
 import pytest
 
 from pyrainbird.cloud.models import (
+    ConnectedData,
     DeviceStateRecord,
     StationStateData,
-    ConnectedData,
 )
 
 
@@ -18,7 +19,7 @@ def test_device_state_record_updated_at_success() -> None:
         data="{}",
         timestamp=1686700000,
     )
-    expected = datetime.datetime.fromtimestamp(1686700000, datetime.timezone.utc)
+    expected = datetime.datetime.fromtimestamp(1686700000, datetime.UTC)
     assert record.updated_at == expected
 
 
@@ -30,7 +31,7 @@ def test_device_state_record_updated_at_fallback_ose_overflow_exceptions() -> No
         data="{}",
         timestamp=2**60,  # Huge value to trigger OSError/OverflowError
     )
-    now = datetime.datetime.now(datetime.timezone.utc)
+    now = datetime.datetime.now(datetime.UTC)
     updated_at = record.updated_at
     # Ensure it fallback-generated a time close to now (within 5 seconds)
     assert abs((updated_at - now).total_seconds()) < 5
@@ -46,7 +47,7 @@ def test_device_state_record_updated_at_fallback_value_error_nan() -> None:
             "nan"
         ),  # NaN triggers ValueError: cannot convert float NaN to integer
     )
-    now = datetime.datetime.now(datetime.timezone.utc)
+    now = datetime.datetime.now(datetime.UTC)
     updated_at = record.updated_at
     assert abs((updated_at - now).total_seconds()) < 5
 

@@ -1,13 +1,13 @@
 """Tests for high-level local controller client commands using the testing server."""
 
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
+
 import aiohttp
 import pytest
 
 from pyrainbird import async_client
 from pyrainbird.async_client import AsyncRainbirdController
 from pyrainbird.testing.server import RainbirdFakeServer
-
 
 PASSWORD = "keepsecret"
 

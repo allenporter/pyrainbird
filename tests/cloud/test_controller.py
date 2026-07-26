@@ -1,14 +1,17 @@
 """Tests for the Rainbird cloud controller implementation."""
 
 import datetime
+
 import pytest
 from aiohttp import web
-from pyrainbird.const import DayOfWeek
+
+import pyrainbird.cloud.client
 from pyrainbird.async_client import ControllerFeature
 from pyrainbird.cloud import (
-    create_cloud_controller,
     RainbirdCloudTokenProvider,
+    create_cloud_controller,
 )
+from pyrainbird.const import DayOfWeek
 
 SATELLITE_ID = 12345
 PASSWORD = "keepsecret"
@@ -246,8 +249,6 @@ async def mock_cloud_api(aiohttp_client) -> tuple:
 async def test_cloud_controller_operations(mock_cloud_api, monkeypatch) -> None:
     """Test all core features of the cloud controller client with auth mocking."""
     client_app, history = mock_cloud_api
-
-    import pyrainbird.cloud.client
 
     monkeypatch.setattr(
         pyrainbird.cloud.client,

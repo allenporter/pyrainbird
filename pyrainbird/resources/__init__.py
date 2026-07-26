@@ -5,7 +5,6 @@ from typing import Any
 
 import yaml
 
-
 COMMAND = "command"
 TYPE = "type"
 LENGTH = "length"

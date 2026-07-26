@@ -4,7 +4,7 @@ from typing import Any
 import pytest
 from parameterized import parameterized
 
-from pyrainbird.data import States, ModelAndVersion
+from pyrainbird.data import ModelAndVersion, States
 
 
 def encode_name_func(testcase_func, param_num, param):

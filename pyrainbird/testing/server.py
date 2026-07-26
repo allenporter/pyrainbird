@@ -7,6 +7,7 @@ import logging
 from aiohttp import web
 
 from pyrainbird.encryption import encrypt
+
 from .device import FakeRainbirdDevice
 
 _LOGGER = logging.getLogger(__name__)

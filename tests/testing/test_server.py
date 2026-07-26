@@ -4,8 +4,9 @@ import asyncio
 import json
 import socket
 import tempfile
-import pytest
+
 import aiohttp
+import pytest
 from aiohttp import web
 
 from pyrainbird.testing.server import RainbirdFakeServer

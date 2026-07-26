@@ -6,6 +6,7 @@ import datetime
 import glob
 import json
 import pathlib
+import urllib.parse
 from collections.abc import Generator
 from typing import Any
 from unittest import mock
@@ -200,8 +201,6 @@ def test_handshake_url_construction() -> None:
     assert "header=" in url
 
     # Parse out and verify header parameter
-    import urllib.parse
-
     parsed_url = urllib.parse.urlparse(url)
     params = urllib.parse.parse_qs(parsed_url.query)
     header_val = params["header"][0]
@@ -256,7 +255,7 @@ async def test_stream_success(
         assert ev1.remaining_seconds == 300
         assert ev1.rain_delay == 1
         assert ev1.updated_at == datetime.datetime(
-            2026, 6, 13, 23, 18, tzinfo=datetime.timezone.utc
+            2026, 6, 13, 23, 18, tzinfo=datetime.UTC
         )
 
         # Verify second event

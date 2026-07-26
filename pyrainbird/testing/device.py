@@ -21,8 +21,6 @@ _LOGGER = logging.getLogger(__name__)
 class LogEntry:
     """Base class for log entries."""
 
-    pass
-
 
 @dataclass
 class RequestLogEntry(LogEntry):

@@ -3,11 +3,10 @@
 import json
 import logging
 from dataclasses import dataclass
-from typing import Any
 from datetime import date, time
+from typing import Any
 
 from pyrainbird import rainbird
-
 from pyrainbird.encryption import decrypt, encrypt
 from pyrainbird.resources import MODEL_INFO, RAINBIRD_COMMANDS
 
@@ -17,8 +16,6 @@ _LOGGER = logging.getLogger(__name__)
 @dataclass
 class LogEntry:
     """Base class for log entries."""
-
-    pass
 
 
 @dataclass

@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import datetime
-from dataclasses import dataclass, field
 import enum
-from typing import Any
 import json
+from dataclasses import dataclass, field
+from typing import Any
 
 from mashumaro import DataClassDictMixin, field_options
 from mashumaro.config import BaseConfig
-
 
 SUBSCRIBE_DEVICE_STATE_QUERY = """
 subscription onUpdateDeviceStateTable($PK : String!) {
@@ -105,12 +104,10 @@ class DeviceStateRecord(DataClassDictMixin):
         """Get the record updated_at datetime, falling back to current UTC time."""
         if self.timestamp:
             try:
-                return datetime.datetime.fromtimestamp(
-                    self.timestamp, datetime.timezone.utc
-                )
+                return datetime.datetime.fromtimestamp(self.timestamp, datetime.UTC)
             except (ValueError, OSError, OverflowError):
                 pass
-        return datetime.datetime.now(datetime.timezone.utc)
+        return datetime.datetime.now(datetime.UTC)
 
 
 @dataclass
