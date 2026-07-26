@@ -117,7 +117,7 @@ class PayloadCoder:
                 .rstrip()
             )
             content = decrypted_data
-        self._logger.debug("Response: %r" % content)
+        self._logger.debug(f"Response: {content!r}")
         response = json.loads(content)
         if error := response.get("error"):
             msg = ["Error from controller"]

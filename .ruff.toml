@@ -3,3 +3,7 @@ target-version = "py313"
 [lint]
 ignore = ["E501"]
 extend-select = ["PLC0415"]
+
+[lint.per-file-ignores]
+"tests/*" = ["DTZ001", "DTZ005", "DTZ011", "ASYNC230", "S110", "BLE001"]
+"examples/*" = ["LOG015", "BLE001", "S110"]

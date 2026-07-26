@@ -3,6 +3,7 @@
 import asyncio
 import json
 import logging
+from typing import Self
 
 from aiohttp import web
 
@@ -49,8 +50,8 @@ class RainbirdUDPDiscoveryProtocol(asyncio.DatagramProtocol):
                         self.response_udp_port,
                         self.uuid_str,
                     )
-        except Exception as e:
-            _LOGGER.exception("Error in UDP discovery handler: %s", e)
+        except Exception:
+            _LOGGER.exception("Error in UDP discovery handler")
 
 
 class RainbirdFakeServer:
@@ -100,7 +101,7 @@ class RainbirdFakeServer:
                 local_addr=(self.host, self.udp_port),
                 allow_broadcast=True,
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             _LOGGER.error("Failed to start UDP Discovery Server: %s", e)
 
         # 2. HTTP Web Server
@@ -144,7 +145,7 @@ class RainbirdFakeServer:
         """Return the host:port string of the running server."""
         return f"{self.host}:{self.http_port}"
 
-    async def __aenter__(self) -> "RainbirdFakeServer":
+    async def __aenter__(self) -> Self:
         await self.start()
         return self
 
@@ -164,7 +165,7 @@ class RainbirdFakeServer:
         if not decoded_request:
             try:
                 decoded_request = json.loads(body.decode("utf-8"))
-            except Exception:
+            except Exception:  # noqa: BLE001
                 return web.Response(
                     status=400, text="Bad Request: Decryption or JSON parsing failed"
                 )

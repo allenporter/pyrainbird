@@ -492,7 +492,7 @@ async def test_get_zone_state_lxivm(
     fake_device.zone_states = {"00": sip_data}
     controller = await rainbird_controller()
     zone_states = await controller.get_zone_states()
-    active_states = sorted(list(zone_states.active_set))
+    active_states = sorted(zone_states.active_set)
     assert active_states == active_zones
 
 
@@ -534,7 +534,7 @@ async def test_get_rain_delay(
 ) -> None:
     controller = await rainbird_controller()
     fake_device.rain_delay = 16
-    await controller.get_rain_delay() == 16
+    assert await controller.get_rain_delay() == 16
 
 
 async def test_set_rain_delay(
@@ -1547,7 +1547,7 @@ async def test_get_schedule_esp_me_8_zones(
     }
     # Add empty responses for pages 0x84 to 0x8A (total 11 pages)
     for page in range(0x84, 0x8B):
-        schedule_data["00%02X" % page] = "A000" + ("%02X" % page) + ("00" * 16)
+        schedule_data[f"00{page:02X}"] = "A000" + (f"{page:02X}") + ("00" * 16)
 
     fake_device.schedule = schedule_data
     controller = await rainbird_controller()
@@ -1657,7 +1657,7 @@ async def test_get_schedule_tm2_12_zones(
         "0062": "A00062FFFFFFFF",
     }
     for page in range(0x80, 0x86):
-        schedule_data["00%02X" % page] = "A000" + ("%02X" % page) + ("00" * 12)
+        schedule_data[f"00{page:02X}"] = "A000" + (f"{page:02X}") + ("00" * 12)
 
     fake_device.schedule = schedule_data
     controller = await rainbird_controller()
@@ -1690,8 +1690,8 @@ async def test_get_schedule_unknown_model_fallback(
     # Unknown models fall back to max_programs=0, triggering the LCR zone loop.
     # It will request the 8 active zones.
     for zone in range(1, 9):
-        schedule_data["00%02X" % zone] = (
-            "A0000" + ("%X" % zone) + "0A33FFFFFFFFFF007F0000"
+        schedule_data[f"00{zone:02X}"] = (
+            "A0000" + (f"{zone:X}") + "0A33FFFFFFFFFF007F0000"
         )
 
     fake_device.schedule = schedule_data
