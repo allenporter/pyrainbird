@@ -23,6 +23,7 @@ All SIP commands are sent using the `tunnelSip` RPC method:
 ```
 
 Response:
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -41,7 +42,7 @@ Response:
 - Positions in the schema below are in **nibble offsets** (hex char positions)
 - Lengths in the schema are in **nibble counts** (hex char counts)
 
----
+______________________________________________________________________
 
 ## Command Reference
 
@@ -103,11 +104,12 @@ These commands are defined in the controller's embedded command schema (`sipcomm
 | LogEntriesRequest | `70` | — | Get log entries |
 | SetTimeZoneRequest | `2B` | — | Set timezone |
 
----
+______________________________________________________________________
 
 ## Response Schemas (ControllerResponses)
 
 ### `00` — NotAcknowledgeResponse (NAK)
+
 - **Length**: 3 bytes (6 hex chars)
 
 | Field | Position | Length | Description |
@@ -124,6 +126,7 @@ These commands are defined in the controller's embedded command schema (`sipcomm
 | 3 | `08` | Checksum Error |
 
 ### `01` — AcknowledgeResponse (ACK)
+
 - **Length**: 2 bytes
 
 | Field | Position | Length | Description |
@@ -131,6 +134,7 @@ These commands are defined in the controller's embedded command schema (`sipcomm
 | commandEcho | 2 | 2 | Echo of the command code that was acknowledged |
 
 ### `82` — ModelAndVersionResponse
+
 - **Length**: 5 bytes
 
 | Field | Position | Length | Description |
@@ -140,6 +144,7 @@ These commands are defined in the controller's embedded command schema (`sipcomm
 | protocolRevisionMinor | 8 | 2 | Protocol minor version |
 
 ### `83` — AvailableStationsResponse
+
 - **Length**: 6 bytes
 
 | Field | Position | Length | Description |
@@ -148,6 +153,7 @@ These commands are defined in the controller's embedded command schema (`sipcomm
 | setStations | 4 | 8 | Bitmask of available stations on this page |
 
 ### `84` — CommandSupportResponse
+
 - **Length**: 3 bytes
 
 | Field | Position | Length | Description |
@@ -156,6 +162,7 @@ These commands are defined in the controller's embedded command schema (`sipcomm
 | support | 4 | 2 | `01` = supported, `00` = not supported |
 
 ### `85` — SerialNumberResponse
+
 - **Length**: 9 bytes
 
 | Field | Position | Length | Description |
@@ -163,6 +170,7 @@ These commands are defined in the controller's embedded command schema (`sipcomm
 | serialNumber | 2 | 16 | Controller serial number |
 
 ### `90` — CurrentTimeResponse
+
 - **Length**: 4 bytes
 
 | Field | Position | Length | Description |
@@ -172,6 +180,7 @@ These commands are defined in the controller's embedded command schema (`sipcomm
 | second | 6 | 2 | Second (0-59) |
 
 ### `92` — CurrentDateResponse
+
 - **Length**: 4 bytes
 
 | Field | Position | Length | Description |
@@ -181,6 +190,7 @@ These commands are defined in the controller's embedded command schema (`sipcomm
 | year | 5 | 3 | Year (3 hex nibbles) |
 
 ### `B0` — WaterBudgetResponse
+
 - **Length**: 4 bytes
 
 | Field | Position | Length | Description |
@@ -189,6 +199,7 @@ These commands are defined in the controller's embedded command schema (`sipcomm
 | seasonalAdjust | 4 | 4 | Seasonal adjust value (percentage) |
 
 ### `B2` — ZonesSeasonalAdjustFactorResponse
+
 - **Length**: 18 bytes
 
 | Field | Position | Length | Description |
@@ -197,6 +208,7 @@ These commands are defined in the controller's embedded command schema (`sipcomm
 | stationsSA | 4 | 32 | Per-station seasonal adjust values |
 
 ### `B6` — RainDelaySettingResponse
+
 - **Length**: 3 bytes
 
 | Field | Position | Length | Description |
@@ -204,6 +216,7 @@ These commands are defined in the controller's embedded command schema (`sipcomm
 | delaySetting | 2 | 4 | Rain delay in days |
 
 ### `BE` — CurrentRainSensorStateResponse
+
 - **Length**: 2 bytes
 
 | Field | Position | Length | Description |
@@ -211,6 +224,7 @@ These commands are defined in the controller's embedded command schema (`sipcomm
 | sensorState | 2 | 2 | `0` = sensor active (rain detected), `1` = no rain |
 
 ### `BF` — CurrentStationsActiveResponse
+
 - **Length**: 6 bytes
 
 | Field | Position | Length | Description |
@@ -219,6 +233,7 @@ These commands are defined in the controller's embedded command schema (`sipcomm
 | activeStations | 4 | 8 | Bitmask of currently running stations |
 
 ### `C8` — CurrentIrrigationStateResponse
+
 - **Length**: 2 bytes
 
 | Field | Position | Length | Description |
@@ -226,6 +241,7 @@ These commands are defined in the controller's embedded command schema (`sipcomm
 | irrigationState | 2 | 2 | `1` = irrigating, `0` = idle |
 
 ### `CA` — ControllerEventTimestampResponse
+
 - **Length**: 6 bytes
 
 | Field | Position | Length | Description |
@@ -234,6 +250,7 @@ These commands are defined in the controller's embedded command schema (`sipcomm
 | timestamp | 4 | 8 | Timestamp value |
 
 ### `CC` — CombinedControllerStateResponse
+
 - **Length**: 16 bytes
 
 | Field | Position | Length | Description |
@@ -251,7 +268,7 @@ These commands are defined in the controller's embedded command schema (`sipcomm
 | remainingRuntime | 26 | 4 | Remaining runtime (minutes) |
 | activeStation | 30 | 2 | Currently active station number |
 
----
+______________________________________________________________________
 
 ## Response Parsing Algorithm
 
@@ -268,11 +285,12 @@ All responses are parsed using a generic field-extraction algorithm:
 
 > **Important**: Position and length values are in **hex character counts** (nibbles), not bytes.
 
----
+______________________________________________________________________
 
 ## Auto-Follow Behavior
 
 After certain SET commands, the app automatically sends the corresponding GET:
+
 - `SetTimeRequest (11)` → auto-sends `CurrentTimeRequest (10)`
 - `SetDateRequest (13)` → auto-sends `CurrentDateRequest (12)`
 - `RainDelaySetRequest (37)` → auto-sends `RainDelayGetRequest (36)`

@@ -1,10 +1,9 @@
----
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
       - id: trailing-whitespace
-        exclude: '.*\.ambr$'
+        exclude: ".*\\.ambr$"
       - id: end-of-file-fixer
       - id: check-yaml
       - id: check-added-large-files
@@ -35,7 +34,7 @@ repos:
     rev: v1.38.0
     hooks:
       - id: yamllint
-        exclude: '^tests/tool/testdata/.*\.yaml$'
+        exclude: "^tests/tool/testdata/.*\\.yaml$"
         args:
           - --strict
           - -c

@@ -40,9 +40,11 @@ These are concrete patterns used in the code base.
 **Example (from PR feedback): “don’t poke into internal objects”**
 
 **Instead of:**
+
 - Asserting on or reaching into internals like `client._coder` (or `_url`, `_ssl_context`, etc.) in tests.
 
 **Do:**
+
 - Patch the boundary (constructor/factory) and assert arguments/behavior:
   - Patch `pyrainbird.async_client.AsyncRainbirdController.get_model_and_version` (string `mock.patch`).
   - Assert on the patched constructor/factory `call_args_list` directly.
@@ -50,9 +52,11 @@ These are concrete patterns used in the code base.
 ### Keep code minimal; avoid adding guards for “never shipped” cases
 
 **Instead of:**
+
 - Adding runtime checks / assertions like “host must not be a URL” when the public contract already implies host-only and prior releases didn’t accept URLs.
 
 **Do:**
+
 - Keep the code path minimal and rely on the documented contract; remove defensive checks that introduce new failure modes without real benefit.
 
 ### Keep diffs focused; avoid drive-by churn
@@ -60,9 +64,11 @@ These are concrete patterns used in the code base.
 Maintainer review tends to go faster when diffs are narrowly scoped to the user-facing bugfix.
 
 **Instead of:**
+
 - Committing incidental formatting/whitespace changes in unrelated files.
 - Committing lockfile changes as a side effect of running tests.
 
 **Do:**
+
 - If running `./script/test` updates `uv.lock` but you didn’t intend a dependency update, restore it before committing.
 - Stage only files you intentionally changed for the fix.

@@ -4,7 +4,7 @@
 
 These are **program-based** controllers using **legacy SIP schedule pages**. Schedule data is organized by program, with separate pages for global info, program info, start times, and per-station runtimes.
 
----
+______________________________________________________________________
 
 ## Device Parameters
 
@@ -15,7 +15,7 @@ These are **program-based** controllers using **legacy SIP schedule pages**. Sch
 | Max stations | 22 | 12 | 12 |
 | Runtime pages | 11 | 6 | 6 |
 
----
+______________________________________________________________________
 
 ## Schedule Protocol (Commands `20` / `A0` / `21`)
 
@@ -24,6 +24,7 @@ These are **program-based** controllers using **legacy SIP schedule pages**. Sch
 ```
 20 00 PP
 ```
+
 - `20` = RetrieveScheduleRequest
 - `00` = fixed padding
 - `PP` = page number (hex)
@@ -40,11 +41,12 @@ The response code is `A0`. The page number determines the data type:
 | `60`-`63` (96-99) | Program start times | 1 per program (max 4) |
 | `80`-`8A` (128-138) | Station runtimes | Variable (ME: 11 pages, TM2: 6 pages) |
 
----
+______________________________________________________________________
 
 ### Page 0 — Global Info
 
 **Get response:**
+
 ```
 A0 PPPP 00 DDDD SS RR
 ```
@@ -56,18 +58,21 @@ A0 PPPP 00 DDDD SS RR
 | 12 | rainSensor | 2 | `00` = rain sensor enabled, `01` = sensor bypassed |
 
 **Set command:**
+
 ```
 21 00 00 DDDD SS RR
 ```
+
 Same field layout as the response data portion.
 
----
+______________________________________________________________________
 
 ### Pages 16-19 (`10`-`13`) — Program Info
 
 One page per program. Page `10` = Program 1, `11` = Program 2, etc.
 
 **Get response (data after `A0 PPPP`):**
+
 ```
 PP DD CC RR OO SS FF
 ```
@@ -82,9 +87,11 @@ PP DD CC RR OO SS FF
 | 10-12 | frequencyType | 2 | Frequency type code |
 
 **Set command:**
+
 ```
 21 00 PP DD CC RR OO 64 FF
 ```
+
 Note: seasonal adjust is always set to `64` (100 = 100%) when writing.
 
 **Frequency Type values:**
@@ -95,53 +102,61 @@ Note: seasonal adjust is always set to `64` (100 = 100%) when writing.
 | 2 | ODD days |
 | 3 | EVEN days |
 
----
+______________________________________________________________________
 
 ### Page 32 (`20`) — Sensor Bypass Per Station
 
 **Get response (data after `A0 PPPP`):**
 
 Pairs of hex digits, one per station:
+
 ```
 S1 S2 S3 ... SN
 ```
+
 - `01` = sensor enabled for this station
 - `00` = sensor bypassed for this station
 
----
+______________________________________________________________________
 
 ### Pages 96-99 (`60`-`63`) — Program Start Times
 
 One page per program. Page `60` = Program 1 start times, etc.
 
 **Get response (data after `A0 PPPP`):**
+
 ```
 T1T1 T2T2 T3T3 T4T4 [T5T5 T6T6]
 ```
 
 Each start time is 4 hex chars (2 bytes) = **minutes from midnight**. Number of start times depends on controller:
+
 - ESP-ME: 6 start times
 - ESP-TM2: 4 start times
 
 Value `FFFF` or out-of-range = OFF (no start time).
 
 **Set command:**
+
 ```
 21 00 PP T1T1 T2T2 T3T3 ...
 ```
+
 Where `PP` = `60` + (program number - 1).
 
----
+______________________________________________________________________
 
 ### Pages 128-138 (`80`-`8A`) — Station Runtimes
 
 Each page contains runtimes for **2 stations** across all programs. The page number encodes which station pair:
+
 - Page `80` (128) = Stations 1 & 2
 - Page `81` (129) = Stations 3 & 4
 - ...
 - Page `8A` (138) = Stations 21 & 22
 
 **Page number calculation:**
+
 ```
 page = floor(station_number / 2) + 128
 ```
@@ -149,6 +164,7 @@ page = floor(station_number / 2) + 128
 #### Data layout
 
 The data portion contains runtimes organized as:
+
 ```
 [Station A: P1 P2 P3 P4] [Station B: P1 P2 P3 P4]
 ```
@@ -160,10 +176,12 @@ Each runtime is **4 hex chars** (2 bytes) = minutes.
 - Programs repeat for each station: P1, P2, P3, [P4] (ME has 4, TM2 has 3)
 
 **Total data per page**:
+
 - ESP-ME: 4 programs × 2 stations × 4 chars = 32 hex chars
 - ESP-TM2: 3 programs × 2 stations × 4 chars = 24 hex chars
 
 **Parsing logic** (from `interpretScheduleResponseString`):
+
 ```python
 for i in range(0, len(data), 4):
     runtime_hex = data[i:i+4]
@@ -177,7 +195,7 @@ for i in range(0, len(data), 4):
 
 If runtime > 0, the station is marked as enabled.
 
----
+______________________________________________________________________
 
 ## Queue Response Parsing (Command `3B` / Response `BB`)
 
@@ -201,9 +219,11 @@ BB 00 .... RRRR .... SS PP ....
 #### Page 1+ — Pending Queue Entries
 
 11 entries per page, each 6 hex chars (3 bytes):
+
 ```
 [S1 R1R1] [S2 R2R2] ...
 ```
+
 - `SS` (2 chars) = station number (masked: `& 0x1F` = lower 5 bits)
 - `RRRR` (4 chars) = remaining time
 - Entry with station = 0 terminates the list
@@ -211,38 +231,46 @@ BB 00 .... RRRR .... SS PP ....
 ### Upgraded TM2 / ME3 Queue (`interpretCurrentQueueResponseME2`)
 
 #### Page 0 — Running State
+
 ```
 BB 00 TT SS
 ```
+
 - `TT` = irrigation type
 - `SS` = stations running count
 
 #### Page 1 — Pending Entries (old format, 8 entries × 8 chars)
+
 ```
 [PP SS RRRR] ×8
 ```
+
 - `PP` = program, `SS` = station, `RRRR` = remaining time
 - **Byte swap on remaining time**: `((R & 0xFF00) >> 8) | ((R & 0x00FF) << 8)`
 
 #### Page 1 — Pending Entries (new ME3 format, response length = 100 chars)
+
 ```
 [PP SS RRRR 0000] ×8
 ```
+
 12 hex chars per entry (6 bytes), same byte-swap on remaining time.
 
 #### Page 2+ — Simple Pending Entries (17 entries × 4 chars)
+
 ```
 [PP SS] ×17
 ```
+
 - Program and station only, no remaining time.
 
----
+______________________________________________________________________
 
 ## Key Implementation Notes
 
 1. **Station numbering**: Stations are 1-indexed throughout. Station 0 means "none".
-2. **Runtime units**: All runtimes in schedule pages are in **minutes**. Queue remaining times are also minutes.
-3. **Runtime byte-swapping**: The upgraded TM2 family swaps bytes on queue remaining time fields. This is a critical difference from legacy ESP-ME.
-4. **Page number mapping**: `floor(station / 2) + 128` for runtime pages. Programs map to pages 16+ and 96+.
-5. **Program numbering**: Programs are 1-indexed in the domain model but the page offset uses 0-indexed math (page 16 = program 1, page 96 = program 1).
-6. **ESP-TM2 vs ESP-ME**: Only difference is `maxPrograms` (3 vs 4) and `runTimePages` (6 vs 11). All parsing logic is shared between the two families.
+1. **Runtime units**: All runtimes in schedule pages are in **minutes**. Queue remaining times are also minutes.
+1. **Runtime byte-swapping**: The upgraded TM2 family swaps bytes on queue remaining time fields. This is a critical difference from legacy ESP-ME.
+1. **Page number mapping**: `floor(station / 2) + 128` for runtime pages. Programs map to pages 16+ and 96+.
+1. **Program numbering**: Programs are 1-indexed in the domain model but the page offset uses 0-indexed math (page 16 = program 1, page 96 = program 1).
+1. **ESP-TM2 vs ESP-ME**: Only difference is `maxPrograms` (3 vs 4) and `runTimePages` (6 vs 11). All parsing logic is shared between the two families.

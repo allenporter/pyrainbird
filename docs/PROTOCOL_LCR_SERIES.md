@@ -4,7 +4,7 @@
 
 These are **non-program-based** controllers. Unlike ESP-ME/TM2, schedule data is organized **per-zone** rather than per-program. Each zone has its own start times, frequency, and runtime.
 
----
+______________________________________________________________________
 
 ## Schedule Protocol (Commands `20` / `A0`)
 
@@ -13,6 +13,7 @@ These are **non-program-based** controllers. Unlike ESP-ME/TM2, schedule data is
 ```
 20 00 PP
 ```
+
 - `20` = RetrieveScheduleRequest
 - `00` = fixed padding
 - `PP` = page number (station number, or `00` for global info)
@@ -24,15 +25,19 @@ The response format depends on the page number:
 #### Page 0 — Global Info
 
 **RZX format** (short response, length < 28 chars):
+
 ```
 A0 PPPP 00 SS
 ```
+
 - `SS` = rain sensor state: `00` = sensor enabled, non-zero = sensor bypassed
 
 **ST8 format**:
+
 ```
 A0 PPPP 00 BB
 ```
+
 - `BB` = bit field. Bit 7 (`0x80`) = rain sensor bypassed; absent = sensor enabled.
 
 #### Pages 1+ — Per-Station Data
@@ -62,7 +67,7 @@ A0 PPPP SS RR T1 T2 T3 T4 T5 T6 FF DD CC RR
 
 **Start time encoding**: Each start time is stored as `minutesFromMidnight / 10`. To decode: `value * 10`. Value `0xFF` (255) means "OFF" (no start time), equivalent to 2550 in decoded form (255 × 10).
 
----
+______________________________________________________________________
 
 ### Set Schedule — Request (`21`)
 
@@ -81,7 +86,7 @@ A0 PPPP SS RR T1 T2 T3 T4 T5 T6 FF DD CC RR
 | `CC` | 2 | Cyclic days interval |
 | `RR` | 2 | Days remaining + sensor bypass (bit 7 = bypass: `OR 0x80` or `AND ~0x80`) |
 
----
+______________________________________________________________________
 
 ## Set Zones Seasonal Adjust Factor (`33`)
 
@@ -90,24 +95,23 @@ RZX/ST8 use per-zone seasonal adjustment (unlike per-program for ME/TM2):
 ```
 33 FF SA1 SA2 SA3 ... SAN
 ```
+
 - `FF` = zone selector (always `FF` for "all")
 - `SA1`-`SAN` = per-station seasonal adjust, 4 hex chars (2 bytes) each, percentage value
 
-
-
----
+______________________________________________________________________
 
 ## ST8 Global Info Set (`21`)
 
 The ST8 global info page differs from RZX:
+
 ```
 21 0000 SS
 ```
+
 - `SS` = `00` = rain sensor enabled, `80` = rain sensor bypassed
 
-
-
----
+______________________________________________________________________
 
 ## Queue Response Parsing
 
@@ -135,15 +139,18 @@ BB PP ...
 #### Page 1+ — Pending Queue Entries
 
 Entries are packed sequentially:
+
 ```
 BB PP [S1 T1 R1R1] [S2 T2 R2R2] ...
 ```
+
 Where per entry (8 hex chars = 4 bytes):
+
 - `SS` (2 chars) = station number
 - `TT` (2 chars) = irrigation type
 - `RRRR` (4 chars) = remaining time
 
----
+______________________________________________________________________
 
 ## Key Differences from ESP-ME/TM2
 

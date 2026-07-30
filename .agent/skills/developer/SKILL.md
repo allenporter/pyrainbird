@@ -20,13 +20,15 @@ This skill teaches you how to interact with the Supernote-Lite codebase using st
 ## Usage Patterns
 
 ### Standard Development Flow
+
 1. **Initialize**: `./script/bootstrap` first time the repo is created
-2. **Setup**: `./script/setup` to activat the virtual environment
-3. **Implement**: Make your changes to the code.
-4. **Lint**: `./script/lint` to check for style issues.
-5. **Test**: `./script/test` to run the test suite.
+1. **Setup**: `./script/setup` to activat the virtual environment
+1. **Implement**: Make your changes to the code.
+1. **Lint**: `./script/lint` to check for style issues.
+1. **Test**: `./script/test` to run the test suite.
 
 ### Notes
+
 - All scripts are located in the `script/` directory at the project root.
 - Scripts are designed to be run from the project root.
 - The scripts will automatically use `uv` if it is installed, otherwise they will fall back to standard Python tools.

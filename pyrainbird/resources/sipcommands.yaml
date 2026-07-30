@@ -1,37 +1,36 @@
----
 ControllerCommands:
   ModelAndVersionRequest:
-    command: '02'
-    response: '82'
+    command: "02"
+    response: "82"
     length: 1
   AvailableStationsRequest:
-    command: '03'
-    response: '83'
+    command: "03"
+    response: "83"
     length: 2
     page:
       position: 2
       length: 2
   CommandSupportRequest:
-    command: '04'
-    parameter: '02'  # commandToTest: '02'
-    response: '84'
+    command: "04"
+    parameter: "02" # commandToTest: '02'
+    response: "84"
     length: 2
   SerialNumberRequest:
-    command: '05'
-    response: '85'
+    command: "05"
+    response: "85"
     length: 1
   ControllerFirmwareVersionRequest:
-    command: '0B'
-    response: '8B'
+    command: "0B"
+    response: "8B"
     length: 1
   # UniversalMessageRequest
   CurrentTimeRequest:
-    command: '10'
-    response: '90'
+    command: "10"
+    response: "90"
     length: 1
   SetCurrentTimeRequest:
-    command: '11'
-    response: '01'
+    command: "11"
+    response: "01"
     length: 4
     hour:
       position: 2
@@ -43,12 +42,12 @@ ControllerCommands:
       position: 6
       length: 2
   CurrentDateRequest:
-    command: '12'
-    response: '92'
+    command: "12"
+    response: "92"
     length: 1
   SetCurrentDateRequest:
-    command: '13'
-    response: '01'
+    command: "13"
+    response: "01"
     length: 4
     day:
       position: 2
@@ -62,54 +61,54 @@ ControllerCommands:
   # currentTimeZone: FC
   # SetTimeZoneRequest: 2B
   RetrieveScheduleRequest:
-    command: '20'
+    command: "20"
     parameter: 0
-    response: 'A0'
+    response: "A0"
     length: 3
   # SetSchedule: 21
   WaterBudgetRequest:
-    command: '30'
+    command: "30"
     parameter: 0
     response: B0
     length: 2
   # WaterBudgetSet: 31
   ZonesSeasonalAdjustFactorRequest:
-    command: '32'
+    command: "32"
     parameter: 0
     response: B2
     length: 2
   # ZonesSeasonalAdjustFactorSet: 33
   RainDelayGetRequest:
-    command: '36'
+    command: "36"
     response: B6
     length: 1
   RainDelaySetRequest:
-    command: '37'
+    command: "37"
     parameter: 0
-    response: '01'
+    response: "01"
     length: 3
   ManuallyRunProgramRequest:
-    command: '38'
+    command: "38"
     parameter: 0
-    response: '01'
+    response: "01"
     length: 2
     program:
       position: 2
       length: 2
   ManuallyRunStationRequest:
-    command: '39'
+    command: "39"
     parameterOne: 0
     parameterTwo: 0
-    response: '01'
+    response: "01"
     length: 4
   TestStationsRequest:
     command: 3A
     parameter: 0
-    response: '01'
+    response: "01"
     length: 2
   CurrentQueueRequest:
     command: 3B
-    response: 'BB'
+    response: "BB"
     length: 2
     page:
       position: 2
@@ -124,23 +123,23 @@ ControllerCommands:
     response: BF
     length: 2
   StopIrrigationRequest:
-    command: '40'
-    response: '01'
+    command: "40"
+    response: "01"
     length: 1
   # AdvanceStationRequest: 42
   AdvanceStationRequest:
-    command: '42'
+    command: "42"
     parameter: 0
-    response: '01'
+    response: "01"
     length: 2
   CurrentIrrigationStateRequest:
-    command: '48'
+    command: "48"
     response: C8
     length: 1
   CurrentControllerStateSet:
-    command: '49'
+    command: "49"
     parameter: 0
-    response: '01'
+    response: "01"
     length: 2
   ControllerEventTimestampRequest:
     command: 4A
@@ -152,7 +151,7 @@ ControllerCommands:
     parameter: 0
     parameterTwo: 0
     parameterThree: 0
-    response: '01'
+    response: "01"
     length: 4
     page:
       position: 2
@@ -178,7 +177,7 @@ ControllerCommands:
 
 ControllerResponses:
   NotAcknowledgeResponse:
-    command: '00'
+    command: "00"
     length: 3
     commandEcho:
       position: 2
@@ -187,13 +186,13 @@ ControllerResponses:
       position: 4
       length: 2
   AcknowledgeResponse:
-    command: '01'
+    command: "01"
     length: 2
     commandEcho:
       position: 2
       length: 2
   ModelAndVersionResponse:
-    command: '82'
+    command: "82"
     length: 5
     modelID:
       position: 2
@@ -205,7 +204,7 @@ ControllerResponses:
       position: 8
       length: 2
   AvailableStationsResponse:
-    command: '83'
+    command: "83"
     length: 6
     pageNumber:
       position: 2
@@ -214,7 +213,7 @@ ControllerResponses:
       position: 4
       length: 8
   CommandSupportResponse:
-    command: '84'
+    command: "84"
     length: 3
     commandEcho:
       position: 2
@@ -223,13 +222,13 @@ ControllerResponses:
       position: 4
       length: 2
   SerialNumberResponse:
-    command: '85'
+    command: "85"
     length: 9
     serialNumber:
       position: 2
       length: 16
   ControllerFirmwareVersionResponse:
-    command: '8B'
+    command: "8B"
     length: 5
     major:
       position: 2
@@ -242,7 +241,7 @@ ControllerResponses:
       length: 4
   # UniversalMessageTransportResponse 8C
   CurrentTimeResponse:
-    command: '90'
+    command: "90"
     length: 4
     hour:
       position: 2
@@ -254,7 +253,7 @@ ControllerResponses:
       position: 6
       length: 2
   CurrentDateResponse:
-    command: '92'
+    command: "92"
     length: 4
     day:
       position: 2
@@ -266,12 +265,12 @@ ControllerResponses:
       position: 5
       length: 3
   RetrieveScheduleResponse:
-    command: 'A0'
+    command: "A0"
     # Requires a custom processor that can't be expressed in yaml. This
     # does not set a length for now to indicate it requires custom encoding.
     decoder: decode_schedule
   WaterBudgetResponse:
-    command: 'B0'
+    command: "B0"
     length: 4
     programCode:
       position: 2
@@ -280,7 +279,7 @@ ControllerResponses:
       position: 4
       length: 4
   ZonesSeasonalAdjustFactorResponse:
-    command: 'B2'
+    command: "B2"
     length: 18
     type: ZonesSeasonalAdjustFactorResponse
     programCode:
@@ -290,7 +289,7 @@ ControllerResponses:
       position: 4
       length: 32
   RainDelaySettingResponse:
-    command: 'B6'
+    command: "B6"
     length: 3
     type: RainDelaySettingResponse
     delaySetting:
@@ -300,13 +299,13 @@ ControllerResponses:
     command: BB
     decoder: decode_queue
   CurrentRainSensorStateResponse:
-    command: 'BE'
+    command: "BE"
     length: 2
     sensorState:
       position: 2
       length: 2
   CurrentStationsActiveResponse:
-    command: 'BF'
+    command: "BF"
     length: 6
     pageNumber:
       position: 2
@@ -315,13 +314,13 @@ ControllerResponses:
       position: 4
       length: 8
   CurrentIrrigationStateResponse:
-    command: 'C8'
+    command: "C8"
     length: 2
     irrigationState:
       position: 2
       length: 2
   ControllerEventTimestampResponse:
-    command: 'CA'
+    command: "CA"
     length: 6
     eventId:
       position: 2
@@ -330,7 +329,7 @@ ControllerResponses:
       position: 4
       length: 8
   CombinedControllerStateResponse:
-    command: 'CC'
+    command: "CC"
     length: 16
     hour:
       position: 2

@@ -34,7 +34,7 @@ decoded_data:
   - type: RetrieveScheduleResponse
     programInfo:
       program: 1
-      daysOfWeekMask: 127  # Every day of week
+      daysOfWeekMask: 127 # Every day of week
       period: 3
       synchro: 0
       permanentDaysOff: 0
@@ -66,7 +66,7 @@ decoded_data:
   - type: RetrieveScheduleResponse
     durations:
       - zone: 0
-        durations: [25, 1, 0]  # Program 0, 1, 2
+        durations: [25, 1, 0] # Program 0, 1, 2
       - zone: 1
         durations: [20, 2, 0]
   - type: RetrieveScheduleResponse

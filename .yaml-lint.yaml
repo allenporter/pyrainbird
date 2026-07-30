@@ -1,11 +1,10 @@
----
 ignore: |
   venv
   tests/testdata
 extends: default
 rules:
   truthy:
-    allowed-values: ['true', 'false', 'on', 'yes']
+    allowed-values: ["true", "false", "on", "yes"]
   comments:
     min-spaces-from-content: 1
   line-length: disable

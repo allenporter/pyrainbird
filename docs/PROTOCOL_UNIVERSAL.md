@@ -4,8 +4,7 @@
 
 These controllers use the **Universal protocol** — a CDT (Controller Data Transfer) / UPT (Universal Protocol Transfer) layer that rides on top of the standard SIP transport via command `0C` / response `8C`.
 
-
----
+______________________________________________________________________
 
 ## Architecture Overview
 
@@ -26,7 +25,7 @@ These controllers use the **Universal protocol** — a CDT (Controller Data Tran
 
 Universal messages are **pre-built hex strings** sent via the existing SIP `tunnelSip` RPC — the same transport as legacy SIP commands.
 
----
+______________________________________________________________________
 
 ## Universal Message Structure
 
@@ -109,7 +108,7 @@ Data IDs identify what configuration or runtime data to read/write:
 
 The **rank** field indicates the index dimension — rank 0 = scalar, rank 1 = indexed by station or program, rank 2 = indexed by program×station, rank 3 = multi-dimensional.
 
----
+______________________________________________________________________
 
 ## Per-Controller Schedule Commands
 
@@ -143,11 +142,12 @@ Each controller family has a pre-defined set of CDT batch-get commands for fetch
 ### ESP-2WIRE (13 messages)
 
 Extends ME3 with 8 runtime pages (for up to 50 stations across 4 programs):
+
 - Programs 1-4, each split into 2 station-range requests (stations 0-24, 25-49)
 - Separate cycle/soak for each station range
 - Same frequency and sensor/adjust commands as ME3
 
----
+______________________________________________________________________
 
 ## Response Parsing
 
@@ -173,38 +173,48 @@ Response data uses **little-endian** byte order (unlike legacy SIP which is big-
 The Universal queue response reuses SIP command `3B`/response `BB` but with different byte order:
 
 #### Page 0 — Running State
+
 ```
 BB 00 ?? TT SSSS
 ```
+
 - `TT` = irrigation type at offset [6:8]
 - `SSSS` = stations running count at offset [8:12] — **little-endian** 2-byte value
 
 #### Page 1+ — Pending Entries (8 entries × 12 hex chars)
+
 ```
 BB PP [SSSS RRRRRRRR] ×8
 ```
+
 Per entry:
+
 - `SSSS` (4 hex chars) = station number (big-endian, offset relative)
 - `RRRRRRRR` (8 hex chars) = remaining time — **little-endian** 4-byte value
 - Entry with station = 0 terminates the list
 - Only included if remaining time > 0
 
----
+______________________________________________________________________
 
 ## 2-Wire Specific Features
 
 ESP-2WIRE controllers have additional capabilities:
 
 ### Alarm Bitmaps
+
 Command: `1330` (GET_ALARMS_BITMAP) via the alarms manager
+
 - Returns a bitmap of active alarms
 
 ### Module Info
+
 Command: `220B` (GET_MODULE_INFO) / Response: `230B`
+
 - Query firmware module information for installed modules
 - Module slot addresses: slot 0 = `F90000000000`, slot 1 = `010000000000`
 
 ### Field Device Management
+
 - `4109` AUTO_ASSIGN_ADDRESSES
 - `4809` / `4909` CLEAR_ALL_ADDRESSES
 - `4A09` / `4B09` CLEAR_SINGLE_ADDRESS
@@ -215,10 +225,11 @@ Command: `220B` (GET_MODULE_INFO) / Response: `230B`
 - `5009` / `5109` REFRESH_ADDRESS_ASSIGNMENTS
 
 ### AC Current Test
+
 - `1F50` AC_CURRENT_TEST / `2050` AC_CURRENT_TEST_RESPONSE
 - `2350` TWO_WIRE_DIAGNOSTICS / `2450` TWO_WIRE_DIAGNOSTICS_RESPONSE
 
----
+______________________________________________________________________
 
 ## Front Panel Session Management
 
@@ -233,7 +244,7 @@ Universal controllers support locking/unlocking the physical front panel:
 | FRONT_PANEL_SESSION_BEACON | `0714` | Keep-alive beacon |
 | FRONT_PANEL_SESSION_BEACON_REPLY | `0814` | Beacon response |
 
----
+______________________________________________________________________
 
 ## Firmware Update Protocol (RCP)
 
@@ -252,21 +263,23 @@ Universal controllers support over-the-air firmware updates using the RCP (Remot
 | UPT_RCP_COMMIT | 23 | Commit firmware update |
 
 **Bundled firmware versions** (as of app v2.17.14):
+
 - ESP-ME3: FW 2.41, Bootloader 0.24
 - ISK (RC2/ARC8): FW 2.107
 - ESP-2WIRE: FW 1.24, TX FW 1.5
 
----
+______________________________________________________________________
 
 ## Logical Dial Position
 
 ISK controllers (RC2, ARC8) use a logical dial concept for UI state:
+
 - `0A30` GET_LOGICAL_DIAL / `0B30` GET_LOGICAL_DIAL_RESPONSE
 - `2D30` SET_LOGICAL_DIAL / `2E30` SET_LOGICAL_DIAL_RESPONSE
 
 Polling command: `0C200001000805000000001300000000000500000002000A30`
 
----
+______________________________________________________________________
 
 ## Key Differences from Legacy SIP
 

@@ -21,9 +21,9 @@ This page documents details about Rainbird Device types and various levels of su
 | RC2 | RC2 | `0812` | ✅ | 3 | 4 | 0 | 12 | **Universal** (ISK) |
 | ARC8 | ARC | `0813` | ✅ | 3 | 4 | 0 | 12 | **Universal** (ISK) |
 | ESP_2WIRE | ESP-2WIRE | `0011` | ✅ | 4 | 6 | 1 | 50 | **Universal** |
-| LXME2 | LXME2 | `000C` | ✅ | 40 | 10 | 1 | 22* | **Universal** (LX) |
-| LX_IVM | LX-IVM | `000D` | ✅ | 10 | 8 | 1 | 22* | **Universal** (LX) |
-| LX_IVM_PRO | LX-IVM Pro | `000E` | ✅ | 40 | 8 | 7 | 22* | **Universal** (LX) |
+| LXME2 | LXME2 | `000C` | ✅ | 40 | 10 | 1 | 22\* | **Universal** (LX) |
+| LX_IVM | LX-IVM | `000D` | ✅ | 10 | 8 | 1 | 22\* | **Universal** (LX) |
+| LX_IVM_PRO | LX-IVM Pro | `000E` | ✅ | 40 | 8 | 7 | 22\* | **Universal** (LX) |
 | TBOS_BT | TBOS-BT | `0099` | ✅ | 3 | 8 | 0 | — | BLE (Solem) |
 | TBOS_BT_LT | TBOS-BT | `0100` | ✅ | 3 | 8 | 0 | — | BLE (Solem) |
 | CBOS_BT | ESP-BAT-BT | `0011` | ✅ | 4 | 8 | 0 | — | BLE (Solem) |
@@ -32,9 +32,9 @@ This page documents details about Rainbird Device types and various levels of su
 | CBOS_BT_6 | ESP-BAT-BT | `0011` | ✅ | 4 | 8 | 0 | — | BLE (Solem) |
 | MOCK_ESP_ME2 | ESP=Me2 | `0010` | ✅ | 4 | 6 | 0 | 22 | Legacy SIP (ME) |
 
-*LX controllers default to 22 max stations.
+\*LX controllers default to 22 max stations.
 
----
+______________________________________________________________________
 
 ## Device Groupings
 
@@ -42,22 +42,27 @@ We can group controllers into families that can help us better understand
 the device capabilities.
 
 ### Non-program-based, per-zone schedule (LCR Series)
+
 - ST8X_WF, ST8X_WF2, ESP_RZXe, ESP_RZXe2
 
 ### TM2 family
+
 - **TM2**: ESP_TM2, ESP_TM2v2, ESP_TM2v3, TM2R, TRU
 - **Upgraded TM2**: ESP_TM2v2, ESP_TM2v3, TM2R, TRU (excludes original ESP_TM2)
 
 ### ISK family (Universal protocol)
+
 - RC2, ARC8
 
 ### LX family (Universal protocol)
+
 - LXME2, LX_IVM, LX_IVM_PRO
 
 ### Universal/CDT protocol
+
 - ESP_ME3, RC2, ARC8, ESP_2WIRE, LXME2, LX_IVM, LX_IVM_PRO
 
----
+______________________________________________________________________
 
 ## Feature Support Matrix
 
@@ -82,13 +87,14 @@ the device capabilities.
 | Homepage layout | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Ignore global WB | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 
----
+______________________________________________________________________
 
 ## Auto-Queue Polling Commands
 
 Each controller type defines a set of SIP commands that the app polls in a loop. Here are the distinct groups:
 
 ### Default (ESP-RZXe, ESP-ME, ESP-TM2)
+
 ```
 12          CurrentDateRequest
 3D00        CurrentStationErrorRequest(page=0)
@@ -97,22 +103,29 @@ Each controller type defines a set of SIP commands that the app polls in a loop.
 ```
 
 ### ST8x-WiFi2, ESP-RZXe2
+
 Above + `4A01` (EventTimestamp), `4C` (CombinedState), `32FF` (ZonalSA)
 
 ### Upgraded TM2 (TM2v2, TM2v3, TM2R, TRU)
+
 Above + WaterBudget ×3 (`3000`, `3001`, `3002`), CombinedState, CurrentStationsActive, CurrentQueue, FirmwareVersion
 
 ### ISK (RC2, ARC8)
+
 Above + queue ×2, WaterBudget ×3, AvailableStations, FirmwareVersion, Time, IrrigationState + **2 Universal CDT messages** (sensor bypass + logical dial position)
 
 ### ESP-ME3
+
 Above + FlowSequenceStatus, FlowMonitorStatus, WaterBudget ×4, AvailableStations + **1 Universal CDT message** (sensor bypass)
 
 ### ESP-2WIRE
+
 Same as ME3 + additional AvailableStations page + **Universal CDT messages** for alarms bitmap and module info
 
 ### LX-IVM, LX-IVM Pro
+
 FirmwareVersion, IrrigationState, CurrentQueue ×2, FlowSequenceStatus, FlowMonitorStatus
 
 ### LXME2
+
 Same as LX-IVM + CurrentQueue ×2
