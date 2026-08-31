@@ -1,16 +1,66 @@
 # serializer version: 1
 # name: test_parse_event_snapshot[scalar_int]
-  ConnectionStatusEvent(satellite_id=527302, device_uuid='7b1ad1ef-91df-4e50-9004-269c139c681c', updated_at=datetime.datetime(2026, 6, 13, 23, 18, tzinfo=datetime.timezone.utc), data=ConnectedData(state=0, active_station=None, remain_sec=None, rain_delay=None))
+  ConnectionStatusEvent(
+    data=ConnectedData(
+      active_station=None,
+      rain_delay=None,
+      remain_sec=None,
+      state=0,
+    ),
+    device_uuid='7b1ad1ef-91df-4e50-9004-269c139c681c',
+    satellite_id=527302,
+    updated_at=datetime.datetime(2026, 6, 13, 23, 18, tzinfo=datetime.timezone.utc),
+  )
 # ---
 # name: test_parse_event_snapshot[scalar_str]
-  ConnectionStatusEvent(satellite_id=527302, device_uuid='7b1ad1ef-91df-4e50-9004-269c139c681c', updated_at=datetime.datetime(2026, 6, 13, 23, 18, tzinfo=datetime.timezone.utc), data=ConnectedData(state='offline', active_station=None, remain_sec=None, rain_delay=None))
+  ConnectionStatusEvent(
+    data=ConnectedData(
+      active_station=None,
+      rain_delay=None,
+      remain_sec=None,
+      state='offline',
+    ),
+    device_uuid='7b1ad1ef-91df-4e50-9004-269c139c681c',
+    satellite_id=527302,
+    updated_at=datetime.datetime(2026, 6, 13, 23, 18, tzinfo=datetime.timezone.utc),
+  )
 # ---
 # name: test_parse_event_snapshot[station_epoch_timestamp]
-  StationStateEvent(satellite_id=527302, device_uuid='8c756129-0000-8da0-9049-8e44b2deb091', updated_at=datetime.datetime(2026, 6, 14, 20, 22, 12, tzinfo=datetime.timezone.utc), zone=1, data=StationStateData(state=1, remain_sec=88, program_number=34))
+  StationStateEvent(
+    data=StationStateData(
+      program_number=34,
+      remain_sec=88,
+      state=1,
+    ),
+    device_uuid='8c756129-0000-8da0-9049-8e44b2deb091',
+    satellite_id=527302,
+    updated_at=datetime.datetime(2026, 6, 14, 20, 22, 12, tzinfo=datetime.timezone.utc),
+    zone=1,
+  )
 # ---
 # name: test_parse_event_snapshot[station_normal_duration]
-  StationStateEvent(satellite_id=527302, device_uuid='8c756129-0000-8da0-9049-8e44b2deb091', updated_at=datetime.datetime(2026, 6, 14, 20, 22, 12, tzinfo=datetime.timezone.utc), zone=2, data=StationStateData(state=1, remain_sec=88, program_number=36))
+  StationStateEvent(
+    data=StationStateData(
+      program_number=36,
+      remain_sec=88,
+      state=1,
+    ),
+    device_uuid='8c756129-0000-8da0-9049-8e44b2deb091',
+    satellite_id=527302,
+    updated_at=datetime.datetime(2026, 6, 14, 20, 22, 12, tzinfo=datetime.timezone.utc),
+    zone=2,
+  )
 # ---
 # name: test_parse_event_snapshot[station_past_epoch_timestamp]
-  StationStateEvent(satellite_id=527302, device_uuid='8c756129-0000-8da0-9049-8e44b2deb091', updated_at=datetime.datetime(2026, 6, 14, 20, 22, 12, tzinfo=datetime.timezone.utc), zone=1, data=StationStateData(state=1, remain_sec=1476535243, program_number=34))
+  StationStateEvent(
+    data=StationStateData(
+      program_number=34,
+      remain_sec=1476535243,
+      state=1,
+    ),
+    device_uuid='8c756129-0000-8da0-9049-8e44b2deb091',
+    satellite_id=527302,
+    updated_at=datetime.datetime(2026, 6, 14, 20, 22, 12, tzinfo=datetime.timezone.utc),
+    zone=1,
+  )
 # ---
