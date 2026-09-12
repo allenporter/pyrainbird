@@ -66,13 +66,35 @@ ControllerCommands:
     parameter: 0
     response: 'A0'
     length: 3
-  # SetSchedule: 21
+  SetScheduleRequest:
+    command: '21'
+    response: '01'
+    length: 14
+    page:
+      position: 2
+      length: 2
+    zone:
+      position: 4
+      length: 2
+    # The 11 byte body is built by rainbird.encode_zone_schedule
+    schedule:
+      position: 6
+      length: 22
   WaterBudgetRequest:
     command: '30'
     parameter: 0
     response: B0
     length: 2
-  # WaterBudgetSet: 31
+  WaterBudgetSetRequest:
+    command: '31'
+    response: '01'
+    length: 4
+    programCode:
+      position: 2
+      length: 2
+    seasonalAdjust:
+      position: 4
+      length: 4
   ZonesSeasonalAdjustFactorRequest:
     command: '32'
     parameter: 0

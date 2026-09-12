@@ -28,6 +28,16 @@ _LCR_FREQUENCY: dict[int, int] = {
     3: ProgramFrequency.CYCLIC,
 }
 
+_LCR_FREQUENCY_CODE: dict[int, int] = {v: k for k, v in _LCR_FREQUENCY.items()}
+
+# Number of start times an LCR series zone can hold, and the value used for the
+# slots that are left unused.
+_LCR_MAX_STARTS = 6
+_LCR_UNUSED_START = 0x90
+
+# The resolution the LCR series stores start times with.
+_LCR_START_RESOLUTION = 10
+
 # Minutes in a day. A start time slot that does not hold a valid time of day is
 # reported as 0x90 (1440 minutes) by the ESP-RZXe and as 0xFF by other devices.
 _MINUTES_PER_DAY = 24 * 60
@@ -144,6 +154,46 @@ def decode_schedule(data: str, cmd_template: dict[str, Any]) -> dict[str, Any]:
         }
 
     return {"data": data}
+
+
+def encode_zone_schedule(
+    duration: int,
+    starts: list[int],
+    frequency: int = ProgramFrequency.CUSTOM,
+    days_of_week_mask: int = 0,
+    period: int = 0,
+    synchro: int = 0,
+) -> str:
+    """Encode the schedule body of a zone of an LCR series device.
+
+    This is the counterpart of the zone information returned by
+    `decode_schedule` and is passed to a `SetScheduleRequest`. Durations and
+    start times are in minutes; start times are stored with a resolution of
+    ten minutes.
+    """
+    if not 1 <= duration <= 255:
+        raise RainbirdCodingException(
+            f"Duration must be between 1 and 255 minutes: {duration}"
+        )
+    if len(starts) > _LCR_MAX_STARTS:
+        raise RainbirdCodingException(
+            f"A zone holds at most {_LCR_MAX_STARTS} start times: {starts}"
+        )
+    slots = []
+    for start in starts:
+        if not 0 <= start < _MINUTES_PER_DAY or start % _LCR_START_RESOLUTION:
+            raise RainbirdCodingException(
+                f"Start time must be a time of day on a "
+                f"{_LCR_START_RESOLUTION} minute boundary: {start}"
+            )
+        slots.append(start // _LCR_START_RESOLUTION)
+    if (frequency_code := _LCR_FREQUENCY_CODE.get(frequency)) is None:
+        raise RainbirdCodingException(f"Unsupported frequency: {frequency}")
+    slots.extend([_LCR_UNUSED_START] * (_LCR_MAX_STARTS - len(slots)))
+    body = bytes(
+        [duration, *slots, frequency_code, days_of_week_mask & 0x7F, period, synchro]
+    )
+    return body.hex().upper()
 
 
 def decode_queue(data: str, cmd_template: dict[str, Any]) -> dict[str, Any]:

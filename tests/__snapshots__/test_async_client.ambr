@@ -8823,6 +8823,54 @@
   }
   '''
 # ---
+# name: test_set_water_budget
+  '''
+  [client >]
+  Intent: WaterBudgetSetRequest (31FF0096)
+  Payload: {
+    "id": 1,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "31FF0096",
+      "length": 4
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "0131"
+    },
+    "id": 1
+  }
+  '''
+# ---
+# name: test_set_zone_schedule
+  '''
+  [client >]
+  Intent: SetScheduleRequest (2100010A18909090909002120000)
+  Payload: {
+    "id": 1,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "2100010A18909090909002120000",
+      "length": 14
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "0121"
+    },
+    "id": 1
+  }
+  '''
+# ---
 # name: test_stop_irrigation
   '''
   [client >]

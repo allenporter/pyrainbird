@@ -100,6 +100,23 @@ RZX/ST8 use per-zone seasonal adjustment (unlike per-program for ME/TM2):
 
 ---
 
+## Water Budget (`30` / `B0`, `31`)
+
+Despite the per-zone seasonal adjust above, the ESP-RZXe also answers the
+water budget commands, with a single controller wide value:
+
+```
+30 FF          -> B0 FF SSSS
+31 FF SSSS     -> 01 31
+```
+- `FF` = program code. The RZXe replies `NAK 4` for program codes `00`-`08`,
+  so `FF` is the only value it accepts.
+- `SSSS` = percentage of the programmed runtime, `100` (`0064`) meaning no
+  adjustment. The Rain Bird app shows this as -90% to +100%, i.e. `10` to
+  `200`.
+
+---
+
 ## ST8 Global Info Set (`21`)
 
 The ST8 global info page differs from RZX:
@@ -155,7 +172,7 @@ Where per entry (8 hex chars = 4 bytes):
 | Schedule model | Per-zone | Per-program |
 | Start times per zone | 6 | N/A (start times per program) |
 | Frequency per zone | Yes | Per-program |
-| Seasonal adjust | Per-zone (cmd `32`/`B2`) | Per-program (water budget `30`/`B0`) |
+| Seasonal adjust | Per-zone (cmd `32`/`B2`) plus a controller wide water budget (`30`/`B0`, program code `FF`) | Per-program (water budget `30`/`B0`) |
 | Rain sensor | Global page 0 (bit field) | Global page 0 (byte value) |
 | Queue support | ST8 only, RZX returns null | Full support |
 | Max stations | 8 | 12-22 depending on model |
