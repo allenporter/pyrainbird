@@ -2811,6 +2811,135 @@
   }
   '''
 # ---
+# name: test_get_schedule_lcr_unused_start_slots
+  '''
+  [client >]
+  Intent: ModelAndVersionRequest (02)
+  Payload: {
+    "id": 1,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "02",
+      "length": 1
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "8200030103"
+    },
+    "id": 1
+  }
+  
+  [client >]
+  Intent: AvailableStationsRequest (0300)
+  Payload: {
+    "id": 2,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "0300",
+      "length": 2
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "830007000000"
+    },
+    "id": 2
+  }
+  
+  [client >]
+  Intent: RetrieveScheduleRequest (200000)
+  Payload: {
+    "id": 3,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "200000",
+      "length": 3
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "A000000000"
+    },
+    "id": 3
+  }
+  
+  [client >]
+  Intent: RetrieveScheduleRequest (200001)
+  Payload: {
+    "id": 4,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "200001",
+      "length": 3
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "A000010A189090909090027F0300"
+    },
+    "id": 4
+  }
+  
+  [client >]
+  Intent: RetrieveScheduleRequest (200002)
+  Payload: {
+    "id": 5,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "200002",
+      "length": 3
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "A000020F247E90909090037F0301"
+    },
+    "id": 5
+  }
+  
+  [client >]
+  Intent: RetrieveScheduleRequest (200003)
+  Payload: {
+    "id": 6,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "200003",
+      "length": 3
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "A000030530909090909001000000"
+    },
+    "id": 6
+  }
+  '''
+# ---
 # name: test_get_schedule_lxme2_bit_collision
   '''
   [client >]

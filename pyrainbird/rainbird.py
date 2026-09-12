@@ -4,6 +4,7 @@ import logging
 from collections.abc import Callable
 from typing import Any
 
+from .const import ProgramFrequency
 from .exceptions import RainbirdCodingException
 from .resources import (
     DECODER,
@@ -16,6 +17,20 @@ from .resources import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+# The LCR series (ESP-RZXe / ST8) encodes the schedule frequency of a zone with
+# a different set of values than the program based devices, following the order
+# the Rain Bird app shows them in: custom, odd, even, cyclic.
+_LCR_FREQUENCY: dict[int, int] = {
+    0: ProgramFrequency.CUSTOM,
+    1: ProgramFrequency.ODD,
+    2: ProgramFrequency.EVEN,
+    3: ProgramFrequency.CYCLIC,
+}
+
+# Minutes in a day. A start time slot that does not hold a valid time of day is
+# reported as 0x90 (1440 minutes) by the ESP-RZXe and as 0xFF by other devices.
+_MINUTES_PER_DAY = 24 * 60
 
 
 def decode_template(data: str, cmd_template: dict[str, Any]) -> dict[str, int]:
@@ -109,17 +124,18 @@ def decode_schedule(data: str, cmd_template: dict[str, Any]) -> dict[str, Any]:
         duration = int(rest[0:2], 16)
         starts = []
         for i in range(6):
-            val = int(rest[2 + i * 2 : 4 + i * 2], 16)
-            if val != 255:
-                starts.append(val * 10)
+            val = int(rest[2 + i * 2 : 4 + i * 2], 16) * 10
+            if val < _MINUTES_PER_DAY:
+                starts.append(val)
 
+        frequency = int(rest[14:16], 16)
         return {
             "zoneInfo": {
                 subcommand: {
                     "zone": subcommand,
                     "duration": duration,
                     "startTime": starts,
-                    "frequency": int(rest[14:16], 16),
+                    "frequency": _LCR_FREQUENCY.get(frequency, frequency),
                     "daysOfWeekMask": int(rest[16:18], 16),
                     "period": int(rest[18:20], 16),
                     "synchro": int(rest[20:22], 16) & 0x7F,

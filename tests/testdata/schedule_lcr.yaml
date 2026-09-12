@@ -1,0 +1,42 @@
+---
+# Per zone schedules from an LCR series device (ESP-RZXe with an LNK3 module).
+# Unused start time slots are reported as 0x90 and the frequency is encoded as
+# custom (0), odd (1), even (2), cyclic (3).
+data:
+  # Zone 1: 10 minutes, a single start at 04:00, even days.
+  - A000010A189090909090027F0300
+  # Zone 2: 15 minutes, starts at 06:00 and 21:00, cyclic every 3 days.
+  - A000020F247E90909090037F0301
+  # Zone 3: 5 minutes, a single start at 08:00, odd days.
+  - A000030530909090909001000000
+decoded_data:
+  - type: RetrieveScheduleResponse
+    zoneInfo:
+      1:
+        zone: 1
+        duration: 10
+        startTime: [240]  # 04:00
+        frequency: 3  # EVEN
+        daysOfWeekMask: 127
+        period: 3
+        synchro: 0
+  - type: RetrieveScheduleResponse
+    zoneInfo:
+      2:
+        zone: 2
+        duration: 15
+        startTime: [360, 1260]  # 06:00 and 21:00
+        frequency: 1  # CYCLIC
+        daysOfWeekMask: 127
+        period: 3
+        synchro: 1
+  - type: RetrieveScheduleResponse
+    zoneInfo:
+      3:
+        zone: 3
+        duration: 5
+        startTime: [480]  # 08:00
+        frequency: 2  # ODD
+        daysOfWeekMask: 0
+        period: 0
+        synchro: 0

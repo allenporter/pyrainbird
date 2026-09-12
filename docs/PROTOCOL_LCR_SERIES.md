@@ -46,21 +46,24 @@ A0 PPPP SS RR T1 T2 T3 T4 T5 T6 FF DD CC RR
 | 0 | `A0` | 2 | Response code |
 | 2 | `PPPP` | 4 | Page identifier (includes station number) |
 | 6 | byte 0 | 2 | **Runtime** in minutes (0 = disabled) |
-| 8-18 | bytes 1-6 | 12 | **6 Start times**: each 1 byte, value × 10 = minutes from midnight. `0xFF` × 10 = 2550 = OFF |
+| 8-18 | bytes 1-6 | 12 | **6 Start times**: each 1 byte, value × 10 = minutes from midnight. An unused slot is `0x90` on the ESP-RZXe (1440, i.e. not a time of day) and `0xFF` elsewhere |
 | 20 | byte 7 | 2 | **Frequency type**: ordinal of `FrequencyType` enum |
 | 22 | byte 8 | 2 | **Custom days**: bitmask for days of week |
 | 24 | byte 9 | 2 | **Cyclic days**: interval in days |
 | 26 | byte 10 | 2 | **Days remaining** + sensor bypass. Bit 7 = sensor bypass flag (1 = bypassed). Lower 7 bits = actual days remaining |
 
-**Frequency Types** (ordinal values):
-| Ordinal | Type |
+**Frequency Types** (values reported by an ESP-RZXe, in the order the Rain Bird app lists them):
+| Value | Type |
 |---------|------|
 | 0 | CUSTOM (specific days of week) |
-| 1 | CYCLIC (every N days) |
-| 2 | ODD days |
-| 3 | EVEN days |
+| 1 | ODD days |
+| 2 | EVEN days |
+| 3 | CYCLIC (every N days) |
 
-**Start time encoding**: Each start time is stored as `minutesFromMidnight / 10`. To decode: `value * 10`. Value `0xFF` (255) means "OFF" (no start time), equivalent to 2550 in decoded form (255 × 10).
+Note these are not the values of `ProgramFrequency`, which the program based
+devices use: `pyrainbird.rainbird` maps between the two.
+
+**Start time encoding**: Each start time is stored as `minutesFromMidnight / 10`. To decode: `value * 10`. A slot that holds no start time reads `0x90` (144) on the ESP-RZXe, i.e. 1440 minutes, and `0xFF` (255) on other devices; neither is a valid time of day.
 
 ---
 

@@ -1639,6 +1639,62 @@ async def test_get_schedule_non_program_based(
     assert events[2].program_id.zone == 5
 
 
+@freeze_time("2026-09-12 00:00:00")
+async def test_get_schedule_lcr_unused_start_slots(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    fake_device: FakeRainbirdDevice,
+) -> None:
+    """Test an LCR schedule that leaves start time slots unused.
+
+    An ESP-RZXe reports an unused start time slot as 0x90 (1440 minutes) and
+    encodes the frequency as custom (0), odd (1), even (2), cyclic (3).
+    """
+    fake_device.set_model("ESP_RZXe")
+    fake_device.stations = {1, 2, 3}
+
+    fake_device.schedule = {
+        "0000": "A000000000",
+        # Z1: 10m, start 04:00, 5 unused slots, even days
+        "0001": "A000010A189090909090027F0300",
+        # Z2: 15m, starts 06:00 and 21:00, cyclic every 3 days, 1 day remaining
+        "0002": "A000020F247E90909090037F0301",
+        # Z3: 5m, start 08:00, odd days
+        "0003": "A000030530909090909001000000",
+    }
+
+    controller = await rainbird_controller()
+
+    schedule = await controller.get_schedule()
+
+    assert len(schedule.zone_schedules) == 3
+
+    zone1 = schedule.zone_schedules[1]
+    assert zone1.starts == [datetime.time(4, 0)]
+    assert zone1.frequency == ProgramFrequency.EVEN
+
+    zone2 = schedule.zone_schedules[2]
+    assert zone2.starts == [datetime.time(6, 0), datetime.time(21, 0)]
+    assert zone2.frequency == ProgramFrequency.CYCLIC
+    assert zone2.period == 3
+    assert zone2.synchro == 1
+
+    zone3 = schedule.zone_schedules[3]
+    assert zone3.starts == [datetime.time(8, 0)]
+    assert zone3.frequency == ProgramFrequency.ODD
+
+    # Even zone 1 only runs every other day: no event on the odd day
+    tz = datetime.UTC
+    events = list(
+        schedule.zone_schedules[1]
+        .timeline_tz(tz)
+        .overlapping(
+            datetime.datetime(2026, 9, 13, 0, 0, 0, tzinfo=tz),
+            datetime.datetime(2026, 9, 14, 0, 0, 0, tzinfo=tz),
+        )
+    )
+    assert not events
+
+
 async def test_get_schedule_tm2_12_zones(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
     fake_device: FakeRainbirdDevice,
