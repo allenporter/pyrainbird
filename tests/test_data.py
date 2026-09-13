@@ -116,7 +116,7 @@ def test_model_info(response: dict[str, Any], expected_name: str) -> None:
 
 
 def test_lcr_series_capabilities() -> None:
-    """Test LCR series capabilities grounded in isInLCRSeries() and ControllerType."""
+    """Test LCR series profile (station-level scheduling architecture and upgraded RZXe2 commands)."""
     # Base ESP-RZXe (0x0003): Zone-based, 8 stations, no combined state or stacked watering
     rzxe = ModelAndVersion(0x0003, 1, 0).model_info
     assert not rzxe.is_feature_supported(Feature.PROGRAM_BASED)
@@ -140,7 +140,7 @@ def test_lcr_series_capabilities() -> None:
 
 
 def test_tm2_series_capabilities() -> None:
-    """Test TM2 series capabilities grounded in isUpgradedTM2() and ControllerType."""
+    """Test TM2 series profile (baseline vs upgraded TM2 with 0x4C combined state and 0x4A timestamps)."""
     # Base ESP-TM2 (0x0005): 12 stations, supports stacked watering, but not combined state or event timestamp
     tm2 = ModelAndVersion(0x0005, 1, 0).model_info
     assert tm2.is_feature_supported(Feature.PROGRAM_BASED)
@@ -165,7 +165,7 @@ def test_tm2_series_capabilities() -> None:
 
 
 def test_commercial_lx_series_capabilities() -> None:
-    """Test commercial LX series capabilities grounded in isLXController() and definitions."""
+    """Test commercial LX series profile (30-day rain delay, 96h runtimes, 300% seasonal adjust, multi-bank pages)."""
     # LXME2 (0x000C): 48 stations, 2 pages (pages 0-1), 40 programs, 10 starts, 30 days rain delay, 96h runtime
     lxme2 = ModelAndVersion(0x000C, 1, 3).model_info
     assert lxme2.is_feature_supported(Feature.PROGRAM_BASED)
@@ -206,7 +206,7 @@ def test_commercial_lx_series_capabilities() -> None:
 
 
 def test_isk_series_capabilities() -> None:
-    """Test ISK series (RC2 / ARC8) capabilities grounded in isISKController()."""
+    """Test ISK series profile (compact 8-station architecture, 0x4A timestamps, non-combined polling)."""
     for model_id in (0x0812, 0x0813):
         isk = ModelAndVersion(model_id, 2, 0).model_info
         assert isk.max_stations == 8
@@ -222,7 +222,7 @@ def test_isk_series_capabilities() -> None:
 
 
 def test_me3_and_2wire_capabilities() -> None:
-    """Test ESP-ME3 and ESP-2WIRE capabilities grounded in ControllerType."""
+    """Test modular expansion profile (ESP-ME3 and ESP-2Wire 2-page capacity and flow sensor telemetry)."""
     # ESP-ME3 (0x0009): 22 stations, 2 pages, flow sensor, schedule timestamp
     me3 = ModelAndVersion(0x0009, 1, 0).model_info
     assert me3.max_stations == 22
