@@ -45,6 +45,7 @@ from aiohttp.client_exceptions import (
 from aiohttp_retry import JitterRetry, RetryClient, RetryOptions
 
 from . import encryption, rainbird
+from .const import DayOfWeek, ProgramFrequency
 from .data import (
     AvailableStations,
     ControllerFirmwareVersion,
@@ -496,6 +497,20 @@ class AsyncRainbirdController(RainbirdController):
             budget,
         )
 
+    async def set_water_budget(self, program: int, seasonal_adjust: int) -> None:
+        """Set the water budget (seasonal adjust) of a program.
+
+        The value is a percentage of the programmed runtime where 100 means no
+        adjustment, in the range 10 to 200. LCR series devices hold a single
+        controller wide value and expect the program code 0xFF.
+        """
+        await self._process_command(
+            lambda resp: True,
+            "WaterBudgetSetRequest",
+            program,
+            seasonal_adjust,
+        )
+
     async def get_rain_sensor_state(self) -> bool:
         """Get the current state for the rain sensor."""
         return await self._process_command(
@@ -687,6 +702,41 @@ class AsyncRainbirdController(RainbirdController):
             lambda resp: resp,
             "RetrieveScheduleRequest",
             command_code,
+        )
+
+    async def set_zone_schedule(
+        self,
+        zone: int,
+        duration: datetime.timedelta,
+        starts: list[datetime.time],
+        frequency: ProgramFrequency = ProgramFrequency.CUSTOM,
+        days_of_week: set[DayOfWeek] | None = None,
+        period: int = 0,
+        synchro: int = 0,
+    ) -> None:
+        """Set the schedule of a single zone.
+
+        This applies to LCR series devices (ESP-RZXe, ST8), the ones that
+        schedule each zone on its own and report `Schedule.zone_schedules`.
+        The zone keeps at most six start times, stored with a resolution of ten
+        minutes. `days_of_week` only applies to a CUSTOM frequency, `period`
+        and `synchro`, the days remaining of the current interval, only to a
+        CYCLIC one.
+        """
+        schedule = rainbird.encode_zone_schedule(
+            duration=int(duration.total_seconds() // 60),
+            starts=[start.hour * 60 + start.minute for start in starts],
+            frequency=frequency,
+            days_of_week_mask=sum(1 << day for day in days_of_week or set()),
+            period=period,
+            synchro=synchro,
+        )
+        await self._process_command(
+            lambda resp: True,
+            "SetScheduleRequest",
+            0,
+            zone,
+            schedule,
         )
 
     async def test_command_support(self, command_id: int) -> bool:

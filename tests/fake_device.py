@@ -120,6 +120,8 @@ class FakeRainbirdDevice:
             # Setters reply with ACK
             "11": self._handle_ack,
             "13": self._handle_ack,
+            "21": self._handle_ack,
+            "31": self._handle_ack,
             "37": self._handle_ack,
             "38": self._handle_ack,
             "39": self._handle_ack,

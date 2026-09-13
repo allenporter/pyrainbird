@@ -2,7 +2,7 @@
 - device_id: "0003"
   code: ESP_RZXe
   name: ESP-RZXe
-  supports_water_budget: false
+  supports_water_budget: true
   max_programs: 0
   max_run_times: 6
   max_stations: 8

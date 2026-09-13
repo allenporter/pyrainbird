@@ -545,6 +545,43 @@ async def test_set_rain_delay(
     await controller.set_rain_delay(3)
 
 
+async def test_set_zone_schedule(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    fake_device: FakeRainbirdDevice,
+) -> None:
+    """Test setting the schedule of a zone of an LCR series device."""
+    fake_device.set_model("ESP_RZXe")
+    controller = await rainbird_controller()
+
+    await controller.set_zone_schedule(
+        1,
+        datetime.timedelta(minutes=10),
+        [datetime.time(4, 0)],
+        frequency=ProgramFrequency.EVEN,
+        days_of_week={DayOfWeek.MONDAY, DayOfWeek.THURSDAY},
+    )
+
+    requests = [
+        r for r in fake_device.request_log if type(r).__name__ == "RequestLogEntry"
+    ]
+    assert requests[-1].raw_data == "2100010A18909090909002120000"
+
+
+async def test_set_water_budget(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    fake_device: FakeRainbirdDevice,
+) -> None:
+    """Test setting the water budget of the whole controller."""
+    controller = await rainbird_controller()
+
+    await controller.set_water_budget(0xFF, 150)
+
+    requests = [
+        r for r in fake_device.request_log if type(r).__name__ == "RequestLogEntry"
+    ]
+    assert requests[-1].raw_data == "31FF0096"
+
+
 async def test_advance_zone(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
 ) -> None:
