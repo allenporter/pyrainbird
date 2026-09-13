@@ -17,19 +17,23 @@ This page documents details about Rainbird Device types and various levels of su
 | ESP_TM2v3 | ESP-TM2 | `010A` | ✅ | 3 | 4 | 0 | 12 | Legacy SIP (TM2 Upgraded) |
 | TM2R | ESP-TM2 | `0014` | ✅ | 3 | 4 | 0 | 12 | Legacy SIP (TM2 Upgraded) |
 | TRU | TRU | `0015` | ✅ | 3 | 4 | 0 | 12 | Legacy SIP (TM2 Upgraded) |
-| ESP_ME3 | ESP-ME3 | `0009` | ✅ | 4 | 6 | 0 | 22 | **Universal** |
-| RC2 | RC2 | `0812` | ✅ | 3 | 4 | 0 | 12 | **Universal** (ISK) |
-| ARC8 | ARC | `0813` | ✅ | 3 | 4 | 0 | 12 | **Universal** (ISK) |
+| ESP_ME3 | ESP-ME3 | `0009` | ✅ | 4 | 6 | 1 | 22 | **Universal** |
+| RC2 | RC2 | `0812` | ✅ | 3 | 4 | 0 | 8 | **Universal** (ISK) |
+| ARC8 | ARC | `0813` | ✅ | 3 | 4 | 0 | 8 | **Universal** (ISK) |
 | ESP_2WIRE | ESP-2WIRE | `0011` | ✅ | 4 | 6 | 1 | 50 | **Universal** |
 | LXME2 | LXME2 | `000C` | ✅ | 40 | 10 | 1 | 48 | **Universal** (LX) |
 | LX_IVM | LX-IVM | `000D` | ✅ | 10 | 8 | 1 | 60 | **Universal** (LX) |
 | LX_IVM_PRO | LX-IVM Pro | `000E` | ✅ | 40 | 8 | 7 | 240 | **Universal** (LX) |
-| TBOS_BT | TBOS-BT | `0099` | ✅ | 3 | 8 | 0 | — | BLE (Solem) |
-| TBOS_BT_LT | TBOS-BT | `0100` | ✅ | 3 | 8 | 0 | — | BLE (Solem) |
-| CBOS_BT | ESP-BAT-BT | `0011` | ✅ | 4 | 8 | 0 | — | BLE (Solem) |
-| CBOS_BT_2 | ESP-BAT-BT | `0011` | ✅ | 4 | 8 | 0 | — | BLE (Solem) |
-| CBOS_BT_4 | ESP-BAT-BT | `0011` | ✅ | 4 | 8 | 0 | — | BLE (Solem) |
-| CBOS_BT_6 | ESP-BAT-BT | `0011` | ✅ | 4 | 8 | 0 | — | BLE (Solem) |
+| TBOS_BT | TBOS-BT | `0099` | ✅ | 3 | 8 | 0 | 6 | BLE (Solem) |
+| TBOS_BT_LT | TBOS-BT | `0100` | ✅ | 3 | 8 | 0 | 6 | BLE (Solem) |
+| CBOS_BT | BAT-BT | `000B` | ✅ | 4 | 8 | 0 | 1 | BLE (Solem) |
+| CBOS_BT_2 | BAT-BT | `000B` | ✅ | 4 | 8 | 0 | 2 | BLE (Solem) |
+| CBOS_BT_4 | BAT-BT | `000B` | ✅ | 4 | 8 | 0 | 4 | BLE (Solem) |
+| CBOS_BT_6 | BAT-BT | `000B` | ✅ | 4 | 8 | 0 | 6 | BLE (Solem) |
+| ESP_BAT_PRO | BAT-Pro | `0016` | ✅ | 24 | 8 | 0 | 6 | BLE (Solem) |
+| ESP_BAT_PRO_EU | BAT-Pro EU | `0017` | ✅ | 24 | 8 | 0 | 6 | BLE (Solem) |
+| ESP_BAT_PRO_FLOW | BAT-Pro Flow | `0018` | ✅ | 24 | 8 | 0 | 6 | BLE (Solem) |
+| ESP_BAT_PRO_FLOW_EU | BAT-Pro Flow EU | `0019` | ✅ | 24 | 8 | 0 | 6 | BLE (Solem) |
 | MOCK_ESP_ME2 | ESP=Me2 | `0010` | ✅ | 4 | 6 | 0 | 22 | Legacy SIP (ME) |
 
 ---
@@ -55,30 +59,35 @@ the device capabilities.
 ### Universal/CDT protocol
 - ESP_ME3, RC2, ARC8, ESP_2WIRE, LXME2, LX_IVM, LX_IVM_PRO
 
+### BAT-BT / BAT-PRO family (Battery Bluetooth / Solem protocol)
+- **BAT-BT**: CBOS_BT, CBOS_BT_2, CBOS_BT_4, CBOS_BT_6
+- **BAT-PRO**: ESP_BAT_PRO, ESP_BAT_PRO_EU, ESP_BAT_PRO_FLOW, ESP_BAT_PRO_FLOW_EU
+- **TBOS-BT**: TBOS_BT, TBOS_BT_LT
+
 ---
 
 ## Feature Support Matrix
 
-| Feature | RZXe | ST8 | ST8v2 | RZXe2 | ESP-ME | TM2 | TM2 Upgraded | ME3 | ISK | 2WIRE | LX |
-|---------|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| Program-based | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Combined state (4C) | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Stacked watering (4B) | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Manual queue | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| Soil type | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| SA by zone | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| SA by controller | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| SA per schedule | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Sensor bypass/zone | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Stats | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Weather settings | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
-| Auto irrigation config | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Schedule timestamp | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| Advance station (42) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Alarm.com | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Uses server data | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Homepage layout | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Ignore global WB | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Feature | RZXe | ST8 | ST8v2 | RZXe2 | ESP-ME | TM2 | TM2 Upgraded | ME3 | ISK | 2WIRE | LXME2 | LX-IVM |
+|---------|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| Program-based | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Combined state (4C) | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Stacked watering (4B) | ❌ | ❌ | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ | ✅ |
+| Manual queue | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Soil type | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| SA by zone | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| SA by controller | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| SA per schedule | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Sensor bypass/zone | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Stats | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Weather settings | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| Auto irrigation config | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Schedule timestamp | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Advance station (42) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Alarm.com | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Uses server data | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Homepage layout | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Ignore global WB | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 
 ---
 
@@ -98,19 +107,62 @@ Each controller type defines a set of SIP commands that the app polls in a loop.
 Above + `4A01` (EventTimestamp), `4C` (CombinedState), `32FF` (ZonalSA)
 
 ### Upgraded TM2 (TM2v2, TM2v3, TM2R, TRU)
-Above + WaterBudget ×3 (`3000`, `3001`, `3002`), CombinedState, CurrentStationsActive, CurrentQueue, FirmwareVersion
+```
+12          CurrentDateRequest
+3D00        CurrentStationErrorRequest(page=0)
+36          RainDelayGetRequest
+3E          CurrentRainSensorStateRequest
+4A01        ControllerEventTimestampRequest(page=1)
+3000        GetWaterBudget(program=0)
+3001        GetWaterBudget(program=1)
+3002        GetWaterBudget(program=2)
+4C          CombinedControllerStateRequest
+3F00        CurrentStationsActiveRequest(page=0)
+3B00        CurrentQueueRequest(page=0)
+02          ControllerFirmwareVersionRequest
+```
 
 ### ISK (RC2, ARC8)
-Above + queue ×2, WaterBudget ×3, AvailableStations, FirmwareVersion, Time, IrrigationState + **2 Universal CDT messages** (sensor bypass + logical dial position)
+Note: ISK does **not** poll `4C` (CombinedState) or `3F00` (CurrentStationsActive).
+```
+12          CurrentDateRequest
+3D00        CurrentStationErrorRequest(page=0)
+36          RainDelayGetRequest
+3E          CurrentRainSensorStateRequest
+4A01        ControllerEventTimestampRequest(page=1)
+02          ControllerFirmwareVersionRequest
+10          CurrentTimeRequest
+3C          IrrigationStateRequest
+3B00        CurrentQueueRequest(page=0)
+3B01        CurrentQueueRequest(page=1)
+3000        GetWaterBudget(program=0)
+3001        GetWaterBudget(program=1)
+3002        GetWaterBudget(program=2)
+3800        AvailableStationsRequest(page=0)
+0C20...     Universal CDT message (sensor bypass)
+0C20...     Universal CDT message (logical dial position)
+```
 
 ### ESP-ME3
-Above + FlowSequenceStatus, FlowMonitorStatus, WaterBudget ×4, AvailableStations + **1 Universal CDT message** (sensor bypass)
+Same as ISK + `48` (FlowSequenceStatus), `49` (FlowMonitorStatus), `3003` (WaterBudget program 3), without CurrentTime, IrrigationState, or dial position CDT.
 
 ### ESP-2WIRE
-Same as ME3 + additional AvailableStations page + **Universal CDT messages** for alarms bitmap and module info
+Same as ME3 + `3801` (AvailableStations page 1) + Universal CDT messages for alarms bitmap and module info.
 
 ### LX-IVM, LX-IVM Pro
-FirmwareVersion, IrrigationState, CurrentQueue ×2, FlowSequenceStatus, FlowMonitorStatus
+```
+02          ControllerFirmwareVersionRequest
+3C          IrrigationStateRequest
+3B00        CurrentQueueRequest(page=0)
+3B01        CurrentQueueRequest(page=1)
+48          LearnFlowSequenceStatusRequest
+49          FlowMonitorStatusRequest
+```
 
 ### LXME2
-Same as LX-IVM + CurrentQueue ×2
+```
+02          ControllerFirmwareVersionRequest
+3C          IrrigationStateRequest
+3B00        CurrentQueueRequest(page=0)
+3B01        CurrentQueueRequest(page=1)
+```
