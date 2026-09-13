@@ -113,88 +113,90 @@ def test_lcr_series_capabilities() -> None:
     """Test LCR series capabilities grounded in isInLCRSeries() and ControllerType."""
     # Base ESP-RZXe (0x0003): Zone-based, 8 stations, no combined state or stacked watering
     rzxe = ModelAndVersion(0x0003, 1, 0).model_info
-    assert rzxe.program_based is False
+    assert not rzxe.is_feature_supported(Feature.PROGRAM_BASED)
     assert rzxe.max_programs == 0
     assert rzxe.max_stations == 8
-    assert rzxe.max_station_pages == 0
-    assert rzxe.max_rain_delay_days == 14
-    assert rzxe.max_runtime_seconds == 21600
-    assert rzxe.supports_combined_state is False
-    assert rzxe.supports_stacked_watering is False
-    assert rzxe.supports_flow_sensor is False
+    assert rzxe.supports_water_budget is True
+    assert rzxe.limits.max_station_pages == 0
+    assert rzxe.limits.max_rain_delay_days == 14
+    assert rzxe.limits.max_runtime_seconds == 21600
+    assert not rzxe.is_feature_supported(Feature.COMBINED_STATE)
+    assert not rzxe.is_feature_supported(Feature.STACKED_WATERING)
+    assert not rzxe.is_feature_supported(Feature.FLOW_SENSOR)
 
     # Upgraded ESP-RZXe2 (0x0103): Zone-based, but supports combined state and stacked watering
     rzxe2 = ModelAndVersion(0x0103, 2, 0).model_info
-    assert rzxe2.program_based is False
+    assert not rzxe2.is_feature_supported(Feature.PROGRAM_BASED)
     assert rzxe2.max_stations == 8
-    assert rzxe2.supports_combined_state is True
-    assert rzxe2.supports_stacked_watering is True
-    assert rzxe2.supports_event_timestamp is True
+    assert rzxe2.is_feature_supported(Feature.COMBINED_STATE)
+    assert rzxe2.is_feature_supported(Feature.STACKED_WATERING)
+    assert rzxe2.is_feature_supported(Feature.EVENT_TIMESTAMP)
 
 
 def test_tm2_series_capabilities() -> None:
     """Test TM2 series capabilities grounded in isUpgradedTM2() and ControllerType."""
     # Base ESP-TM2 (0x0005): 12 stations, supports stacked watering, but not combined state or event timestamp
     tm2 = ModelAndVersion(0x0005, 1, 0).model_info
-    assert tm2.program_based is True
+    assert tm2.is_feature_supported(Feature.PROGRAM_BASED)
     assert tm2.max_programs == 3
     assert tm2.max_run_times == 4
     assert tm2.max_stations == 12
-    assert tm2.max_station_pages == 0
-    assert tm2.max_rain_delay_days == 14
-    assert tm2.supports_combined_state is False
-    assert tm2.supports_event_timestamp is False
-    assert tm2.supports_stacked_watering is True
+    assert tm2.supports_water_budget is True
+    assert tm2.limits.max_station_pages == 0
+    assert tm2.limits.max_rain_delay_days == 14
+    assert not tm2.is_feature_supported(Feature.COMBINED_STATE)
+    assert not tm2.is_feature_supported(Feature.EVENT_TIMESTAMP)
+    assert tm2.is_feature_supported(Feature.STACKED_WATERING)
 
     # Upgraded ESP-TM2v3 (0x010A): 12 stations, adds combined state and event timestamp support
     tm2v3 = ModelAndVersion(0x010A, 2, 0).model_info
-    assert tm2v3.program_based is True
+    assert tm2v3.is_feature_supported(Feature.PROGRAM_BASED)
     assert tm2v3.max_stations == 12
-    assert tm2v3.max_station_pages == 0
-    assert tm2v3.supports_combined_state is True
-    assert tm2v3.supports_event_timestamp is True
-    assert tm2v3.supports_stacked_watering is True
+    assert tm2v3.limits.max_station_pages == 0
+    assert tm2v3.is_feature_supported(Feature.COMBINED_STATE)
+    assert tm2v3.is_feature_supported(Feature.EVENT_TIMESTAMP)
+    assert tm2v3.is_feature_supported(Feature.STACKED_WATERING)
 
 
 def test_commercial_lx_series_capabilities() -> None:
     """Test commercial LX series capabilities grounded in isLXController() and definitions."""
     # LXME2 (0x000C): 48 stations, 2 pages (pages 0-1), 40 programs, 10 starts, 30 days rain delay, 96h runtime
     lxme2 = ModelAndVersion(0x000C, 1, 3).model_info
-    assert lxme2.program_based is True
+    assert lxme2.is_feature_supported(Feature.PROGRAM_BASED)
     assert lxme2.max_programs == 40
     assert lxme2.max_run_times == 10
     assert lxme2.max_stations == 48
-    assert lxme2.max_station_pages == 1
-    assert lxme2.max_rain_delay_days == 30
-    assert lxme2.max_runtime_seconds == 345600
-    assert lxme2.max_seasonal_adjust == 300
-    assert lxme2.supports_event_timestamp is True
-    assert lxme2.supports_stacked_watering is True
-    assert lxme2.supports_combined_state is False
+    assert lxme2.limits.max_station_pages == 1
+    assert lxme2.limits.max_rain_delay_days == 30
+    assert lxme2.limits.max_runtime_seconds == 345600
+    assert lxme2.limits.max_seasonal_adjust == 300
+    assert lxme2.is_feature_supported(Feature.EVENT_TIMESTAMP)
+    assert lxme2.is_feature_supported(Feature.STACKED_WATERING)
+    assert not lxme2.is_feature_supported(Feature.COMBINED_STATE)
 
     # LX-IVM (0x000D): 60 stations, 2 pages, 10 programs, 8 starts, 3 flow/weather sensors
     lxivm = ModelAndVersion(0x000D, 1, 0).model_info
     assert lxivm.max_stations == 60
-    assert lxivm.max_station_pages == 1
+    assert lxivm.limits.max_station_pages == 1
     assert lxivm.max_programs == 10
     assert lxivm.max_run_times == 8
-    assert lxivm.max_sensors == 3
-    assert lxivm.max_rain_delay_days == 30
-    assert lxivm.max_runtime_seconds == 345600
-    assert lxivm.supports_flow_sensor is True
-    assert lxivm.supports_stacked_watering is True
+    assert lxivm.limits.max_sensors == 3
+    assert lxivm.limits.max_rain_delay_days == 30
+    assert lxivm.limits.max_runtime_seconds == 345600
+    assert lxivm.is_feature_supported(Feature.FLOW_SENSOR)
+    assert lxivm.is_feature_supported(Feature.STACKED_WATERING)
 
     # LX-IVM-PRO (0x000E): 240 stations, 8 pages (pages 0-7), 40 programs, 8 starts, 7 sensors
     lxivm_pro = ModelAndVersion(0x000E, 1, 0).model_info
     assert lxivm_pro.max_stations == 240
-    assert lxivm_pro.max_station_pages == 7
+    assert lxivm_pro.limits.max_station_pages == 7
     assert lxivm_pro.max_programs == 40
     assert lxivm_pro.max_run_times == 8
-    assert lxivm_pro.max_sensors == 7
-    assert lxivm_pro.max_rain_delay_days == 30
-    assert lxivm_pro.max_runtime_seconds == 345600
-    assert lxivm_pro.supports_flow_sensor is True
-    assert lxivm_pro.supports_stacked_watering is True
+    assert lxivm_pro.limits.max_sensors == 7
+    assert lxivm_pro.limits.max_rain_delay_days == 30
+    assert lxivm_pro.limits.max_runtime_seconds == 345600
+    assert lxivm_pro.is_feature_supported(Feature.FLOW_SENSOR)
+    assert lxivm_pro.is_feature_supported(Feature.STACKED_WATERING)
 
 
 def test_isk_series_capabilities() -> None:
@@ -202,15 +204,15 @@ def test_isk_series_capabilities() -> None:
     for model_id in (0x0812, 0x0813):
         isk = ModelAndVersion(model_id, 2, 0).model_info
         assert isk.max_stations == 8
-        assert isk.max_station_pages == 0
+        assert isk.limits.max_station_pages == 0
         assert isk.max_programs == 3
         assert isk.max_run_times == 4
-        assert isk.max_rain_delay_days == 14
-        assert isk.max_runtime_seconds == 21600
-        assert isk.supports_event_timestamp is True
-        assert isk.supports_combined_state is False
-        assert isk.supports_stacked_watering is False
-        assert isk.supports_flow_sensor is False
+        assert isk.limits.max_rain_delay_days == 14
+        assert isk.limits.max_runtime_seconds == 21600
+        assert isk.is_feature_supported(Feature.EVENT_TIMESTAMP)
+        assert not isk.is_feature_supported(Feature.COMBINED_STATE)
+        assert not isk.is_feature_supported(Feature.STACKED_WATERING)
+        assert not isk.is_feature_supported(Feature.FLOW_SENSOR)
 
 
 def test_me3_and_2wire_capabilities() -> None:
@@ -218,21 +220,21 @@ def test_me3_and_2wire_capabilities() -> None:
     # ESP-ME3 (0x0009): 22 stations, 2 pages, flow sensor, schedule timestamp
     me3 = ModelAndVersion(0x0009, 1, 0).model_info
     assert me3.max_stations == 22
-    assert me3.max_station_pages == 1
+    assert me3.limits.max_station_pages == 1
     assert me3.max_programs == 4
     assert me3.max_run_times == 6
-    assert me3.supports_flow_sensor is True
-    assert me3.supports_event_timestamp is True
-    assert me3.supports_stacked_watering is False
-    assert me3.supports_combined_state is False
+    assert me3.is_feature_supported(Feature.FLOW_SENSOR)
+    assert me3.is_feature_supported(Feature.EVENT_TIMESTAMP)
+    assert not me3.is_feature_supported(Feature.STACKED_WATERING)
+    assert not me3.is_feature_supported(Feature.COMBINED_STATE)
 
     # ESP-2WIRE (0x0011): 50 stations, 2 pages, flow sensor, event timestamp
     esp2wire = ModelAndVersion(0x0011, 1, 0).model_info
     assert esp2wire.max_stations == 50
-    assert esp2wire.max_station_pages == 1
-    assert esp2wire.supports_flow_sensor is True
-    assert esp2wire.supports_event_timestamp is True
-    assert esp2wire.supports_stacked_watering is False
+    assert esp2wire.limits.max_station_pages == 1
+    assert esp2wire.is_feature_supported(Feature.FLOW_SENSOR)
+    assert esp2wire.is_feature_supported(Feature.EVENT_TIMESTAMP)
+    assert not esp2wire.is_feature_supported(Feature.STACKED_WATERING)
 
 
 def test_unknown_model_capabilities_fallback() -> None:
@@ -240,11 +242,11 @@ def test_unknown_model_capabilities_fallback() -> None:
     unknown = ModelAndVersion(0x9999, 1, 0).model_info
     assert unknown.max_stations == 0
     assert unknown.max_programs == 0
-    assert unknown.max_station_pages == 0
-    assert unknown.max_rain_delay_days == 0
-    assert unknown.max_runtime_seconds == 0
-    assert unknown.supports_combined_state is False
-    assert unknown.supports_flow_sensor is False
+    assert unknown.limits.max_station_pages == 0
+    assert unknown.limits.max_rain_delay_days == 0
+    assert unknown.limits.max_runtime_seconds == 0
+    assert not unknown.is_feature_supported(Feature.COMBINED_STATE)
+    assert not unknown.is_feature_supported(Feature.FLOW_SENSOR)
 
 
 def test_feature_flag_and_limits_structures() -> None:
@@ -258,10 +260,12 @@ def test_feature_flag_and_limits_structures() -> None:
 
     assert isinstance(me3.features, Feature)
     assert Feature.FLOW_SENSOR in me3.features
+    assert me3.is_feature_supported(Feature.FLOW_SENSOR)
     assert Feature.EVENT_TIMESTAMP in me3.features
     assert Feature.WATER_BUDGET in me3.features
     assert Feature.PROGRAM_BASED in me3.features
     assert Feature.COMBINED_STATE not in me3.features
+    assert not me3.is_feature_supported(Feature.COMBINED_STATE)
     assert Feature.STACKED_WATERING not in me3.features
 
     lxme2 = ModelAndVersion(0x000C, 1, 3).model_info
@@ -269,5 +273,7 @@ def test_feature_flag_and_limits_structures() -> None:
     assert lxme2.limits.max_stations == 48
     assert lxme2.limits.max_rain_delay_days == 30
     assert Feature.STACKED_WATERING in lxme2.features
+    assert lxme2.is_feature_supported(Feature.STACKED_WATERING)
     assert Feature.EVENT_TIMESTAMP in lxme2.features
     assert Feature.FLOW_SENSOR not in lxme2.features
+    assert not lxme2.is_feature_supported(Feature.FLOW_SENSOR)

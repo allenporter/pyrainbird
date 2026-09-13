@@ -182,6 +182,10 @@ class ModelInfo:
             retries=retries,
         )
 
+    def is_feature_supported(self, feature: Feature) -> bool:
+        """Return True if the specified feature is supported."""
+        return feature in self.features
+
     @property
     def max_stations(self) -> int:
         """The maximum number of stations supported by the device."""
@@ -198,64 +202,9 @@ class ModelInfo:
         return self.limits.max_run_times
 
     @property
-    def max_station_pages(self) -> int:
-        """The maximum 32-station page index queried by the device."""
-        return self.limits.max_station_pages
-
-    @property
-    def max_rain_delay_days(self) -> int:
-        """The maximum rain delay duration in days supported by the device."""
-        return self.limits.max_rain_delay_days
-
-    @property
-    def max_runtime_seconds(self) -> int:
-        """The maximum run time duration in seconds supported by the device."""
-        return self.limits.max_runtime_seconds
-
-    @property
-    def max_seasonal_adjust(self) -> int:
-        """The maximum seasonal adjustment percentage."""
-        return self.limits.max_seasonal_adjust
-
-    @property
-    def max_sensors(self) -> int:
-        """The maximum number of external sensor inputs supported by the device."""
-        return self.limits.max_sensors
-
-    @property
     def supports_water_budget(self) -> bool:
         """If the mode supports seasonal adjustment/water budgets."""
         return Feature.WATER_BUDGET in self.features
-
-    @property
-    def program_based(self) -> bool:
-        """If the model uses program-based scheduling (vs per-zone/LCR)."""
-        return Feature.PROGRAM_BASED in self.features
-
-    @property
-    def seconds_based(self) -> bool:
-        """If the model operates on seconds-based runtimes (vs minutes)."""
-        return Feature.SECONDS_BASED in self.features
-
-    @property
-    def supports_combined_state(self) -> bool:
-        """If the model supports combined controller state request (0x4C)."""
-        return Feature.COMBINED_STATE in self.features
-
-    @property
-    def supports_event_timestamp(self) -> bool:
-        """If the model supports controller event/schedule timestamp (0x4A)."""
-        return Feature.EVENT_TIMESTAMP in self.features
-
-    @property
-    def supports_stacked_watering(self) -> bool:
-        """If the model supports stacked manual run station requests (0x4B)."""
-        return Feature.STACKED_WATERING in self.features
-
-    @property
-    def supports_flow_sensor(self) -> bool:
-        """If the model supports flow sensor monitoring."""
-        return Feature.FLOW_SENSOR in self.features
 
 
 @dataclass
