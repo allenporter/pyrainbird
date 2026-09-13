@@ -4,7 +4,7 @@ from typing import Any
 import pytest
 from parameterized import parameterized
 
-from pyrainbird.data import ModelAndVersion, States
+from pyrainbird.data import Feature, ModelAndVersion, ModelLimits, States
 
 
 def encode_name_func(testcase_func, param_num, param):
@@ -245,3 +245,29 @@ def test_unknown_model_capabilities_fallback() -> None:
     assert unknown.max_runtime_seconds == 0
     assert unknown.supports_combined_state is False
     assert unknown.supports_flow_sensor is False
+
+
+def test_feature_flag_and_limits_structures() -> None:
+    """Test the Feature(Flag) enum and ModelLimits dataclass directly."""
+    me3 = ModelAndVersion(0x0009, 1, 0).model_info
+    assert isinstance(me3.limits, ModelLimits)
+    assert me3.limits.max_stations == 22
+    assert me3.limits.max_station_pages == 1
+    assert me3.limits.max_programs == 4
+    assert me3.limits.max_run_times == 6
+
+    assert isinstance(me3.features, Feature)
+    assert Feature.FLOW_SENSOR in me3.features
+    assert Feature.EVENT_TIMESTAMP in me3.features
+    assert Feature.WATER_BUDGET in me3.features
+    assert Feature.PROGRAM_BASED in me3.features
+    assert Feature.COMBINED_STATE not in me3.features
+    assert Feature.STACKED_WATERING not in me3.features
+
+    lxme2 = ModelAndVersion(0x000C, 1, 3).model_info
+    assert isinstance(lxme2.limits, ModelLimits)
+    assert lxme2.limits.max_stations == 48
+    assert lxme2.limits.max_rain_delay_days == 30
+    assert Feature.STACKED_WATERING in lxme2.features
+    assert Feature.EVENT_TIMESTAMP in lxme2.features
+    assert Feature.FLOW_SENSOR not in lxme2.features
