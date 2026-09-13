@@ -4,7 +4,7 @@ import datetime
 import logging
 from collections.abc import Iterable
 from dataclasses import dataclass, field
-from enum import IntEnum
+from enum import Flag, IntEnum, auto
 from typing import Any
 
 from ical.iter import MergedIterable, SortableItem
@@ -46,6 +46,61 @@ class CommandSupport:
         return f"command support: {self.support:02X}, echo: {self.echo}"
 
 
+class Feature(Flag):
+    """Controller feature capabilities."""
+
+    NONE = 0
+    PROGRAM_BASED = auto()
+    """Controller uses program-based scheduling (vs per-zone/LCR)."""
+
+    SECONDS_BASED = auto()
+    """Controller operates on seconds-based runtimes (vs minutes)."""
+
+    WATER_BUDGET = auto()
+    """Controller supports seasonal adjustment / water budgets."""
+
+    COMBINED_STATE = auto()
+    """Controller supports combined controller state request (0x4C)."""
+
+    EVENT_TIMESTAMP = auto()
+    """Controller supports controller event/schedule timestamp (0x4A)."""
+
+    STACKED_WATERING = auto()
+    """Controller supports stacked manual run station requests (0x4B)."""
+
+    FLOW_SENSOR = auto()
+    """Controller supports flow sensor monitoring."""
+
+
+@dataclass
+class ModelLimits:
+    """Quantitative hardware and firmware limits for a controller model."""
+
+    max_stations: int = 0
+    """The maximum number of stations supported by the device."""
+
+    max_programs: int = 0
+    """The maximum number of programs supported by the device."""
+
+    max_run_times: int = 0
+    """The maximum number of run times supported by the device."""
+
+    max_station_pages: int = 0
+    """The maximum 32-station page index queried by the device."""
+
+    max_rain_delay_days: int = 14
+    """The maximum rain delay duration in days supported by the device."""
+
+    max_runtime_seconds: int = 21600
+    """The maximum run time duration in seconds supported by the device."""
+
+    max_seasonal_adjust: int = 200
+    """The maximum seasonal adjustment percentage."""
+
+    max_sensors: int = 0
+    """The maximum number of external sensor inputs supported by the device."""
+
+
 @dataclass
 class ModelInfo:
     """Details about capabilities of a specific model."""
@@ -59,20 +114,97 @@ class ModelInfo:
     name: str
     """The human readable model name."""
 
-    supports_water_budget: bool
-    """If the mode supports seasonal adjustment/water budgets."""
+    limits: ModelLimits = field(default_factory=ModelLimits)
+    """Quantitative hardware and firmware limits."""
 
-    max_programs: int
-    """The maximum number of programs supported by the device."""
-
-    max_run_times: int
-    """The maximum number of run times supported by the device."""
-
-    max_stations: int
-    """The maximum number of stations supported by the device."""
+    features: Feature = Feature.NONE
+    """Supported feature flags."""
 
     retries: bool = False
-    """If device busy errors should be retried"""
+    """If device busy errors should be retried."""
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "ModelInfo":
+        """Construct ModelInfo from a dictionary."""
+        data = dict(data)
+        device_id = data["device_id"]
+        code = data["code"]
+        name = data["name"]
+        retries = data.get("retries", False)
+
+        if "limits" in data:
+            limits = ModelLimits(**data["limits"])
+        else:
+            limits = ModelLimits(
+                max_stations=data.get("max_stations", 0),
+                max_programs=data.get("max_programs", 0),
+                max_run_times=data.get("max_run_times", 0),
+                max_station_pages=data.get("max_station_pages", 0),
+                max_rain_delay_days=data.get("max_rain_delay_days", 14),
+                max_runtime_seconds=data.get("max_runtime_seconds", 21600),
+                max_seasonal_adjust=data.get("max_seasonal_adjust", 200),
+                max_sensors=data.get("max_sensors", 0),
+            )
+
+        raw_features = data.get("features")
+        if isinstance(raw_features, Feature):
+            features = raw_features
+        elif isinstance(raw_features, (list, tuple, set)):
+            features = Feature.NONE
+            for f in raw_features:
+                if isinstance(f, Feature):
+                    features |= f
+                elif isinstance(f, str) and f in Feature.__members__:
+                    features |= Feature[f]
+        else:
+            features = Feature.NONE
+            if data.get("program_based", True):
+                features |= Feature.PROGRAM_BASED
+            if data.get("seconds_based", False):
+                features |= Feature.SECONDS_BASED
+            if data.get("supports_water_budget", False):
+                features |= Feature.WATER_BUDGET
+            if data.get("supports_combined_state", False):
+                features |= Feature.COMBINED_STATE
+            if data.get("supports_event_timestamp", False):
+                features |= Feature.EVENT_TIMESTAMP
+            if data.get("supports_stacked_watering", False):
+                features |= Feature.STACKED_WATERING
+            if data.get("supports_flow_sensor", False):
+                features |= Feature.FLOW_SENSOR
+
+        return cls(
+            device_id=device_id,
+            code=code,
+            name=name,
+            limits=limits,
+            features=features,
+            retries=retries,
+        )
+
+    def is_feature_supported(self, feature: Feature) -> bool:
+        """Return True if the specified feature is supported."""
+        return feature in self.features
+
+    @property
+    def max_stations(self) -> int:
+        """The maximum number of stations supported by the device."""
+        return self.limits.max_stations
+
+    @property
+    def max_programs(self) -> int:
+        """The maximum number of programs supported by the device."""
+        return self.limits.max_programs
+
+    @property
+    def max_run_times(self) -> int:
+        """The maximum number of run times supported by the device."""
+        return self.limits.max_run_times
+
+    @property
+    def supports_water_budget(self) -> bool:
+        """If the mode supports seasonal adjustment/water budgets."""
+        return Feature.WATER_BUDGET in self.features
 
 
 @dataclass
@@ -103,7 +235,7 @@ class ModelAndVersion:
         """Return details about a device model capabilities."""
         key = f"{self.model:04x}"
         data = RAINBIRD_MODELS.get(key, RAINBIRD_MODELS["UNKNOWN"])
-        return ModelInfo(**data)
+        return ModelInfo.from_dict(data)
 
     def __str__(self):
         return f"model: {self.model:04X} ({self.model_name}), version: {self.major}.{self.minor}"

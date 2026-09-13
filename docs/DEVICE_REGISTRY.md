@@ -166,3 +166,19 @@ Same as ME3 + `3801` (AvailableStations page 1) + Universal CDT messages for ala
 3B00        CurrentQueueRequest(page=0)
 3B01        CurrentQueueRequest(page=1)
 ```
+
+---
+
+## Manufacturer Documentation & Technical Specifications
+
+Official Rain Bird technical specification sheets and user manuals verifying controller hardware limits, program capacities, and supported features:
+
+| Controller Family | Model Names / Series | Tech Spec PDF | User Manual PDF |
+|---|---|---|---|
+| **ESP-LXME2** | LXME2 (`000C`) | [ESP-LXME2 Tech Spec](https://www.rainbird.com/sites/default/files/media/documents/2021-09/d41999_lxme2_tech_spec_dom_en.pdf)<br>[Pro Smart Tech Spec](https://www.rainbird.com/sites/default/files/media/documents/2021-08/d41999_lxme2_pro_smart_tech_spec_dom_en.pdf) | [LXME2 User Manual](https://www.rainbird.com/sites/default/files/media/documents/2022-02/lxme2manual01_21_2022_2.pdf) |
+| **ESP-LXIVM** | LX-IVM (`000D`), LX-IVM Pro (`000E`) | [ESP-LXIVM Tech Spec](https://www.rainbird.com/sites/default/files/media/documents/2020-09/d41695_esp-lxivm-tech-spec-dom_en.pdf)<br>[LXIVM Spec Sheet](https://www.rainbird.com/sites/default/files/media/documents/2020-05/ts_ESP-LXIVM_en.pdf) | [LXIVM User Manual](https://www.rainbird.com/sites/default/files/media/documents/2024-03/d41696_esp-lxivm-install-operation-guide_en.pdf) |
+| **ESP-ME3** | ESP-ME3 (`0009`) | [ESP-ME3 Tech Spec](https://www.rainbird.com/sites/default/files/media/documents/2020-03/d41298_10de19_esp-me3-tech-spec-dom_en.pdf) | [ESP-ME3 User Manual](https://www.rainbird.com/sites/default/files/media/documents/2020-03/d41274_15ja20_esp-me3-user-manual-advanced-dom_en-en.pdf) |
+| **ESP-TM2** | TM2 (`0005`, `000A`, `010A`, `0014`, `0015`) | [ESP-TM2 Tech Spec](https://www.rainbird.com/sites/default/files/media/documents/2019-02/ts_ESP-TM2_en.pdf) | [ESP-TM2 User Manual](https://www.rainbird.com/sites/default/files/media/documents/2017-06/man_ESP-TM2_en.pdf) |
+| **RC2 / ARC8** | RC2 (`0812`), ARC8 (`0813`) | [RC2 Tech Spec](https://www.rainbird.com/sites/default/files/media/documents/2022-12/d38949heo_rc2_dom_tech_spec.pdf) | [RC2 & ARC8 Manual](https://www.rainbird.com/sites/default/files/media/documents/2022-11/640372-01_04no22_manual_14l_rc2-arc8-web.pdf) |
+| **ESP-RZXe** | ESP-RZXe (`0003`), RZXe2 (`0103`) | [ESP-RZXe Tech Spec](https://www.rainbird.com/sites/default/files/media/documents/2018-02/ts_ESP-RZXe_en.pdf) | [ESP-RZXe User Manual](https://www.rainbird.com/sites/default/files/media/documents/2017-06/man_ESP-RZXe_en.pdf) |
+| **TBOS-BT** | TBOS-BT (`0099`, `0100`) | [TBOS-BT Tech Spec](https://www.rainbird.com/sites/default/files/media/documents/2018-02/ts_TBOS-BT_en.pdf) | [TBOS-BT Manual](https://www.rainbird.com/sites/default/files/media/documents/2017-06/man_TBOS-BT_en.pdf) |
