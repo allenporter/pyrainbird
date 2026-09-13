@@ -114,7 +114,7 @@
   supports_water_budget: true
   max_programs: 3
   max_run_times: 4
-  max_stations: 12
+  max_stations: 8
 
 - device_id: "0813"
   code: ARC8
@@ -122,7 +122,7 @@
   supports_water_budget: true
   max_programs: 3
   max_run_times: 4
-  max_stations: 12
+  max_stations: 8
 
 - device_id: "0014"
   code: TM2R
@@ -154,7 +154,7 @@
   supports_water_budget: true
   max_programs: 40
   max_run_times: 10
-  max_stations: 22
+  max_stations: 48
 
 - device_id: "000d"
   code: LX_IVM
@@ -162,7 +162,7 @@
   supports_water_budget: true
   max_programs: 10
   max_run_times: 8
-  max_stations: 22
+  max_stations: 60
 
 - device_id: "000e"
   code: LX_IVM_PRO
@@ -170,7 +170,7 @@
   supports_water_budget: true
   max_programs: 40
   max_run_times: 8
-  max_stations: 22
+  max_stations: 240
 
 - device_id: "UNKNOWN"
   code: UNKNOWN

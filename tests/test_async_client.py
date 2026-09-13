@@ -303,6 +303,20 @@ async def test_get_available_stations_multipage(
     assert stations.active_set == set(range(1, 49))
 
 
+async def test_get_available_stations_lxme2(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    fake_device: FakeRainbirdDevice,
+) -> None:
+    """Test getting available stations for LXME2 controller up to 48 stations."""
+    fake_device.set_model("LXME2")
+    fake_device.stations = set(range(1, 49))
+    controller = await rainbird_controller()
+    stations = await controller.get_available_stations()
+    assert stations.stations.count == 64
+    assert len(stations.active_set) == 48
+    assert stations.active_set == set(range(1, 49))
+
+
 async def test_device_busy_retries(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
     fake_device: FakeRainbirdDevice,
@@ -1804,7 +1818,7 @@ async def test_get_schedule_lxme2_bit_collision(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
     fake_device: FakeRainbirdDevice,
 ) -> None:
-    # LXME2 (Model 0x0C): max_programs=40, max_stations=22
+    # LXME2 (Model 0x0C): max_programs=40, max_stations=48
     fake_device.model_code = 0x0C
     fake_device.version_major = 1
     fake_device.version_minor = 3
@@ -1813,8 +1827,8 @@ async def test_get_schedule_lxme2_bit_collision(
     schedule_data = {"0000": "A0000000000000"}
 
     # 40 programs * 2 commands (0x10-0x37 for info, 0x60-0x87 for start times) = 80 commands
-    # Plus 11 zones pages = 91 commands
-    for i in range(91):
+    # Plus 24 zone pages = 104 commands
+    for i in range(104):
         # We don't want to actually populate all 91 keys manually in this test.
         # Since it only tests bit collision logic via mocked requests, we can just intercept the mock process.
         # However, fake_device expects all keys to be present. We will use a default dict for fake_device in this specific test.
