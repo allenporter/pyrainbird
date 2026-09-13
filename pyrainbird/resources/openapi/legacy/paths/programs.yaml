@@ -1,0 +1,118 @@
+# pyrainbird/resources/openapi/legacy/paths/programs.yaml
+/Program/GetPrograms:
+  get:
+    tags: [Programs]
+    summary: List programs
+    parameters:
+      - name: satelliteId
+        in: query
+        required: true
+        schema:
+          type: integer
+    responses:
+      '200':
+        description: List of programs.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: ../../rb2/schemas/programs.yaml#/ProgramListResponse
+
+/Program/UpdateBatches:
+  patch:
+    tags: [Programs]
+    summary: Update program batch
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/models.yaml#/LegacyPayloadRequest
+    responses:
+      '200':
+        description: Updated.
+
+/ProgramStep/GetProgramSteps:
+  get:
+    tags: [Programs]
+    summary: Get program steps
+    parameters:
+      - name: programId
+        in: query
+        required: true
+        schema:
+          type: integer
+    responses:
+      '200':
+        description: List of steps.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: ../../rb2/schemas/programs.yaml#/StationProgramResponse
+
+/ProgramStep/CreateProgramSteps:
+  post:
+    tags: [Programs]
+    summary: Create program steps
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: ../../rb2/schemas/programs.yaml#/ProgramStepRequest
+    responses:
+      '200':
+        description: Steps created.
+
+/ProgramStep/V3/UpdateBatches:
+  patch:
+    tags: [Programs]
+    summary: Update program step batch v3
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/models.yaml#/LegacyPayloadRequest
+    responses:
+      '200':
+        description: Updated.
+
+/StartTime/GetStartTimes:
+  get:
+    tags: [Programs]
+    summary: Get start times
+    parameters:
+      - name: ProgramId
+        in: query
+        required: true
+        schema:
+          type: integer
+    responses:
+      '200':
+        description: List of start times.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: ../../rb2/schemas/programs.yaml#/StartTimeResponse
+
+/StartTime/v2/UpdateBatches:
+  patch:
+    tags: [Programs]
+    summary: Update start times batch
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+    responses:
+      '200':
+        description: Updated.

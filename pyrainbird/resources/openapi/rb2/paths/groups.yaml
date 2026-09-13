@@ -1,0 +1,133 @@
+# pyrainbird/resources/openapi/rb2/paths/groups.yaml
+/groups:
+  get:
+    tags: [Groups]
+    summary: List controller groups
+    responses:
+      '200':
+        description: List of groups.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: ../schemas/groups.yaml#/GroupResponse
+  post:
+    tags: [Groups]
+    summary: Create controller group
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/groups.yaml#/CreateGroupRequest
+    responses:
+      '200':
+        description: Group created.
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/groups.yaml#/GroupResponse
+
+/groups/{groupId}:
+  get:
+    tags: [Groups]
+    summary: Get group details
+    parameters:
+      - name: groupId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: includeItems
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: true
+      - name: objectType
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 1
+    responses:
+      '200':
+        description: Group details.
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/groups.yaml#/GroupResponse
+  put:
+    tags: [Groups]
+    summary: Update group
+    parameters:
+      - name: groupId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/groups.yaml#/UpdateGroupRequest
+    responses:
+      '200':
+        description: Group updated.
+  delete:
+    tags: [Groups]
+    summary: Delete group
+    parameters:
+      - name: groupId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    responses:
+      '200':
+        description: Group deleted.
+
+/groups/{groupId}/items:
+  post:
+    tags: [Groups]
+    summary: Add items to group
+    parameters:
+      - name: groupId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/groups.yaml#/AddGroupItemsRequest
+    responses:
+      '200':
+        description: Items added.
+  delete:
+    tags: [Groups]
+    summary: Remove items from group
+    parameters:
+      - name: groupId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/groups.yaml#/RemoveGroupItemsRequest
+    responses:
+      '200':
+        description: Items removed.

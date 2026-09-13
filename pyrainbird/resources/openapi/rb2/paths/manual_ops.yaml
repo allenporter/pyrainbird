@@ -1,0 +1,294 @@
+# pyrainbird/resources/openapi/rb2/paths/manual_ops.yaml
+/ManualOps/StartStations:
+  post:
+    tags: [Manual Operations]
+    summary: Manually start irrigation on stations
+    description: Activates specified stations/zones for a set number of seconds.
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/manual_ops.yaml#/StartStationRequest
+    responses:
+      '200':
+        description: Stations started.
+
+/ManualOps/AdvanceStations:
+  post:
+    tags: [Manual Operations]
+    summary: Advance or stop running station
+    description: Skips to the next station in a sequence or halts active watering on a station.
+    parameters:
+      - name: IsProgramIndex
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: true
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: ../schemas/programs.yaml#/AdvanceStationProgramRequest
+    responses:
+      '200':
+        description: Station advanced or stopped.
+
+/ManualOps/StartPrograms:
+  post:
+    tags: [Manual Operations]
+    summary: Manually start watering programs
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: integer
+              format: int64
+            description: Array of program IDs to run.
+    responses:
+      '200':
+        description: Programs triggered.
+
+/ManualOps/RunTestProgram:
+  post:
+    tags: [Manual Operations]
+    summary: Run controller test program
+    description: Runs each station on the controller in sequence for the specified duration.
+    parameters:
+      - name: satelliteId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: seconds
+        in: query
+        required: true
+        schema:
+          type: integer
+          default: 120
+    responses:
+      '200':
+        description: Test program initiated.
+
+/ManualOps/RasterTest:
+  post:
+    tags: [Manual Operations]
+    summary: Run raster test on controller
+    parameters:
+      - name: satelliteId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: startRasterTest
+        in: query
+        required: true
+        schema:
+          type: boolean
+    responses:
+      '200':
+        description: Raster test status updated.
+
+/ManualOps/InitiateLearnedFlow:
+  post:
+    tags: [Manual Operations]
+    summary: Initiate learned flow calibration
+    parameters:
+      - name: satelliteId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: integer
+              format: int64
+            description: List of station IDs to calibrate.
+    responses:
+      '200':
+        description: Calibration started.
+
+/ManualOps/CancelLearnedFlow:
+  post:
+    tags: [Manual Operations]
+    summary: Cancel learned flow calibration
+    parameters:
+      - name: satelliteId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+    responses:
+      '200':
+        description: Calibration cancelled.
+
+/ManualOps/ClearFlowLogs:
+  post:
+    tags: [Manual Operations]
+    summary: Clear flow sensor event logs
+    parameters:
+      - name: satelliteId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+    responses:
+      '200':
+        description: Flow logs cleared.
+
+/ManualOps/OpenManualMVWaterWindow:
+  post:
+    tags: [Manual Operations]
+    summary: Open master valve manual water window
+    parameters:
+      - name: satelliteId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: seconds
+        in: query
+        required: true
+        schema:
+          type: integer
+    responses:
+      '200':
+        description: Water window opened.
+
+/ManualOps/EnableShortFindMode:
+  post:
+    tags: [Manual Operations]
+    summary: Enable short-circuit fault finding mode
+    parameters:
+      - name: satelliteId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: enableShortFindMode
+        in: query
+        required: true
+        schema:
+          type: boolean
+      - name: wirepath
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 0
+      - name: connectionLifetime
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 0
+    responses:
+      '200':
+        description: Mode configured.
+
+/ManualOps/Enable2WireDiagnosticMode:
+  post:
+    tags: [Manual Operations]
+    summary: Toggle 2-Wire diagnostic mode
+    parameters:
+      - name: satelliteId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: enable2WireDiagnosticMode
+        in: query
+        required: true
+        schema:
+          type: boolean
+    responses:
+      '200':
+        description: Diagnostic mode toggled.
+
+/ManualOps/ScanStationAddresses:
+  post:
+    tags: [Manual Operations]
+    summary: Scan 2-Wire station decoder addresses
+    parameters:
+      - name: satelliteId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/manual_ops.yaml#/ScanStationsRequest
+    responses:
+      '200':
+        description: Scan initiated.
+
+/ManualOps/GetUniversal2WireLineSurvey:
+  post:
+    tags: [Manual Operations]
+    summary: Get universal 2-wire line survey
+    parameters:
+      - name: satelliteId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: millisecondsDelay
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int64
+          default: 1000
+      - name: connectionLifetime
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 30
+    responses:
+      '200':
+        description: Line survey result.
+
+/ManualOps/GetSatelliteFirmwareVersions:
+  get:
+    tags: [Manual Operations]
+    summary: Get detailed firmware versions
+    parameters:
+      - name: satelliteId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+    responses:
+      '200':
+        description: Firmware versions.
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/satellites.yaml#/SatelliteFirmwareVersionResponse

@@ -78,11 +78,11 @@ While core paging support allows dynamic execution, several constraints througho
 - **Registry Overhauls:** Several high-end LX-Series controllers map capabilities directly from the legacy ESP-Me. Correct `LX-IVM Pro` → 250 zones, 40 programs; `LX-IVM` → 60 zones.
 - **Protocol Transition:** Transition extreme-capacity targets exclusively to Universal Message commands for their schedule retrievals. Ensure `min()` fallback arbitrary caps are removed once decoding scales dynamically.
 
-## Future Research Questions for the App/Protocol Docs
+## Future Research Questions for Protocol Docs
 
-To fully solve the schedule scaling and data limits, please check the decompiled app or Universal Protocol specs for the following:
+To fully solve the schedule scaling and data limits, please check the Universal Protocol and controller specifications for the following:
 
-1. **Scheduling for LX-Series / 2-Wire via CDT:** When the app requests scheduling information for an LX-IVM or LXME2, does it still transmit SIP command `0x20` (and if so, how does it format the parameter?), or does it tunnel schedule requests via `0x0C` (Universal Message)?
-2. **RetrieveScheduleResponse Subcommands:** If `0x20` is somehow miraculously still used, what are the new hex boundaries for determining Program Detail vs Start Time vs Run Time when program totals exceed 15?
-3. **Queue Payload Format:** For the unimplemented `CurrentQueueRequest` (`0x3B`), how exactly does the app decode the `BB` response? What does the array of delayed/queued programs and stations look like?
+1. **Scheduling for LX-Series / 2-Wire via CDT:** When requesting scheduling information for an LX-IVM or LXME2, does the communication interface still transmit SIP command `0x20` (and if so, how does it format the parameter?), or does it tunnel schedule requests via `0x0C` (Universal Message)?
+2. **RetrieveScheduleResponse Subcommands:** If `0x20` is still used, what are the hex boundaries for determining Program Detail vs Start Time vs Run Time when program totals exceed 15?
+3. **Queue Payload Format:** For the unimplemented `CurrentQueueRequest` (`0x3B`), how exactly is the `BB` response decoded? What does the array of delayed/queued programs and stations look like?
 4. **Seasonal Adjust Array Dimensions:** Does `ZonesSeasonalAdjustFactorResponse` (`0xB2`) always span exactly 32 stations (16 pairs of bytes), or does the response dynamically scale or require multi-paging depending on the active station count?

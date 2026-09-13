@@ -1,0 +1,114 @@
+# pyrainbird/resources/openapi/rb2/paths/sites.yaml
+/Site/GetSites:
+  get:
+    tags: [Sites]
+    summary: List all sites for user
+    responses:
+      '200':
+        description: List of sites.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: ../schemas/sites.yaml#/SiteResponse
+
+/Site/GetSite:
+  get:
+    tags: [Sites]
+    summary: Get site details
+    parameters:
+      - name: siteId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+    responses:
+      '200':
+        description: Site details.
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/sites.yaml#/SiteResponse
+
+/Site/GetNextDefaultName:
+  get:
+    tags: [Sites]
+    summary: Get next suggested site name
+    responses:
+      '200':
+        description: Default name suggestion.
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/sites.yaml#/NextDefaultNameResponse
+
+/Site/GetNextDefaultNameByPrefix:
+  get:
+    tags: [Sites]
+    summary: Get next suggested site name with prefix
+    parameters:
+      - name: sitePrefix
+        in: query
+        required: true
+        schema:
+          type: string
+    responses:
+      '200':
+        description: Default name suggestion.
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/sites.yaml#/NextDefaultNameResponse
+
+/Site/CreateSite:
+  post:
+    tags: [Sites]
+    summary: Create a new site
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/sites.yaml#/CreateSiteRequest
+    responses:
+      '200':
+        description: Site created.
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/sites.yaml#/CreateSiteResponse
+
+/Site/UpdateBatches:
+  patch:
+    tags: [Sites]
+    summary: Update site configuration via JSON Patch
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/common.yaml#/UpdateBatchRequest
+    responses:
+      '200':
+        description: Site updated.
+
+/SeasonalAdjust/GetSeasonalAdjustForSite:
+  get:
+    tags: [Sites]
+    summary: Get seasonal adjustment for site
+    parameters:
+      - name: siteId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+    responses:
+      '200':
+        description: Site seasonal adjust details.
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/sites.yaml#/SiteSeasonalAdjustResponse

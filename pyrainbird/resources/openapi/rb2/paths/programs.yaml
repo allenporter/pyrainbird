@@ -1,0 +1,197 @@
+# pyrainbird/resources/openapi/rb2/paths/programs.yaml
+/Program/GetPrograms:
+  get:
+    tags: [Programs]
+    summary: List programs for satellite
+    parameters:
+      - name: satelliteId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+    responses:
+      '200':
+        description: List of watering programs.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: ../schemas/programs.yaml#/ProgramListResponse
+
+/Program/GetProgram:
+  get:
+    tags: [Programs]
+    summary: Get program details
+    parameters:
+      - name: programId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: IncludeStartTime
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: true
+      - name: IncludeSite
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+    responses:
+      '200':
+        description: Detailed program configuration.
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/programs.yaml#/ProgramResponse
+
+/Program/UpdateBatches:
+  patch:
+    tags: [Programs]
+    summary: Update program configuration via JSON Patch
+    description: Updates program properties such as watering frequency, seasonal adjustment percentage, or ET mode.
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/common.yaml#/UpdateBatchRequest
+    responses:
+      '200':
+        description: Program updated successfully.
+
+/ProgramStep/GetProgramSteps:
+  get:
+    tags: [Programs]
+    summary: Get program steps (zone assignments and runtimes)
+    parameters:
+      - name: programId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+    responses:
+      '200':
+        description: List of station program steps.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: ../schemas/programs.yaml#/StationProgramResponse
+
+/ProgramStep/GetProgramsAssignedAndRunTimeBySatelliteId:
+  get:
+    tags: [Programs]
+    summary: Get assigned runtimes across all programs for satellite
+    parameters:
+      - name: satelliteId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+    responses:
+      '200':
+        description: List of station runtimes by program.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: ../schemas/stations.yaml#/StationRunTimeResponse
+
+/ProgramStep/GetRunStationStatusForSatellite:
+  get:
+    tags: [Programs]
+    summary: Get real-time execution status for stations
+    parameters:
+      - name: satelliteId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+    responses:
+      '200':
+        description: Live execution states of stations.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: ../schemas/stations.yaml#/RunStationStatusResponse
+
+/ProgramStep/CreateProgramSteps:
+  post:
+    tags: [Programs]
+    summary: Create program steps
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: ../schemas/programs.yaml#/ProgramStepRequest
+    responses:
+      '200':
+        description: Steps created successfully.
+
+/ProgramStep/DeleteProgramSteps:
+  delete:
+    tags: [Programs]
+    summary: Delete program steps
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: integer
+              format: int64
+            description: List of step IDs to delete.
+    responses:
+      '200':
+        description: Steps deleted.
+
+/StartTime/GetStartTimes:
+  get:
+    tags: [Programs]
+    summary: Get program start times
+    parameters:
+      - name: programId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: IncludeProgram
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+      - name: IncludeProgramGroup
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+    responses:
+      '200':
+        description: List of start times.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: ../schemas/programs.yaml#/StartTimeResponse

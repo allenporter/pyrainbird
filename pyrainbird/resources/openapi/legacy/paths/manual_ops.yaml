@@ -1,0 +1,109 @@
+# pyrainbird/resources/openapi/legacy/paths/manual_ops.yaml
+/ManualOps/StartStations:
+  post:
+    tags: [Manual Operations]
+    summary: Start stations
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/models.yaml#/ManualOpsModel
+    responses:
+      '200':
+        description: Stations started.
+
+/ManualOps/AdvanceStations:
+  post:
+    tags: [Manual Operations]
+    summary: Advance station
+    parameters:
+      - name: IsProgramIndex
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: ../schemas/models.yaml#/ProgramSkipRequest
+    responses:
+      '200':
+        description: Station advanced.
+
+/ManualOps/StartPrograms:
+  post:
+    tags: [Manual Operations]
+    summary: Start programs
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: integer
+              format: int64
+    responses:
+      '200':
+        description: Programs started.
+
+/ManualOps/OverrideDial:
+  post:
+    tags: [Manual Operations]
+    summary: Override hardware dial position
+    parameters:
+      - name: satelliteId
+        in: query
+        required: true
+        schema:
+          type: integer
+      - name: dialPos
+        in: query
+        required: true
+        schema:
+          type: integer
+    responses:
+      '200':
+        description: Dial overridden.
+
+/ManualOps/InitiateLearnedFlow:
+  post:
+    tags: [Manual Operations]
+    summary: Initiate learned flow
+    parameters:
+      - name: satelliteId
+        in: query
+        required: true
+        schema:
+          type: integer
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: integer
+    responses:
+      '200':
+        description: Learned flow initiated.
+
+/ManualOps/CancelLearnedFlow:
+  post:
+    tags: [Manual Operations]
+    summary: Cancel learned flow
+    parameters:
+      - name: satelliteId
+        in: query
+        required: true
+        schema:
+          type: integer
+    responses:
+      '200':
+        description: Cancelled.

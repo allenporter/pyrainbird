@@ -1,0 +1,99 @@
+# pyrainbird/resources/openapi/rb2/schemas/stations.yaml
+StationResponse:
+  type: object
+  properties:
+    id:
+      type: integer
+      format: int64
+      description: Unique ID of the station (zone).
+    name:
+      type: string
+      description: Name of the station.
+    stationNumber:
+      type: integer
+      description: Hardware station index (1-based).
+    satelliteId:
+      type: integer
+      format: int64
+      description: ID of parent satellite controller.
+    isMasterValve:
+      type: boolean
+    isActive:
+      type: boolean
+    state:
+      type: integer
+      description: Station state (0=idle, 1=running, etc.).
+    baseRunTime:
+      type: integer
+      description: Default manual runtime in seconds.
+    flowRate:
+      type: number
+      format: float
+      description: Nominal flow rate for this zone.
+    cycleTime:
+      type: integer
+      description: Cycle time for Cycle & Soak in seconds.
+    soakTime:
+      type: integer
+      description: Soak time for Cycle & Soak in seconds.
+    appImageURL:
+      type: string
+      format: uri
+    isLocked:
+      type: boolean
+
+StationRunTimeResponse:
+  type: object
+  properties:
+    stationId:
+      type: integer
+      format: int64
+    runTimeSeconds:
+      type: integer
+    programId:
+      type: integer
+      format: int64
+    programLetter:
+      type: string
+
+RunStationStatusResponse:
+  type: object
+  properties:
+    stationId:
+      type: integer
+      format: int64
+    satelliteId:
+      type: integer
+      format: int64
+    state:
+      type: string
+      enum: [Idle, Running, Paused, Waiting, Error]
+    remainingSeconds:
+      type: integer
+    activeProgramId:
+      type: integer
+      format: int64
+
+StationPumpResponse:
+  type: object
+  properties:
+    stationId:
+      type: integer
+      format: int64
+    pumpId:
+      type: integer
+      format: int64
+    isEnabled:
+      type: boolean
+
+StationSensorResponse:
+  type: object
+  properties:
+    stationId:
+      type: integer
+      format: int64
+    sensorId:
+      type: integer
+      format: int64
+    bypassGlobalSensor:
+      type: boolean

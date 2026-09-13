@@ -1,0 +1,104 @@
+# pyrainbird/resources/openapi/legacy/paths/weather.yaml
+/WeatherData/Forecast:
+  get:
+    tags: [Weather]
+    summary: Get weather forecast
+    parameters:
+      - name: location
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: type
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 26
+    responses:
+      '200':
+        description: Forecast.
+        content:
+          application/json:
+            schema:
+              $ref: ../../rb2/schemas/weather.yaml#/WeatherForecastResponse
+
+/WeatherData/ET:
+  get:
+    tags: [Weather]
+    summary: Get evapotranspiration data
+    parameters:
+      - name: location
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: type
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 26
+    responses:
+      '200':
+        description: ET data.
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/models.yaml#/WeatherDataETResponse
+
+/WeatherSource/CreateWeatherSource:
+  post:
+    tags: [Weather]
+    summary: Create weather source
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../../rb2/schemas/weather.yaml#/CreateWeatherSourceRequest
+    responses:
+      '200':
+        description: Created.
+
+/WeatherSource/v2/Update:
+  patch:
+    tags: [Weather]
+    summary: Update weather source v2
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/models.yaml#/LegacyPayloadRequest
+    responses:
+      '200':
+        description: Updated.
+
+/WeatherSource/DeleteWeatherSource:
+  delete:
+    tags: [Weather]
+    summary: Delete weather source
+    parameters:
+      - name: weatherSourceIds
+        in: query
+        required: true
+        schema:
+          type: integer
+    responses:
+      '200':
+        description: Deleted.
+
+/Utility/Timezones:
+  get:
+    tags: [Utility]
+    summary: List timezones
+    responses:
+      '200':
+        description: Timezones list.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: ../../rb2/schemas/common.yaml#/TimeZoneResponse

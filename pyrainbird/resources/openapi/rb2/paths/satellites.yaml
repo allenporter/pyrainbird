@@ -1,0 +1,375 @@
+# pyrainbird/resources/openapi/rb2/paths/satellites.yaml
+/Satellite/GetSatelliteList:
+  get:
+    tags: [Satellites]
+    summary: Retrieve satellite controllers
+    description: Retrieves the list of controllers associated with the user account or site.
+    parameters:
+      - name: siteId
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int64
+        description: Filter controllers by site ID.
+      - name: includeInvisibleToCurrentUser
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+    responses:
+      '200':
+        description: List of satellite controllers.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: ../schemas/satellites.yaml#/SatelliteListResponse
+      '401':
+        description: Unauthorized.
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/common.yaml#/ErrorResponse
+
+/Satellite/GetSatellite:
+  get:
+    tags: [Satellites]
+    summary: Get satellite controller details
+    description: Retrieves detailed configuration for a specific controller.
+    parameters:
+      - name: satelliteId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: includeProgrammable
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: true
+      - name: includeConnectable
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: true
+    responses:
+      '200':
+        description: Controller configuration details.
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/satellites.yaml#/SatelliteResponse
+      '404':
+        description: Satellite not found.
+
+/Satellite/isConnected:
+  get:
+    tags: [Satellites]
+    summary: Check controller cloud connectivity
+    description: Returns online connection status for one or more satellite controllers.
+    parameters:
+      - name: satelliteIds
+        in: query
+        required: true
+        schema:
+          type: array
+          items:
+            type: integer
+            format: int64
+        style: form
+        explode: true
+    responses:
+      '200':
+        description: Connectivity state.
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/satellites.yaml#/ConnectionStatusListResponse
+
+/Satellite/IsNameUnique:
+  get:
+    tags: [Satellites]
+    summary: Check controller name uniqueness
+    parameters:
+      - name: controllerName
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: siteId
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int64
+      - name: controllerId
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int64
+    responses:
+      '200':
+        description: Name validation result.
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/satellites.yaml#/IsNameUniqueResponse
+
+/Satellite/ExcessAddresses:
+  get:
+    tags: [Satellites]
+    summary: Get excess decoder addresses
+    parameters:
+      - name: satelliteId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+    responses:
+      '200':
+        description: List of excess addresses.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: integer
+                format: int64
+
+/Satellite/GetWeatherForecastDelays:
+  get:
+    tags: [Satellites]
+    summary: Get forecast rain delay status
+    parameters:
+      - name: satelliteId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+    responses:
+      '200':
+        description: Forecast delay details.
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/satellites.yaml#/WeatherForecastDelaysResponse
+
+/Satellite/CreateSatellite:
+  post:
+    tags: [Satellites]
+    summary: Create a new satellite controller
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/satellites.yaml#/CreateSatelliteRequest
+    responses:
+      '200':
+        description: Created satellite details.
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/satellites.yaml#/CreateSatelliteResponse
+
+/Satellite/CreateSatelliteFromRBN:
+  post:
+    tags: [Satellites]
+    summary: Create satellite from Rain Bird Network backup file
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/satellites.yaml#/CreateSatelliteFromRBNRequest
+    responses:
+      '200':
+        description: Created satellite details.
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/satellites.yaml#/CreateSatelliteResponse
+
+/Satellite/RegisterDevice:
+  post:
+    tags: [Satellites]
+    summary: Register physical hardware device
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/satellites.yaml#/RegisterDeviceRequest
+    responses:
+      '200':
+        description: Device registered successfully.
+
+/Satellite/MoveSatellite:
+  post:
+    tags: [Satellites]
+    summary: Move controller to another site
+    parameters:
+      - name: satelliteId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: destinationSiteId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+    responses:
+      '200':
+        description: Controller moved successfully.
+
+/Satellite/ReverseSynchronize:
+  post:
+    tags: [Satellites]
+    summary: Force cloud reverse synchronization
+    description: Requests the cloud service to push current cloud settings down to the hardware controller.
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: integer
+              format: int64
+            description: Array of satellite IDs.
+    responses:
+      '200':
+        description: Sync command dispatched.
+
+/Satellite/StopAllIrrigation:
+  post:
+    tags: [Satellites]
+    summary: Stop all irrigation on controllers
+    description: Sends an immediate command to cease all active watering across specified controllers.
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: integer
+              format: int64
+            description: Array of satellite IDs.
+    responses:
+      '200':
+        description: All irrigation stopped.
+
+/Satellite/v2/UpdateBatches:
+  patch:
+    tags: [Satellites]
+    summary: Update satellite settings via JSON Patch
+    description: Updates global controller settings such as rain delays, forecast limits, and names.
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/common.yaml#/UpdateBatchRequest
+    responses:
+      '200':
+        description: Batch update applied successfully.
+
+/Satellite/DeleteSatellites:
+  delete:
+    tags: [Satellites]
+    summary: Delete satellite controllers
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: integer
+              format: int64
+    responses:
+      '200':
+        description: Satellites deleted.
+
+/Satellite/{satelliteId}/presignedPOST:
+  get:
+    tags: [Satellites]
+    summary: Get presigned S3 upload URL for satellite
+    parameters:
+      - name: satelliteId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    responses:
+      '200':
+        description: Presigned POST form policy.
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/common.yaml#/PresignedPostResponse
+
+/Satellite/{satelliteId}/appimage:
+  delete:
+    tags: [Satellites]
+    summary: Delete satellite user image
+    parameters:
+      - name: satelliteId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    responses:
+      '200':
+        description: Image deleted.
+
+/Satellite/{satelliteId}/StationAddresses:
+  delete:
+    tags: [Satellites]
+    summary: Clear all decoder station addresses
+    parameters:
+      - name: satelliteId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    responses:
+      '200':
+        description: Addresses cleared.
+
+/Satellite/{satelliteId}/StationAddresses/{stationId}:
+  delete:
+    tags: [Satellites]
+    summary: Delete station decoder address assignment
+    parameters:
+      - name: satelliteId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: stationId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    responses:
+      '200':
+        description: Station address unassigned.

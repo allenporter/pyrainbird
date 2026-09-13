@@ -1,0 +1,123 @@
+# pyrainbird/resources/openapi/legacy/paths/satellites.yaml
+/Satellite/GetSatelliteList:
+  get:
+    tags: [Satellites]
+    summary: List satellites
+    responses:
+      '200':
+        description: Satellites list.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: ../../rb2/schemas/satellites.yaml#/SatelliteListResponse
+
+/Satellite/GetSatellite:
+  get:
+    tags: [Satellites]
+    summary: Get satellite details
+    parameters:
+      - name: satelliteId
+        in: query
+        required: true
+        schema:
+          type: integer
+    responses:
+      '200':
+        description: Satellite details.
+        content:
+          application/json:
+            schema:
+              $ref: ../../rb2/schemas/satellites.yaml#/SatelliteResponse
+
+/Satellite/CreateSatellite:
+  post:
+    tags: [Satellites]
+    summary: Create satellite
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../../rb2/schemas/satellites.yaml#/CreateSatelliteRequest
+    responses:
+      '200':
+        description: Created satellite.
+
+/Satellite/ReverseSynchronize:
+  post:
+    tags: [Satellites]
+    summary: Reverse synchronize
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: integer
+    responses:
+      '200':
+        description: Dispatched.
+
+/Satellite/StopAllIrrigation:
+  post:
+    tags: [Satellites]
+    summary: Stop all irrigation
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: integer
+              format: int64
+    responses:
+      '200':
+        description: Stopped.
+
+/Satellite/UpdateBatches:
+  patch:
+    tags: [Satellites]
+    summary: Update satellite batch
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/models.yaml#/LegacyPayloadRequest
+    responses:
+      '200':
+        description: Updated.
+
+/Satellite/v2/UpdateBatches:
+  patch:
+    tags: [Satellites]
+    summary: Update satellite batch v2
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/models.yaml#/LegacyPayloadRequest
+    responses:
+      '200':
+        description: Updated.
+
+/Satellite/DeleteSatellites:
+  delete:
+    tags: [Satellites]
+    summary: Delete satellites
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: integer
+    responses:
+      '200':
+        description: Deleted.

@@ -46,3 +46,25 @@ RAINBIRD_COMMANDS_BY_ID = {
     **build_id_map(SIP_COMMANDS[CONTROLLER_COMMANDS]),
     **build_id_map(SIP_COMMANDS[CONTROLLER_RESPONSES]),
 }
+
+from .openapi import get_openapi_yaml, load_openapi_spec
+
+__all__ = [
+    "COMMAND",
+    "CONTROLLER_COMMANDS",
+    "CONTROLLER_RESPONSES",
+    "DECODER",
+    "LENGTH",
+    "MODEL_INFO",
+    "POSITION",
+    "RAINBIRD_COMMANDS",
+    "RAINBIRD_COMMANDS_BY_ID",
+    "RAINBIRD_MODELS",
+    "RESERVED_FIELDS",
+    "RESPONSE",
+    "SIP_COMMANDS",
+    "TYPE",
+    "build_id_map",
+    "get_openapi_yaml",
+    "load_openapi_spec",
+]

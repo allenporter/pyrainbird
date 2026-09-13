@@ -1,0 +1,66 @@
+# pyrainbird/resources/openapi/rb2/schemas/groups.yaml
+GroupResponse:
+  type: object
+  properties:
+    groupId:
+      type: integer
+      format: int64
+    name:
+      type: string
+    description:
+      type: string
+    itemCount:
+      type: integer
+    items:
+      type: array
+      items:
+        type: object
+        properties:
+          itemId:
+            type: integer
+            format: int64
+          itemType:
+            type: integer
+
+CreateGroupRequest:
+  type: object
+  required:
+    - name
+  properties:
+    name:
+      type: string
+    description:
+      type: string
+
+UpdateGroupRequest:
+  type: object
+  properties:
+    name:
+      type: string
+    description:
+      type: string
+
+AddGroupItemsRequest:
+  type: object
+  required:
+    - itemIds
+  properties:
+    itemIds:
+      type: array
+      items:
+        type: integer
+        format: int64
+    objectType:
+      type: integer
+      default: 1
+
+RemoveGroupItemsRequest:
+  type: object
+  required:
+    - itemIds
+  properties:
+    itemIds:
+      type: array
+      items:
+        type: integer
+        format: int64

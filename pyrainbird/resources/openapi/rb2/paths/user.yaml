@@ -1,0 +1,303 @@
+# pyrainbird/resources/openapi/rb2/paths/user.yaml
+/User/GetUser:
+  get:
+    tags: [User & Company]
+    summary: Get user profile details
+    parameters:
+      - name: userId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: IncludeCompany
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: true
+      - name: IncludeCultureSettings
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: true
+    responses:
+      '200':
+        description: User profile.
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/user.yaml#/UserResponse
+
+/User/presignedPOST:
+  get:
+    tags: [User & Company]
+    summary: Get presigned S3 upload URL for user asset
+    parameters:
+      - name: key
+        in: query
+        required: true
+        schema:
+          type: string
+    responses:
+      '200':
+        description: Presigned upload policy.
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/common.yaml#/PresignedPostResponse
+
+/User/GetUserEventSubscriptions:
+  get:
+    tags: [User & Company]
+    summary: Get user event alert notification subscriptions
+    responses:
+      '200':
+        description: List of subscriptions.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: ../schemas/user.yaml#/UserEventSubscriptionResponse
+
+/User/UpdateAllUserEventSubscriptions:
+  put:
+    tags: [User & Company]
+    summary: Update user event notification subscriptions
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: ../schemas/user.yaml#/UserEventSubscriptionRequest
+    responses:
+      '200':
+        description: Subscriptions updated.
+
+/User/DeviceNotificationTokens:
+  get:
+    tags: [User & Company]
+    summary: Get registered device notification tokens
+    responses:
+      '200':
+        description: List of tokens.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: ../schemas/user.yaml#/DeviceNotificationTokenResponse
+  post:
+    tags: [User & Company]
+    summary: Register device push notification token
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/user.yaml#/DeviceNotificationTokenRequest
+    responses:
+      '200':
+        description: Token registered.
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/user.yaml#/DeviceNotificationTokenResponse
+
+/User/DeviceNotificationTokens/{tokenId}:
+  delete:
+    tags: [User & Company]
+    summary: Delete registered device notification token
+    parameters:
+      - name: tokenId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    responses:
+      '200':
+        description: Token deleted.
+
+/AccessRequest/GetCurrentAccessRequestInfoForUser:
+  get:
+    tags: [User & Company]
+    summary: Get current access request info for user
+    responses:
+      '200':
+        description: Access request info.
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/user.yaml#/AccessRequestInfoResponse
+
+/CultureSettings/GetCultureSettingsByUser:
+  get:
+    tags: [User & Company]
+    summary: Get user culture/localization settings
+    parameters:
+      - name: userId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+    responses:
+      '200':
+        description: Localization preferences.
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/user.yaml#/CultureSettingsResponse
+
+/Utility/Timezones:
+  get:
+    tags: [User & Company]
+    summary: List supported timezones
+    responses:
+      '200':
+        description: List of timezones.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: ../schemas/common.yaml#/TimeZoneResponse
+
+/Company/GetCompanyByShareCode:
+  get:
+    tags: [User & Company]
+    summary: Lookup company by share code
+    parameters:
+      - name: shareCode
+        in: query
+        required: true
+        schema:
+          type: string
+    responses:
+      '200':
+        description: Company details.
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/user.yaml#/CompanyResponse
+
+/Company/GetSharedCompanyDetailBySiteId:
+  get:
+    tags: [User & Company]
+    summary: Get sharing details for site
+    parameters:
+      - name: siteId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+    responses:
+      '200':
+        description: Sharing details.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: ../schemas/user.yaml#/SharedCompanyDetailResponse
+
+/Company/GetTreeViewSharedWithMe:
+  get:
+    tags: [User & Company]
+    summary: Get tree view of sites and controllers shared with caller
+    responses:
+      '200':
+        description: Tree of shared sites.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: ../schemas/user.yaml#/CompanySiteSharedResponse
+
+/Company/StartSharing:
+  post:
+    tags: [User & Company]
+    summary: Share sites with another company
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/user.yaml#/StartSharingRequest
+    responses:
+      '200':
+        description: Sites shared.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: ../schemas/user.yaml#/CompanySiteSharedResponse
+
+/Company/DeleteSharing:
+  delete:
+    tags: [User & Company]
+    summary: Revoke sharing permissions
+    parameters:
+      - name: borrowCompanyID
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int64
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: integer
+              format: int64
+            description: List of site IDs to revoke.
+    responses:
+      '200':
+        description: Sharing revoked.
+
+/IoT/CreateIoTGateway:
+  post:
+    tags: [IoT & LoRa]
+    summary: Create IoT hardware gateway
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/user.yaml#/CreateIoTGatewayRequest
+    responses:
+      '200':
+        description: Gateway created.
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/user.yaml#/CreateIoTGatewayResponse
+
+/LoRa/provisioning-sessions:
+  post:
+    tags: [IoT & LoRa]
+    summary: Create LoRaWAN device provisioning session
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/user.yaml#/LoraProvisioningSessionRequest
+    responses:
+      '200':
+        description: Session created.
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/user.yaml#/LoraProvisioningSessionResponse

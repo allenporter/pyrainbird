@@ -1,0 +1,285 @@
+# pyrainbird/resources/openapi/rb2/paths/auth.yaml
+/.well-known/openid-configuration:
+  get:
+    tags: [Authentication & OAuth]
+    summary: OpenID Connect discovery metadata
+    description: Returns OIDC provider configuration, supported grant types, and endpoints.
+    servers:
+      - url: https://iq4server.rainbird.com/coreidentityserver
+        description: IdentityServer Authentication Authority
+    security: []
+    responses:
+      '200':
+        description: OIDC discovery metadata.
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/auth.yaml#/OidcConfigurationResponse
+
+/Account/Login:
+  get:
+    tags: [Authentication & OAuth]
+    summary: Retrieve interactive login page & CSRF token
+    description: >
+      Fetches the HTML login page to parse the anti-forgery token (`__RequestVerificationToken`)
+      necessary for headless authentication.
+    servers:
+      - url: https://iq4server.rainbird.com/coreidentityserver
+        description: IdentityServer Authentication Authority
+    security: []
+    parameters:
+      - name: ReturnUrl
+        in: query
+        required: true
+        schema:
+          type: string
+        description: URL-encoded return callback path with authorization parameters.
+    responses:
+      '200':
+        description: HTML page containing the anti-forgery form token.
+        content:
+          text/html:
+            schema:
+              type: string
+  post:
+    tags: [Authentication & OAuth]
+    summary: Submit user credentials and CSRF token
+    description: >
+      Submits username, password, ReturnUrl, and the anti-forgery token to complete
+      interactive authentication. Responds with a 302 redirect toward the client redirect URI.
+    servers:
+      - url: https://iq4server.rainbird.com/coreidentityserver
+        description: IdentityServer Authentication Authority
+    security: []
+    requestBody:
+      required: true
+      content:
+        application/x-www-form-urlencoded:
+          schema:
+            $ref: ../schemas/auth.yaml#/LoginCredentialsRequest
+    responses:
+      '302':
+        description: Credentials accepted; redirects to the OAuth callback or authorization URL.
+        headers:
+          Location:
+            schema:
+              type: string
+              description: Next redirection URL containing access tokens in hash fragment or auth code.
+      '200':
+        description: Authentication failed or WAF challenge rendered.
+        content:
+          text/html:
+            schema:
+              type: string
+
+/connect/authorize:
+  get:
+    tags: [Authentication & OAuth]
+    summary: OAuth 2.0 / OpenID Connect authorization endpoint
+    description: >
+      Initiates the OAuth 2.0 authorization flow. The communication device client uses
+      the Authorization Code flow with PKCE (`response_type=code`, `code_challenge_method=S256`)
+      and requests `offline_access` for refresh token rotation.
+
+      *Discrepancy Note:* Markdown documentation previously documented an OIDC Implicit Grant
+      (`response_type=id_token token` with `https://iq4.rainbird.com/auth.html`), which is the legacy
+      web portal flow rather than the communication device client flow.
+    servers:
+      - url: https://iq4server.rainbird.com/coreidentityserver
+        description: IdentityServer Authentication Authority
+    security: []
+    parameters:
+      - name: client_id
+        in: query
+        required: true
+        schema:
+          type: string
+          example: "00000000-0000-0000-0000-000000000000"
+        description: >
+          Client identifier UUID registered with the IdentityServer.
+      - name: redirect_uri
+        in: query
+        required: true
+        schema:
+          type: string
+          format: uri
+          default: "com.rainbird.auth://authredirect"
+        description: >
+          Registered redirect callback URL. The communication device protocol registers `com.rainbird.auth://authredirect`,
+          whereas documentation for web portal usage cited `https://iq4.rainbird.com/auth.html`.
+      - name: response_type
+        in: query
+        required: true
+        schema:
+          type: string
+          enum: [code, "id_token token", id_token, token]
+          default: code
+        description: >
+          Response type. The communication device client uses `code` (Authorization Code Flow with PKCE).
+          Legacy web clients used `id_token token` (Implicit Grant).
+      - name: scope
+        in: query
+        required: true
+        schema:
+          type: string
+          default: "openid coreAPI.read coreAPI.write profile offline_access"
+        description: >
+          Space-delimited list of requested scopes. Crucially includes `offline_access` to enable
+          refresh token issuance for headless operation.
+      - name: code_challenge
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Base64URL-encoded SHA-256 PKCE code challenge derived from the client code verifier.
+      - name: code_challenge_method
+        in: query
+        required: false
+        schema:
+          type: string
+          enum: [S256, plain]
+          default: S256
+        description: PKCE transformation method (always `S256` in the communication device client).
+      - name: prompt
+        in: query
+        required: false
+        schema:
+          type: string
+          default: login
+        description: Authentication prompt behavior (`login` forces user re-authentication).
+      - name: state
+        in: query
+        required: true
+        schema:
+          type: string
+        description: Opaque random state string to mitigate CSRF attacks.
+      - name: nonce
+        in: query
+        required: true
+        schema:
+          type: string
+        description: Random nonce string associated with the client session.
+    responses:
+      '302':
+        description: Redirection to redirect_uri with authorization code or access_token fragment.
+        headers:
+          Location:
+            schema:
+              type: string
+
+/connect/token:
+  post:
+    tags: [Authentication & OAuth]
+    summary: OAuth 2.0 Token endpoint
+    description: Exchanges an authorization code or refresh token for an access token.
+    servers:
+      - url: https://iq4server.rainbird.com/coreidentityserver
+        description: IdentityServer Authentication Authority
+    security: []
+    requestBody:
+      required: true
+      content:
+        application/x-www-form-urlencoded:
+          schema:
+            $ref: ../schemas/auth.yaml#/OAuthTokenRequest
+    responses:
+      '200':
+        description: Token response with access_token.
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/auth.yaml#/OAuthTokenResponse
+      '400':
+        description: Invalid grant or client authentication failure.
+
+/connect/userinfo:
+  get:
+    tags: [Authentication & OAuth]
+    summary: OpenID Connect UserInfo endpoint
+    description: Returns identity claims about the authenticated user.
+    servers:
+      - url: https://iq4server.rainbird.com/coreidentityserver
+        description: IdentityServer Authentication Authority
+    security:
+      - BearerAuth: []
+    responses:
+      '200':
+        description: User identity claims.
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/auth.yaml#/UserInfoResponse
+
+/connect/revocation:
+  post:
+    tags: [Authentication & OAuth]
+    summary: OAuth 2.0 Token Revocation
+    description: Revokes an active access token or refresh token.
+    servers:
+      - url: https://iq4server.rainbird.com/coreidentityserver
+        description: IdentityServer Authentication Authority
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/x-www-form-urlencoded:
+          schema:
+            $ref: ../schemas/auth.yaml#/TokenRevocationRequest
+    responses:
+      '200':
+        description: Token successfully revoked.
+
+/connect/introspect:
+  post:
+    tags: [Authentication & OAuth]
+    summary: OAuth 2.0 Token Introspection (RFC 7662)
+    description: Queries the active state and metadata of a token.
+    servers:
+      - url: https://iq4server.rainbird.com/coreidentityserver
+        description: IdentityServer Authentication Authority
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/x-www-form-urlencoded:
+          schema:
+            $ref: ../schemas/auth.yaml#/TokenIntrospectionRequest
+    responses:
+      '200':
+        description: Token status and metadata.
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/auth.yaml#/TokenIntrospectionResponse
+
+/connect/endsession:
+  get:
+    tags: [Authentication & OAuth]
+    summary: OpenID Connect End Session / Logout
+    description: Initiates OpenID Connect user logout and invalidates the session cookie.
+    servers:
+      - url: https://iq4server.rainbird.com/coreidentityserver
+        description: IdentityServer Authentication Authority
+    security: []
+    parameters:
+      - name: id_token_hint
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Previously issued ID token identifying the user session to terminate.
+      - name: post_logout_redirect_uri
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uri
+        description: URL to redirect the user to after logout completion.
+    responses:
+      '200':
+        description: Logout confirmation page.
+      '302':
+        description: Redirected to post_logout_redirect_uri.
+

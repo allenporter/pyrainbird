@@ -1,0 +1,59 @@
+# pyrainbird/resources/openapi/legacy/paths/stations.yaml
+/Station/GetStationListForSatellite:
+  get:
+    tags: [Stations]
+    summary: List stations for satellite
+    parameters:
+      - name: satelliteId
+        in: query
+        required: true
+        schema:
+          type: integer
+    responses:
+      '200':
+        description: List of stations.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: ../../rb2/schemas/stations.yaml#/StationResponse
+
+/Station/GetStationsNotInProgram:
+  get:
+    tags: [Stations]
+    summary: Get stations not in program
+    parameters:
+      - name: satelliteId
+        in: query
+        required: true
+        schema:
+          type: integer
+      - name: ProgramId
+        in: query
+        required: true
+        schema:
+          type: integer
+    responses:
+      '200':
+        description: List of stations.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: ../../rb2/schemas/programs.yaml#/StationProgramResponse
+
+/Station/V3/UpdateBatches:
+  patch:
+    tags: [Stations]
+    summary: Update station batch v3
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/models.yaml#/LegacyPayloadRequest
+    responses:
+      '200':
+        description: Updated.

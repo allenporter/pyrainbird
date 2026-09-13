@@ -1,0 +1,137 @@
+# pyrainbird/resources/openapi/rb2/schemas/programs.yaml
+ProgramListResponse:
+  type: object
+  properties:
+    id:
+      type: integer
+      format: int64
+    name:
+      type: string
+      description: Program letter or name (e.g. A, B, C, D).
+    satelliteId:
+      type: integer
+      format: int64
+    programIndex:
+      type: integer
+      description: Index 0 to 3 corresponding to A, B, C, D.
+    isEnabled:
+      type: boolean
+    frequencyType:
+      type: integer
+      description: Scheduling mode (e.g. days of week, cyclical, odd/even).
+    daysOfWeek:
+      type: array
+      items:
+        type: integer
+      description: Active days of week (1=Sun, 7=Sat).
+    cyclicalDays:
+      type: integer
+      description: Interval days for cyclical scheduling.
+    oddEvenType:
+      type: integer
+      description: 0=None, 1=Odd, 2=Even, 3=Odd31st.
+    programAdjust:
+      type: integer
+      description: Seasonal adjustment percentage (0 to 300).
+    etAdjustType:
+      type: integer
+      description: Evapotranspiration weather adjust mode.
+
+ProgramResponse:
+  type: object
+  properties:
+    id:
+      type: integer
+      format: int64
+    name:
+      type: string
+    satelliteId:
+      type: integer
+      format: int64
+    isEnabled:
+      type: boolean
+    frequencyType:
+      type: integer
+    daysOfWeek:
+      type: array
+      items:
+        type: integer
+    programAdjust:
+      type: integer
+    useProgramAdjust:
+      type: boolean
+    etAdjustType:
+      type: integer
+    startTimes:
+      type: array
+      items:
+        $ref: "#/StartTimeResponse"
+
+StationProgramResponse:
+  type: object
+  properties:
+    id:
+      type: integer
+      format: int64
+    programId:
+      type: integer
+      format: int64
+    stationId:
+      type: integer
+      format: int64
+    runTime:
+      type: integer
+      description: Station runtime in seconds.
+    stepOrder:
+      type: integer
+      description: Execution sequence order.
+
+ProgramStepRequest:
+  type: object
+  required:
+    - programId
+    - stationId
+    - runTime
+  properties:
+    programId:
+      type: integer
+      format: int64
+    stationId:
+      type: integer
+      format: int64
+    runTime:
+      type: integer
+      description: Station runtime in seconds.
+    stepOrder:
+      type: integer
+
+StartTimeResponse:
+  type: object
+  properties:
+    id:
+      type: integer
+      format: int64
+    programId:
+      type: integer
+      format: int64
+    startTimeIndex:
+      type: integer
+      description: Start time slot index (0 to 5 for slots 1-6).
+    startTime:
+      type: string
+      description: Start time in HH:MM:SS or ISO-8601 format.
+    isEnabled:
+      type: boolean
+
+AdvanceStationProgramRequest:
+  type: object
+  required:
+    - stationId
+  properties:
+    programId:
+      type: integer
+      format: int64
+      default: -1
+    stationId:
+      type: integer
+      format: int64

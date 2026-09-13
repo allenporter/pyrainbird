@@ -1,0 +1,150 @@
+# pyrainbird/resources/openapi/rb2/paths/reports.yaml
+/Report/GetEventLogReport:
+  post:
+    tags: [Reports & Events]
+    summary: Query execution event logs
+    description: Retrieves events (zone turn on/off, irrigation finished, alarms) across controllers.
+    parameters:
+      - name: startDateTime
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date-time
+      - name: endDateTime
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date-time
+      - name: types
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 15
+      - name: includeAcknowledged
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: true
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: integer
+              format: int64
+            description: Array of satellite IDs.
+    responses:
+      '200':
+        description: List of event logs.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: ../schemas/reports.yaml#/EventLogResponse
+
+/EventLog/AckEventLogs:
+  post:
+    tags: [Reports & Events]
+    summary: Acknowledge event logs
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: integer
+              format: int64
+            description: Array of log IDs to acknowledge.
+    responses:
+      '200':
+        description: Events acknowledged.
+
+/Report/GetStationRunTimeReport:
+  post:
+    tags: [Reports & Events]
+    summary: Get station runtime report
+    parameters:
+      - name: start
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date
+      - name: end
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date
+      - name: mode
+        in: query
+        required: false
+        schema:
+          type: string
+          default: Daily
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: integer
+              format: int64
+    responses:
+      '200':
+        description: Runtime report.
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/reports.yaml#/StationRunTimeReportResponse
+
+/Report/GetMonthlyFlowReport:
+  post:
+    tags: [Reports & Events]
+    summary: Get monthly water flow volume report
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: integer
+              format: int64
+    responses:
+      '200':
+        description: Monthly flow history.
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/reports.yaml#/FlowHistoryResponse
+
+/Report/GetYearlyWaterConsumptionReport:
+  post:
+    tags: [Reports & Events]
+    summary: Get annual water consumption report
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: integer
+              format: int64
+    responses:
+      '200':
+        description: Annual consumption breakdown.
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/reports.yaml#/YearlyWaterConsumptionReportResponse

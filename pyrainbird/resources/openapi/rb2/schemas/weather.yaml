@@ -1,0 +1,80 @@
+# pyrainbird/resources/openapi/rb2/schemas/weather.yaml
+WeatherForecastResponse:
+  type: object
+  properties:
+    location:
+      type: string
+    forecastDate:
+      type: string
+      format: date-time
+    precipitationProbability:
+      type: integer
+    precipitationInches:
+      type: number
+      format: float
+    temperatureMaxF:
+      type: number
+      format: float
+    temperatureMinF:
+      type: number
+      format: float
+    windSpeedMph:
+      type: number
+      format: float
+
+WeatherSourceResponse:
+  type: object
+  properties:
+    id:
+      type: integer
+      format: int64
+    name:
+      type: string
+    sourceType:
+      type: integer
+    postalCode:
+      type: string
+    countryCode:
+      type: string
+    latitude:
+      type: number
+      format: double
+    longitude:
+      type: number
+      format: double
+
+CreateWeatherSourceRequest:
+  type: object
+  required:
+    - name
+    - postalCode
+  properties:
+    name:
+      type: string
+    sourceType:
+      type: integer
+    postalCode:
+      type: string
+    countryCode:
+      type: string
+    latitude:
+      type: number
+      format: double
+    longitude:
+      type: number
+      format: double
+
+MonthlySeasonalAdjustAverageResponse:
+  type: object
+  properties:
+    weatherSourceId:
+      type: integer
+      format: int64
+    month:
+      type: integer
+      description: Month index (1=Jan, 12=Dec).
+    monthlyAverageEt:
+      type: number
+      format: float
+    percentage:
+      type: integer

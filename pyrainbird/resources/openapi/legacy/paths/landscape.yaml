@@ -1,0 +1,53 @@
+# pyrainbird/resources/openapi/legacy/paths/landscape.yaml
+/LandscapeInfo/GetLandscapeInfo:
+  get:
+    tags: [Landscape]
+    summary: Get landscape configuration for program
+    parameters:
+      - name: programId
+        in: query
+        required: true
+        schema:
+          type: integer
+      - name: companyId
+        in: query
+        required: true
+        schema:
+          type: integer
+    responses:
+      '200':
+        description: Landscape details.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: ../schemas/models.yaml#/LandscapeInfoResponse
+
+/LandscapeInfo/CreateLandscapeInfo:
+  post:
+    tags: [Landscape]
+    summary: Create landscape info
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/models.yaml#/CreateLandscapeInfoRequest
+    responses:
+      '200':
+        description: Created.
+
+/LandscapeInfo/UpdateLandscapeInfo:
+  post:
+    tags: [Landscape]
+    summary: Update landscape info
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/models.yaml#/CreateLandscapeInfoRequest
+    responses:
+      '200':
+        description: Updated.

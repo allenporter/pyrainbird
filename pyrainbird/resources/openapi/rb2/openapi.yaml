@@ -1,0 +1,296 @@
+openapi: 3.1.0
+info:
+  title: Rain Bird Communication Device Cloud REST API
+  description: >
+    OpenAPI 3.1 specification of the Rain Bird IQ4 Cloud REST API
+    for connected communication devices and irrigation controllers.
+  version: 2.0.0
+  contact:
+    name: pyrainbird Developers
+    url: https://github.com/allenporter/pyrainbird
+servers:
+  - url: https://iq4server.rainbird.com/coreapi/api
+    description: Production Rain Bird Cloud API Gateway
+  - url: https://iq4server.rainbird.com/coreidentityserver
+    description: Production OIDC IdentityServer Authentication Authority
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: Satellites
+    description: Controller hardware lifecycle, configuration, connectivity, and firmware
+  - name: Stations
+    description: Irrigation zones, master valves, cycle & soak settings, pumps, and sensors
+  - name: Programs
+    description: Schedules, watering days, seasonal adjustments, and start times
+  - name: Manual Operations
+    description: Zone activation, test programs, learned flow calibration, and 2-wire diagnostics
+  - name: Sensors & Flow
+    description: Flow sensors, flow zones, and threshold monitoring
+  - name: Sites
+    description: Site grouping, addresses, coordinates, and seasonal scaling
+  - name: Weather
+    description: Weather data, forecasts, ET measurements, and weather sources
+  - name: Reports & Events
+    description: Event logs, station runtimes, and water consumption history
+  - name: Groups
+    description: Controller groups and item management
+  - name: User & Company
+    description: User profiles, notification tokens, company sharing, and culture settings
+  - name: IoT & LoRa
+    description: IoT gateway management and LoRaWAN device provisioning
+  - name: Authentication & OAuth
+    description: OpenID Connect / OAuth 2.0 authorization, token exchange, and refresh services
+
+paths:
+  # Satellites
+  /Satellite/GetSatelliteList:
+    $ref: './paths/satellites.yaml#/~1Satellite~1GetSatelliteList'
+  /Satellite/GetSatellite:
+    $ref: './paths/satellites.yaml#/~1Satellite~1GetSatellite'
+  /Satellite/isConnected:
+    $ref: './paths/satellites.yaml#/~1Satellite~1isConnected'
+  /Satellite/IsNameUnique:
+    $ref: './paths/satellites.yaml#/~1Satellite~1IsNameUnique'
+  /Satellite/ExcessAddresses:
+    $ref: './paths/satellites.yaml#/~1Satellite~1ExcessAddresses'
+  /Satellite/GetWeatherForecastDelays:
+    $ref: './paths/satellites.yaml#/~1Satellite~1GetWeatherForecastDelays'
+  /Satellite/CreateSatellite:
+    $ref: './paths/satellites.yaml#/~1Satellite~1CreateSatellite'
+  /Satellite/CreateSatelliteFromRBN:
+    $ref: './paths/satellites.yaml#/~1Satellite~1CreateSatelliteFromRBN'
+  /Satellite/RegisterDevice:
+    $ref: './paths/satellites.yaml#/~1Satellite~1RegisterDevice'
+  /Satellite/MoveSatellite:
+    $ref: './paths/satellites.yaml#/~1Satellite~1MoveSatellite'
+  /Satellite/ReverseSynchronize:
+    $ref: './paths/satellites.yaml#/~1Satellite~1ReverseSynchronize'
+  /Satellite/StopAllIrrigation:
+    $ref: './paths/satellites.yaml#/~1Satellite~1StopAllIrrigation'
+  /Satellite/v2/UpdateBatches:
+    $ref: './paths/satellites.yaml#/~1Satellite~1v2~1UpdateBatches'
+  /Satellite/DeleteSatellites:
+    $ref: './paths/satellites.yaml#/~1Satellite~1DeleteSatellites'
+  /Satellite/{satelliteId}/presignedPOST:
+    $ref: './paths/satellites.yaml#/~1Satellite~1{satelliteId}~1presignedPOST'
+  /Satellite/{satelliteId}/appimage:
+    $ref: './paths/satellites.yaml#/~1Satellite~1{satelliteId}~1appimage'
+  /Satellite/{satelliteId}/StationAddresses:
+    $ref: './paths/satellites.yaml#/~1Satellite~1{satelliteId}~1StationAddresses'
+  /Satellite/{satelliteId}/StationAddresses/{stationId}:
+    $ref: './paths/satellites.yaml#/~1Satellite~1{satelliteId}~1StationAddresses~1{stationId}'
+
+  # Stations
+  /Station/GetStationListForSatellite:
+    $ref: './paths/stations.yaml#/~1Station~1GetStationListForSatellite'
+  /Station/GetMasterValves:
+    $ref: './paths/stations.yaml#/~1Station~1GetMasterValves'
+  /Station/{stationId}/presignedPOST:
+    $ref: './paths/stations.yaml#/~1Station~1{stationId}~1presignedPOST'
+  /Station/{stationId}/appimage:
+    $ref: './paths/stations.yaml#/~1Station~1{stationId}~1appimage'
+  /Station/UpdateMultipleBatches:
+    $ref: './paths/stations.yaml#/~1Station~1UpdateMultipleBatches'
+  /StationPump/GetStationPumps:
+    $ref: './paths/stations.yaml#/~1StationPump~1GetStationPumps'
+  /StationSensor/GetStationSensors:
+    $ref: './paths/stations.yaml#/~1StationSensor~1GetStationSensors'
+
+  # Programs
+  /Program/GetPrograms:
+    $ref: './paths/programs.yaml#/~1Program~1GetPrograms'
+  /Program/GetProgram:
+    $ref: './paths/programs.yaml#/~1Program~1GetProgram'
+  /Program/UpdateBatches:
+    $ref: './paths/programs.yaml#/~1Program~1UpdateBatches'
+  /ProgramStep/GetProgramSteps:
+    $ref: './paths/programs.yaml#/~1ProgramStep~1GetProgramSteps'
+  /ProgramStep/GetProgramsAssignedAndRunTimeBySatelliteId:
+    $ref: './paths/programs.yaml#/~1ProgramStep~1GetProgramsAssignedAndRunTimeBySatelliteId'
+  /ProgramStep/GetRunStationStatusForSatellite:
+    $ref: './paths/programs.yaml#/~1ProgramStep~1GetRunStationStatusForSatellite'
+  /ProgramStep/CreateProgramSteps:
+    $ref: './paths/programs.yaml#/~1ProgramStep~1CreateProgramSteps'
+  /ProgramStep/DeleteProgramSteps:
+    $ref: './paths/programs.yaml#/~1ProgramStep~1DeleteProgramSteps'
+  /StartTime/GetStartTimes:
+    $ref: './paths/programs.yaml#/~1StartTime~1GetStartTimes'
+
+  # Manual Operations
+  /ManualOps/StartStations:
+    $ref: './paths/manual_ops.yaml#/~1ManualOps~1StartStations'
+  /ManualOps/AdvanceStations:
+    $ref: './paths/manual_ops.yaml#/~1ManualOps~1AdvanceStations'
+  /ManualOps/StartPrograms:
+    $ref: './paths/manual_ops.yaml#/~1ManualOps~1StartPrograms'
+  /ManualOps/RunTestProgram:
+    $ref: './paths/manual_ops.yaml#/~1ManualOps~1RunTestProgram'
+  /ManualOps/RasterTest:
+    $ref: './paths/manual_ops.yaml#/~1ManualOps~1RasterTest'
+  /ManualOps/InitiateLearnedFlow:
+    $ref: './paths/manual_ops.yaml#/~1ManualOps~1InitiateLearnedFlow'
+  /ManualOps/CancelLearnedFlow:
+    $ref: './paths/manual_ops.yaml#/~1ManualOps~1CancelLearnedFlow'
+  /ManualOps/ClearFlowLogs:
+    $ref: './paths/manual_ops.yaml#/~1ManualOps~1ClearFlowLogs'
+  /ManualOps/OpenManualMVWaterWindow:
+    $ref: './paths/manual_ops.yaml#/~1ManualOps~1OpenManualMVWaterWindow'
+  /ManualOps/EnableShortFindMode:
+    $ref: './paths/manual_ops.yaml#/~1ManualOps~1EnableShortFindMode'
+  /ManualOps/Enable2WireDiagnosticMode:
+    $ref: './paths/manual_ops.yaml#/~1ManualOps~1Enable2WireDiagnosticMode'
+  /ManualOps/ScanStationAddresses:
+    $ref: './paths/manual_ops.yaml#/~1ManualOps~1ScanStationAddresses'
+  /ManualOps/GetUniversal2WireLineSurvey:
+    $ref: './paths/manual_ops.yaml#/~1ManualOps~1GetUniversal2WireLineSurvey'
+  /ManualOps/GetSatelliteFirmwareVersions:
+    $ref: './paths/manual_ops.yaml#/~1ManualOps~1GetSatelliteFirmwareVersions'
+
+  # Sensors & Flow
+  /Sensor/GetSensors:
+    $ref: './paths/sensors.yaml#/~1Sensor~1GetSensors'
+  /Sensor/GetSensor:
+    $ref: './paths/sensors.yaml#/~1Sensor~1GetSensor'
+  /Sensor/GetFlowSensorModels:
+    $ref: './paths/sensors.yaml#/~1Sensor~1GetFlowSensorModels'
+  /Sensor/UpdateBatches:
+    $ref: './paths/sensors.yaml#/~1Sensor~1UpdateBatches'
+  /FlowElement/GetFlowElements:
+    $ref: './paths/sensors.yaml#/~1FlowElement~1GetFlowElements'
+
+  # Sites
+  /Site/GetSites:
+    $ref: './paths/sites.yaml#/~1Site~1GetSites'
+  /Site/GetSite:
+    $ref: './paths/sites.yaml#/~1Site~1GetSite'
+  /Site/GetNextDefaultName:
+    $ref: './paths/sites.yaml#/~1Site~1GetNextDefaultName'
+  /Site/GetNextDefaultNameByPrefix:
+    $ref: './paths/sites.yaml#/~1Site~1GetNextDefaultNameByPrefix'
+  /Site/CreateSite:
+    $ref: './paths/sites.yaml#/~1Site~1CreateSite'
+  /Site/UpdateBatches:
+    $ref: './paths/sites.yaml#/~1Site~1UpdateBatches'
+  /SeasonalAdjust/GetSeasonalAdjustForSite:
+    $ref: './paths/sites.yaml#/~1SeasonalAdjust~1GetSeasonalAdjustForSite'
+
+  # Weather
+  /WeatherData/Forecast:
+    $ref: './paths/weather.yaml#/~1WeatherData~1Forecast'
+  /WeatherData/GetMonthlyAverages:
+    $ref: './paths/weather.yaml#/~1WeatherData~1GetMonthlyAverages'
+  /WeatherSource/GetWeatherSources:
+    $ref: './paths/weather.yaml#/~1WeatherSource~1GetWeatherSources'
+  /WeatherSource/GetWeatherSource:
+    $ref: './paths/weather.yaml#/~1WeatherSource~1GetWeatherSource'
+  /WeatherSource/CreateWeatherSource:
+    $ref: './paths/weather.yaml#/~1WeatherSource~1CreateWeatherSource'
+  /WeatherSource/DeleteWeatherSource:
+    $ref: './paths/weather.yaml#/~1WeatherSource~1DeleteWeatherSource'
+
+  # Reports & Events
+  /Report/GetEventLogReport:
+    $ref: './paths/reports.yaml#/~1Report~1GetEventLogReport'
+  /EventLog/AckEventLogs:
+    $ref: './paths/reports.yaml#/~1EventLog~1AckEventLogs'
+  /Report/GetStationRunTimeReport:
+    $ref: './paths/reports.yaml#/~1Report~1GetStationRunTimeReport'
+  /Report/GetMonthlyFlowReport:
+    $ref: './paths/reports.yaml#/~1Report~1GetMonthlyFlowReport'
+  /Report/GetYearlyWaterConsumptionReport:
+    $ref: './paths/reports.yaml#/~1Report~1GetYearlyWaterConsumptionReport'
+
+  # Groups
+  /groups:
+    $ref: './paths/groups.yaml#/~1groups'
+  /groups/{groupId}:
+    $ref: './paths/groups.yaml#/~1groups~1{groupId}'
+  /groups/{groupId}/items:
+    $ref: './paths/groups.yaml#/~1groups~1{groupId}~1items'
+
+  # User & Company
+  /User/GetUser:
+    $ref: './paths/user.yaml#/~1User~1GetUser'
+  /User/presignedPOST:
+    $ref: './paths/user.yaml#/~1User~1presignedPOST'
+  /User/GetUserEventSubscriptions:
+    $ref: './paths/user.yaml#/~1User~1GetUserEventSubscriptions'
+  /User/UpdateAllUserEventSubscriptions:
+    $ref: './paths/user.yaml#/~1User~1UpdateAllUserEventSubscriptions'
+  /User/DeviceNotificationTokens:
+    $ref: './paths/user.yaml#/~1User~1DeviceNotificationTokens'
+  /User/DeviceNotificationTokens/{tokenId}:
+    $ref: './paths/user.yaml#/~1User~1DeviceNotificationTokens~1{tokenId}'
+  /AccessRequest/GetCurrentAccessRequestInfoForUser:
+    $ref: './paths/user.yaml#/~1AccessRequest~1GetCurrentAccessRequestInfoForUser'
+  /CultureSettings/GetCultureSettingsByUser:
+    $ref: './paths/user.yaml#/~1CultureSettings~1GetCultureSettingsByUser'
+  /Utility/Timezones:
+    $ref: './paths/user.yaml#/~1Utility~1Timezones'
+  /Company/GetCompanyByShareCode:
+    $ref: './paths/user.yaml#/~1Company~1GetCompanyByShareCode'
+  /Company/GetSharedCompanyDetailBySiteId:
+    $ref: './paths/user.yaml#/~1Company~1GetSharedCompanyDetailBySiteId'
+  /Company/GetTreeViewSharedWithMe:
+    $ref: './paths/user.yaml#/~1Company~1GetTreeViewSharedWithMe'
+  /Company/StartSharing:
+    $ref: './paths/user.yaml#/~1Company~1StartSharing'
+  /Company/DeleteSharing:
+    $ref: './paths/user.yaml#/~1Company~1DeleteSharing'
+  /IoT/CreateIoTGateway:
+    $ref: './paths/user.yaml#/~1IoT~1CreateIoTGateway'
+  /LoRa/provisioning-sessions:
+    $ref: './paths/user.yaml#/~1LoRa~1provisioning-sessions'
+
+  # Authentication & IdentityServer
+  /.well-known/openid-configuration:
+    $ref: './paths/auth.yaml#/~1.well-known~1openid-configuration'
+  /Account/Login:
+    $ref: './paths/auth.yaml#/~1Account~1Login'
+  /connect/authorize:
+    $ref: './paths/auth.yaml#/~1connect~1authorize'
+  /connect/token:
+    $ref: './paths/auth.yaml#/~1connect~1token'
+  /connect/userinfo:
+    $ref: './paths/auth.yaml#/~1connect~1userinfo'
+  /connect/revocation:
+    $ref: './paths/auth.yaml#/~1connect~1revocation'
+  /connect/introspect:
+    $ref: './paths/auth.yaml#/~1connect~1introspect'
+  /connect/endsession:
+    $ref: './paths/auth.yaml#/~1connect~1endsession'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Enter the OAuth 2.0 / OIDC Bearer access token retrieved from the IdentityServer.
+    OAuth2AuthorizationCode:
+      type: oauth2
+      description: OpenID Connect Authorization Code Flow with PKCE (used by Communication Device clients).
+      flows:
+        authorizationCode:
+          authorizationUrl: https://iq4server.rainbird.com/coreidentityserver/connect/authorize
+          tokenUrl: https://iq4server.rainbird.com/coreidentityserver/connect/token
+          refreshUrl: https://iq4server.rainbird.com/coreidentityserver/connect/token
+          scopes:
+            openid: OpenID Connect identity tokens
+            coreAPI.read: Read access to Rain Bird core cloud APIs
+            coreAPI.write: Write and control access to Rain Bird core cloud APIs
+            profile: User profile access
+            offline_access: Offline access for refresh tokens
+    OAuth2Implicit:
+      type: oauth2
+      description: OpenID Connect Implicit Grant authentication via Rain Bird CoreIdentityServer (legacy web portal).
+      flows:
+        implicit:
+          authorizationUrl: https://iq4server.rainbird.com/coreidentityserver/connect/authorize
+          scopes:
+            coreAPI.read: Read access to Rain Bird core cloud APIs
+            coreAPI.write: Write and control access to Rain Bird core cloud APIs
+            openid: OpenID Connect identity tokens
+            profile: User profile access
