@@ -324,14 +324,28 @@ def test_model_info_from_dict_compatibility() -> None:
     assert direct_feat.is_feature_supported(Feature.WATER_BUDGET)
     assert direct_feat.is_feature_supported(Feature.FLOW_SENSOR)
 
-    # List of Feature enums
+    # List of Feature enums or strings
     enum_list = ModelInfo.from_dict(
         {
             "device_id": "0009",
             "code": "ESP_ME3",
             "name": "ESP-ME3",
             "limits": {"max_stations": 22},
-            "features": [Feature.FLOW_SENSOR],
+            "features": [Feature.FLOW_SENSOR, "WATER_BUDGET", "UNKNOWN_FEATURE", 123],
         }
     )
     assert enum_list.is_feature_supported(Feature.FLOW_SENSOR)
+    assert enum_list.is_feature_supported(Feature.WATER_BUDGET)
+
+    # Legacy flat dictionary with defaults / falses
+    legacy_defaults = ModelInfo.from_dict(
+        {
+            "device_id": "0003",
+            "code": "ESP_RZXe",
+            "name": "ESP-RZXe",
+            "program_based": False,
+        }
+    )
+    assert not legacy_defaults.is_feature_supported(Feature.PROGRAM_BASED)
+    assert not legacy_defaults.is_feature_supported(Feature.SECONDS_BASED)
+    assert not legacy_defaults.is_feature_supported(Feature.FLOW_SENSOR)
