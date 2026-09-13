@@ -74,6 +74,39 @@ class ModelInfo:
     retries: bool = False
     """If device busy errors should be retried"""
 
+    program_based: bool = True
+    """If the model uses program-based scheduling (vs per-zone/LCR)."""
+
+    seconds_based: bool = False
+    """If the model operates on seconds-based runtimes (vs minutes)."""
+
+    max_station_pages: int = 0
+    """The maximum 32-station page index queried by the device."""
+
+    max_rain_delay_days: int = 14
+    """The maximum rain delay duration in days supported by the device."""
+
+    max_runtime_seconds: int = 21600
+    """The maximum run time duration in seconds supported by the device."""
+
+    max_seasonal_adjust: int = 200
+    """The maximum seasonal adjustment percentage."""
+
+    max_sensors: int = 0
+    """The maximum number of external sensor inputs supported by the device."""
+
+    supports_combined_state: bool = False
+    """If the model supports combined controller state request (0x4C)."""
+
+    supports_event_timestamp: bool = False
+    """If the model supports controller event/schedule timestamp (0x4A)."""
+
+    supports_stacked_watering: bool = False
+    """If the model supports stacked manual run station requests (0x4B)."""
+
+    supports_flow_sensor: bool = False
+    """If the model supports flow sensor monitoring."""
+
 
 @dataclass
 class ModelAndVersion:
