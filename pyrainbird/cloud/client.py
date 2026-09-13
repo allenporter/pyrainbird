@@ -604,12 +604,18 @@ class AsyncRainbirdCloudClient:
         data = await self.request(
             "GET",
             "Satellite/isConnected",
-            params={"satelliteId": satellite_id},
+            params={"satelliteIds": satellite_id},
         )
-        if isinstance(data, dict):
-            connected_list = data.get("satellites")
-            if isinstance(connected_list, list):
-                return satellite_id in connected_list
+        if not isinstance(data, dict):
+            return False
+
+        if (satellites := data.get("satellites")) and isinstance(satellites, list):
+            for entry in satellites:
+                if isinstance(entry, dict) and entry.get("id") == satellite_id:
+                    return bool(entry.get("isConnected"))
+                if entry == satellite_id:
+                    return True
+
         return False
 
     async def stop_all_irrigation(self, satellite_id: int) -> None:

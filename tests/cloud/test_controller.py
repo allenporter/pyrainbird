@@ -1,6 +1,7 @@
 """Tests for the Rainbird cloud controller implementation."""
 
 import datetime
+from unittest import mock
 
 import pytest
 from aiohttp import web
@@ -202,8 +203,10 @@ async def mock_cloud_api(aiohttp_client) -> tuple:
 
     async def is_connected(request):
         request_history.append(("GET", "isConnected", None))
-        assert request.query.get("satelliteId") == str(SATELLITE_ID)
-        return web.json_response({"satellites": [SATELLITE_ID]})
+        assert request.query.get("satelliteIds") == str(SATELLITE_ID)
+        return web.json_response(
+            {"satellites": [{"id": SATELLITE_ID, "isConnected": True}]}
+        )
 
     async def start_programs(request):
         payload = await request.json()
@@ -372,3 +375,66 @@ async def test_cloud_controller_operations(mock_cloud_api, monkeypatch) -> None:
         op[0] == "POST" and op[1] == "StartPrograms" and op[2] == [999]
         for op in history
     )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("response_payload", "expected"),
+    [
+        (
+            {
+                "satellites": [
+                    {
+                        "id": SATELLITE_ID,
+                        "isConnected": True,
+                        "timestamp": "2026-09-13T20:00:00Z",
+                    }
+                ]
+            },
+            True,
+        ),
+        (
+            {
+                "satellites": [
+                    {
+                        "id": SATELLITE_ID,
+                        "isConnected": False,
+                        "timestamp": "2026-09-13T20:00:00Z",
+                    }
+                ]
+            },
+            False,
+        ),
+        ({"satellites": [{"id": 99999, "isConnected": True}]}, False),
+        ({"satellites": [SATELLITE_ID]}, True),
+        ({"satellites": [99999]}, False),
+        ({"satellites": []}, False),
+        ({}, False),
+        (["not-a-dict"], False),
+    ],
+)
+async def test_cloud_controller_is_connected(
+    aiohttp_client, monkeypatch, response_payload, expected
+) -> None:
+    """Test is_connected with various response payloads."""
+
+    async def is_connected_handler(request):
+        assert request.query.get("satelliteIds") == str(SATELLITE_ID)
+        return web.json_response(response_payload)
+
+    app = web.Application()
+    app.router.add_get("/coreapi/api/Satellite/isConnected", is_connected_handler)
+    client_app = await aiohttp_client(app)
+
+    monkeypatch.setattr(
+        pyrainbird.cloud.client, "API_BASE", str(client_app.make_url("/coreapi/api"))
+    )
+
+    token_provider = mock.AsyncMock()
+    token_provider.async_get_token.return_value = "mock-token"
+
+    controller = create_cloud_controller(
+        client_app.session, SATELLITE_ID, token_provider=token_provider
+    )
+
+    assert await controller.is_connected() is expected
