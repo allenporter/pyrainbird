@@ -1,11 +1,14 @@
 """Cloud client for rainbird IQ4 service."""
 
 import asyncio
+import base64
 import datetime
+import hashlib
 import json
 import logging
 import os
 import re
+import secrets
 import urllib.parse
 import uuid
 from collections.abc import Awaitable, Callable
@@ -119,8 +122,16 @@ def _parse_program_index(
     return fallback_index
 
 
+def _generate_pkce_pair() -> tuple[str, str]:
+    """Generate a PKCE code_verifier and code_challenge (S256)."""
+    verifier = secrets.token_urlsafe(32)
+    digest = hashlib.sha256(verifier.encode("ascii")).digest()
+    challenge = base64.urlsafe_b64encode(digest).decode("ascii").rstrip("=")
+    return verifier, challenge
+
+
 class RainbirdCloudTokenProvider(RainbirdTokenProvider):
-    """Token provider wrapping OIDC credentials authentication."""
+    """Token provider wrapping OIDC / OAuth 2.0 authentication."""
 
     def __init__(
         self,
@@ -129,45 +140,210 @@ class RainbirdCloudTokenProvider(RainbirdTokenProvider):
         password: str,
         *,
         token: str | None = None,
-        token_update_callback: Callable[[str], Awaitable[None]] | None = None,
+        refresh_token: str | None = None,
+        token_update_callback: (
+            Callable[[str], Awaitable[None]]
+            | Callable[[str, str | None], Awaitable[None]]
+            | None
+        ) = None,
+        client_id: str = CLIENT_ID,
+        client_secret: str | None = None,
+        redirect_uri: str = REDIRECT_URI,
+        auth_base: str | None = None,
     ) -> None:
         """Initialize RainbirdCloudTokenProvider."""
         self._session = session
         self._username = username
         self._password = password
         self._token = token
+        self._refresh_token = refresh_token
         self._token_update_callback = token_update_callback
+        self._client_id = client_id
+        self._client_secret = client_secret
+        self._redirect_uri = redirect_uri
+        self._auth_base = auth_base
+
+    @property
+    def auth_base(self) -> str:
+        """Return the base URL for authentication endpoints."""
+        return self._auth_base if self._auth_base is not None else AUTH_BASE
 
     @property
     def token(self) -> str | None:
         """Return the active bearer token."""
         return self._token
 
+    @property
+    def refresh_token(self) -> str | None:
+        """Return the active refresh token."""
+        return self._refresh_token
+
+    async def _notify_token_update(self) -> None:
+        """Notify token update callback if registered."""
+        if not self._token_update_callback or not self._token:
+            return
+        try:
+            # Check if callback accepts 2 arguments (access_token, refresh_token)
+            await self._token_update_callback(self._token, self._refresh_token)  # type: ignore[call-arg]
+        except TypeError:
+            # Fallback for single-argument callback (access_token)
+            await self._token_update_callback(self._token)  # type: ignore[call-arg]
+
     async def async_get_token(self, force_refresh: bool = False) -> str:
         """Return a valid Bearer token, refreshing if necessary or forced."""
-        if force_refresh or not self._token:
+        if force_refresh:
+            if self._refresh_token:
+                try:
+                    await self.refresh()
+                    await self._notify_token_update()
+                    if self._token:
+                        return self._token
+                except RainbirdAuthException:
+                    _LOGGER.debug(
+                        "Token refresh with refresh_token failed; falling back to full login"
+                    )
             token = await self.login()
             self._token = token
-            if self._token_update_callback:
-                await self._token_update_callback(token)
+            await self._notify_token_update()
+            return self._token
+
+        if not self._token:
+            if self._refresh_token:
+                try:
+                    await self.refresh()
+                    await self._notify_token_update()
+                    if self._token:
+                        return self._token
+                except RainbirdAuthException:
+                    _LOGGER.debug(
+                        "Token refresh with refresh_token failed; falling back to full login"
+                    )
+            token = await self.login()
+            self._token = token
+            await self._notify_token_update()
+
         return self._token
 
+    async def async_exchange_code(
+        self,
+        code: str,
+        code_verifier: str,
+    ) -> dict[str, Any]:
+        """Exchange an authorization code for tokens via /connect/token."""
+        token_url = f"{self.auth_base}/connect/token"
+        payload = {
+            "grant_type": "authorization_code",
+            "client_id": self._client_id,
+            "code": code,
+            "redirect_uri": self._redirect_uri,
+            "code_verifier": code_verifier,
+        }
+        if self._client_secret:
+            payload["client_secret"] = self._client_secret
+
+        headers = {
+            "User-Agent": DEFAULT_USER_AGENT,
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Accept": "application/json",
+        }
+
+        try:
+            async with self._session.post(
+                token_url, data=payload, headers=headers
+            ) as resp:
+                if resp.status != 200:
+                    error_text = await resp.text()
+                    raise RainbirdAuthException(
+                        f"Failed to exchange authorization code, HTTP status {resp.status}: {error_text}"
+                    )
+                data = await resp.json()
+                access_token = data.get("access_token")
+                if not access_token:
+                    raise RainbirdAuthException(
+                        "No access_token returned in token exchange response."
+                    )
+                self._token = access_token
+                self._refresh_token = data.get("refresh_token") or self._refresh_token
+                return data
+        except aiohttp.ClientError as err:
+            raise RainbirdConnectionError(
+                f"Connection error exchanging authorization code: {err}"
+            ) from err
+
+    async def refresh(self) -> str:
+        """Refresh the access token using the stored refresh_token."""
+        if not self._refresh_token:
+            raise RainbirdAuthException(
+                "No refresh token available to refresh session."
+            )
+
+        token_url = f"{self.auth_base}/connect/token"
+        payload = {
+            "grant_type": "refresh_token",
+            "client_id": self._client_id,
+            "refresh_token": self._refresh_token,
+        }
+        if self._client_secret:
+            payload["client_secret"] = self._client_secret
+
+        headers = {
+            "User-Agent": DEFAULT_USER_AGENT,
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Accept": "application/json",
+        }
+
+        try:
+            async with self._session.post(
+                token_url, data=payload, headers=headers
+            ) as resp:
+                if resp.status != 200:
+                    error_text = await resp.text()
+                    raise RainbirdAuthException(
+                        f"Failed to refresh token, HTTP status {resp.status}: {error_text}"
+                    )
+                data = await resp.json()
+                access_token = data.get("access_token")
+                if not access_token:
+                    raise RainbirdAuthException(
+                        "No access_token returned in token refresh response."
+                    )
+                self._token = access_token
+                # Update refresh token if server rotated it
+                if "refresh_token" in data:
+                    self._refresh_token = data["refresh_token"]
+                return access_token
+        except aiohttp.ClientError as err:
+            raise RainbirdConnectionError(
+                f"Connection error refreshing token: {err}"
+            ) from err
+
     async def login(self, max_retries: int = 3) -> str:
-        """Authenticate using the OIDC Implicit Grant flow against ASP.NET Core Identity."""
+        """Authenticate against ASP.NET Core Identity."""
         if not self._username or not self._password:
             raise RainbirdAuthException("Username and password are required to log in.")
 
         state = uuid.uuid4().hex[:16]
         nonce = uuid.uuid4().hex[:16]
+        code_verifier, code_challenge = _generate_pkce_pair()
 
+        # If client secret is provided or native flow is configured, use auth code flow with PKCE;
+        # otherwise fallback to authorization code or implicit grant.
         auth_url_params = {
-            "client_id": CLIENT_ID,
-            "redirect_uri": REDIRECT_URI,
-            "response_type": "id_token token",
-            "scope": "coreAPI.read coreAPI.write openid profile",
+            "client_id": self._client_id,
+            "redirect_uri": self._redirect_uri,
+            "response_type": "code" if self._client_secret else "id_token token",
+            "scope": (
+                "openid coreAPI.read coreAPI.write profile offline_access"
+                if self._client_secret
+                else "coreAPI.read coreAPI.write openid profile"
+            ),
             "state": state,
             "nonce": nonce,
         }
+        if self._client_secret:
+            auth_url_params["code_challenge"] = code_challenge
+            auth_url_params["code_challenge_method"] = "S256"
+
         return_url = f"/coreidentityserver/connect/authorize/callback?{urllib.parse.urlencode(auth_url_params)}"
 
         headers = {
@@ -190,7 +366,9 @@ class RainbirdCloudTokenProvider(RainbirdTokenProvider):
                 location = await self._submit_credentials(
                     return_url, csrf_token, headers
                 )
-                access_token_value = await self._follow_redirects(location, headers)
+                access_token_value = await self._follow_redirects(
+                    location, headers, code_verifier
+                )
                 break
             except RainbirdApiException as err:
                 if (
@@ -221,7 +399,7 @@ class RainbirdCloudTokenProvider(RainbirdTokenProvider):
     async def _get_csrf_token(self, return_url: str, headers: dict[str, str]) -> str:
         """Fetch the login page and extract the CSRF token."""
         login_url = (
-            f"{AUTH_BASE}/Account/Login?ReturnUrl={urllib.parse.quote(return_url)}"
+            f"{self.auth_base}/Account/Login?ReturnUrl={urllib.parse.quote(return_url)}"
         )
         try:
             async with self._session.get(login_url, headers=headers) as resp:
@@ -259,7 +437,7 @@ class RainbirdCloudTokenProvider(RainbirdTokenProvider):
     ) -> str:
         """Submit login credentials and retrieve the initial redirect location."""
         post_url = (
-            f"{AUTH_BASE}/Account/Login?ReturnUrl={urllib.parse.quote(return_url)}"
+            f"{self.auth_base}/Account/Login?ReturnUrl={urllib.parse.quote(return_url)}"
         )
         payload = {
             "Username": self._username,
@@ -305,8 +483,10 @@ class RainbirdCloudTokenProvider(RainbirdTokenProvider):
                 f"Connection error submitting credentials: {err}"
             ) from err
 
-    async def _follow_redirects(self, location: str, headers: dict[str, str]) -> str:
-        """Follow the redirect chain manually to retrieve the access token."""
+    async def _follow_redirects(
+        self, location: str, headers: dict[str, str], code_verifier: str | None = None
+    ) -> str:
+        """Follow the redirect chain manually to retrieve the access token or code."""
         max_redirects = 10
         redirects_followed = 0
 
@@ -316,20 +496,32 @@ class RainbirdCloudTokenProvider(RainbirdTokenProvider):
                     "Maximum redirect limit reached during login."
                 )
 
-            if REDIRECT_URI in location:
+            if self._redirect_uri in location:
                 parsed_url = urllib.parse.urlparse(location)
+                # Check for authorization code in query params
+                query_params = urllib.parse.parse_qs(parsed_url.query)
+                if "code" in query_params:
+                    code = query_params["code"][0]
+                    if not code_verifier:
+                        raise RainbirdAuthException(
+                            "Cannot exchange authorization code without code_verifier."
+                        )
+                    token_data = await self.async_exchange_code(code, code_verifier)
+                    return token_data["access_token"]
+
+                # Check for access_token in URL fragment (Implicit Grant)
                 fragment = parsed_url.fragment
                 params = urllib.parse.parse_qs(fragment)
                 token_list = params.get("access_token")
                 if token_list:
                     return token_list[0]
-                else:
-                    raise RainbirdAuthException(
-                        "Reached redirect URI but could not find access_token in fragment."
-                    )
+
+                raise RainbirdAuthException(
+                    "Reached redirect URI but could not find access_token in fragment."
+                )
 
             if location.startswith("/"):
-                url = urllib.parse.urljoin(AUTH_BASE, location)
+                url = urllib.parse.urljoin(self.auth_base, location)
             else:
                 url = location
 
@@ -354,7 +546,7 @@ class RainbirdCloudTokenProvider(RainbirdTokenProvider):
 
 
 class CachingTokenProvider(RainbirdTokenProvider):
-    """Token provider that persists the Bearer token in a JSON file cache."""
+    """Token provider that persists Bearer and refresh tokens in a JSON file cache."""
 
     def __init__(
         self,
@@ -365,29 +557,47 @@ class CachingTokenProvider(RainbirdTokenProvider):
         self._config_path = config_path
         self._auth_provider = auth_provider
         self._token: str | None = None
+        self._refresh_token: str | None = None
 
     @property
     def token(self) -> str | None:
         """Return the active cached token."""
         return self._token
 
-    def _save_token_to_cache_sync(self, token: str) -> None:
-        """Save the token to the JSON config file synchronously."""
+    @property
+    def refresh_token(self) -> str | None:
+        """Return the active cached refresh token."""
+        return self._refresh_token
+
+    def _save_token_to_cache_sync(
+        self, token: str, refresh_token: str | None = None
+    ) -> None:
+        """Save the token and optional refresh token to the JSON config file synchronously."""
         try:
             os.makedirs(os.path.dirname(self._config_path), exist_ok=True)
+            data: dict[str, Any] = {"token": token}
+            if refresh_token:
+                data["refresh_token"] = refresh_token
             with open(self._config_path, "w", encoding="utf-8") as f:
-                json.dump({"token": token}, f, indent=2)
+                json.dump(data, f, indent=2)
             os.chmod(self._config_path, 0o600)
         except OSError as err:
             _LOGGER.warning("Failed to save token to cache: %s", err)
 
-    async def _save_token_to_cache(self, token: str) -> None:
+    async def _save_token_to_cache(
+        self, token: str, refresh_token: str | None = None
+    ) -> None:
         """Save the token to the JSON config file asynchronously."""
         loop = asyncio.get_running_loop()
-        await loop.run_in_executor(None, self._save_token_to_cache_sync, token)
+        if refresh_token is not None:
+            await loop.run_in_executor(
+                None, self._save_token_to_cache_sync, token, refresh_token
+            )
+        else:
+            await loop.run_in_executor(None, self._save_token_to_cache_sync, token)
 
-    def _load_token_from_cache_sync(self) -> str | None:
-        """Load the token from the JSON config file synchronously."""
+    def _load_token_from_cache_sync(self) -> tuple[str | None, str | None] | str | None:
+        """Load the token and refresh_token from the JSON config file synchronously."""
         if not os.path.exists(self._config_path):
             return None
         try:
@@ -397,6 +607,18 @@ class CachingTokenProvider(RainbirdTokenProvider):
         except (OSError, json.JSONDecodeError) as err:
             _LOGGER.warning("Failed to read token from cache: %s", err)
             return None
+
+    def _load_token_data_from_cache_sync(self) -> tuple[str | None, str | None]:
+        """Load token and refresh_token from the JSON config file synchronously."""
+        if not os.path.exists(self._config_path):
+            return None, None
+        try:
+            with open(self._config_path, "r", encoding="utf-8") as f:
+                config = json.load(f)
+                return config.get("token"), config.get("refresh_token")
+        except (OSError, json.JSONDecodeError) as err:
+            _LOGGER.warning("Failed to read token from cache: %s", err)
+            return None, None
 
     async def async_get_token(self, force_refresh: bool = False) -> str:
         """Return a valid token, reading from environment, cache file, or auth provider."""
@@ -412,11 +634,32 @@ class CachingTokenProvider(RainbirdTokenProvider):
             token = await loop.run_in_executor(None, self._load_token_from_cache_sync)
             if token:
                 self._token = token
+                # Attempt to load refresh_token if present in file
+                _, refresh_token = await loop.run_in_executor(
+                    None, self._load_token_data_from_cache_sync
+                )
+                self._refresh_token = refresh_token
+                if (
+                    refresh_token
+                    and hasattr(self._auth_provider, "_refresh_token")
+                    and not getattr(self._auth_provider, "_refresh_token", None)
+                ):
+                    self._auth_provider._refresh_token = refresh_token
                 return token
+
+        # If we have a cached refresh_token and wrapped provider does not, populate it
+        if (
+            self._refresh_token
+            and hasattr(self._auth_provider, "_refresh_token")
+            and not getattr(self._auth_provider, "_refresh_token", None)
+        ):
+            self._auth_provider._refresh_token = self._refresh_token
 
         token = await self._auth_provider.async_get_token(force_refresh=force_refresh)
         self._token = token
-        await self._save_token_to_cache(token)
+        refresh_token = getattr(self._auth_provider, "refresh_token", None)
+        self._refresh_token = refresh_token
+        await self._save_token_to_cache(token, refresh_token)
         return token
 
 
