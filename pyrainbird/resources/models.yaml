@@ -135,6 +135,26 @@
     - EVENT_TIMESTAMP
     - STACKED_WATERING
 
+- device_id: "000b"
+  code: ESP_BAT_BT
+  name: BAT-BT
+  limits:
+    max_stations: 6
+    max_programs: 4
+    max_run_times: 8
+    max_station_pages: 0
+    max_rain_delay_days: 14
+    max_runtime_seconds: 32400
+    max_seasonal_adjust: 200
+    max_sensors: 0
+  features:
+    - PROGRAM_BASED
+    - SECONDS_BASED
+    - WATER_BUDGET
+    - COMBINED_STATE
+    - EVENT_TIMESTAMP
+    - STACKED_WATERING
+
 - device_id: "010a"
   code: ESP_TM2v3
   name: ESP-TM2
@@ -158,32 +178,34 @@
   code: TBOS_BT
   name: TBOS-BT
   limits:
-    max_stations: 8
+    max_stations: 6
     max_programs: 3
     max_run_times: 8
     max_station_pages: 0
     max_rain_delay_days: 14
-    max_runtime_seconds: 21600
+    max_runtime_seconds: 32400
     max_seasonal_adjust: 200
     max_sensors: 0
   features:
     - PROGRAM_BASED
+    - SECONDS_BASED
     - WATER_BUDGET
 
 - device_id: "0100"
   code: TBOS_BT
   name: TBOS-BT
   limits:
-    max_stations: 8
+    max_stations: 6
     max_programs: 3
     max_run_times: 8
     max_station_pages: 0
     max_rain_delay_days: 14
-    max_runtime_seconds: 21600
+    max_runtime_seconds: 32400
     max_seasonal_adjust: 200
     max_sensors: 0
   features:
     - PROGRAM_BASED
+    - SECONDS_BASED
     - WATER_BUDGET
 
 - device_id: "0107"
@@ -291,6 +313,88 @@
     - COMBINED_STATE
     - EVENT_TIMESTAMP
     - STACKED_WATERING
+
+- device_id: "0016"
+  code: ESP_BAT_PRO
+  name: BAT-PRO
+  limits:
+    max_stations: 6
+    max_programs: 12
+    max_run_times: 8
+    max_station_pages: 0
+    max_rain_delay_days: 30
+    max_runtime_seconds: 32400
+    max_seasonal_adjust: 200
+    max_sensors: 0
+  features:
+    - PROGRAM_BASED
+    - SECONDS_BASED
+    - WATER_BUDGET
+    - COMBINED_STATE
+    - EVENT_TIMESTAMP
+    - STACKED_WATERING
+
+- device_id: "0017"
+  code: ESP_BAT_PRO_EU
+  name: BAT-PRO
+  limits:
+    max_stations: 6
+    max_programs: 12
+    max_run_times: 8
+    max_station_pages: 0
+    max_rain_delay_days: 30
+    max_runtime_seconds: 32400
+    max_seasonal_adjust: 200
+    max_sensors: 0
+  features:
+    - PROGRAM_BASED
+    - SECONDS_BASED
+    - WATER_BUDGET
+    - COMBINED_STATE
+    - EVENT_TIMESTAMP
+    - STACKED_WATERING
+
+- device_id: "0018"
+  code: ESP_BAT_PRO_FLOW
+  name: BAT-PRO Flow
+  limits:
+    max_stations: 6
+    max_programs: 12
+    max_run_times: 8
+    max_station_pages: 0
+    max_rain_delay_days: 30
+    max_runtime_seconds: 32400
+    max_seasonal_adjust: 200
+    max_sensors: 0
+  features:
+    - PROGRAM_BASED
+    - SECONDS_BASED
+    - WATER_BUDGET
+    - COMBINED_STATE
+    - EVENT_TIMESTAMP
+    - STACKED_WATERING
+    - FLOW_SENSOR
+
+- device_id: "0019"
+  code: ESP_BAT_PRO_FLOW_EU
+  name: BAT-PRO Flow
+  limits:
+    max_stations: 6
+    max_programs: 12
+    max_run_times: 8
+    max_station_pages: 0
+    max_rain_delay_days: 30
+    max_runtime_seconds: 32400
+    max_seasonal_adjust: 200
+    max_sensors: 0
+  features:
+    - PROGRAM_BASED
+    - SECONDS_BASED
+    - WATER_BUDGET
+    - COMBINED_STATE
+    - EVENT_TIMESTAMP
+    - STACKED_WATERING
+    - FLOW_SENSOR
 
 - device_id: "0011"
   code: ESP_2WIRE
