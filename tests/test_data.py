@@ -107,3 +107,31 @@ def test_model_info(response: dict[str, Any], expected_name: str) -> None:
     )
     assert mv.model_name == expected_name
     assert mv.model_info.name == expected_name
+
+
+def test_model_info_capabilities() -> None:
+    """Test detailed model capability attributes."""
+    lxme2 = ModelAndVersion(0x000C, 1, 3).model_info
+    assert lxme2.program_based is True
+    assert lxme2.max_programs == 40
+    assert lxme2.max_stations == 48
+    assert lxme2.max_rain_delay_days == 30
+    assert lxme2.max_runtime_seconds == 345600
+    assert lxme2.supports_event_timestamp is True
+    assert lxme2.supports_stacked_watering is True
+    assert lxme2.supports_combined_state is False
+
+    rzxe = ModelAndVersion(0x0003, 1, 0).model_info
+    assert rzxe.program_based is False
+    assert rzxe.max_programs == 0
+    assert rzxe.max_stations == 8
+    assert rzxe.supports_combined_state is False
+
+    tm2v3 = ModelAndVersion(0x010A, 2, 0).model_info
+    assert tm2v3.supports_combined_state is True
+    assert tm2v3.supports_event_timestamp is True
+    assert tm2v3.supports_stacked_watering is True
+
+    me3 = ModelAndVersion(0x0009, 1, 0).model_info
+    assert me3.supports_flow_sensor is True
+    assert me3.max_station_pages == 1

@@ -7,6 +7,17 @@
   max_run_times: 6
   max_stations: 8
   retries: true
+  program_based: false
+  seconds_based: false
+  max_station_pages: 0
+  max_rain_delay_days: 14
+  max_runtime_seconds: 21600
+  max_seasonal_adjust: 200
+  max_sensors: 0
+  supports_combined_state: false
+  supports_event_timestamp: false
+  supports_stacked_watering: false
+  supports_flow_sensor: false
 
 - device_id: "0007"
   code: ESP_ME
@@ -16,6 +27,17 @@
   max_run_times: 6
   max_stations: 22
   retries: true
+  program_based: true
+  seconds_based: false
+  max_station_pages: 0
+  max_rain_delay_days: 14
+  max_runtime_seconds: 21600
+  max_seasonal_adjust: 200
+  max_sensors: 0
+  supports_combined_state: false
+  supports_event_timestamp: false
+  supports_stacked_watering: false
+  supports_flow_sensor: false
 
 - device_id: "0006"
   code: ST8X_WF
@@ -24,6 +46,17 @@
   max_programs: 0
   max_run_times: 6
   max_stations: 8
+  program_based: false
+  seconds_based: false
+  max_station_pages: 0
+  max_rain_delay_days: 14
+  max_runtime_seconds: 21600
+  max_seasonal_adjust: 200
+  max_sensors: 0
+  supports_combined_state: false
+  supports_event_timestamp: false
+  supports_stacked_watering: false
+  supports_flow_sensor: false
 
 - device_id: "0005"
   code: ESP_TM2
@@ -32,6 +65,17 @@
   max_programs: 3
   max_run_times: 4
   max_stations: 12
+  program_based: true
+  seconds_based: false
+  max_station_pages: 0
+  max_rain_delay_days: 14
+  max_runtime_seconds: 21600
+  max_seasonal_adjust: 200
+  max_sensors: 0
+  supports_combined_state: false
+  supports_event_timestamp: false
+  supports_stacked_watering: true
+  supports_flow_sensor: false
 
 - device_id: "0008"
   code: ST8X_WF2
@@ -40,6 +84,17 @@
   max_programs: 8
   max_run_times: 6
   max_stations: 8
+  program_based: false
+  seconds_based: false
+  max_station_pages: 0
+  max_rain_delay_days: 14
+  max_runtime_seconds: 21600
+  max_seasonal_adjust: 200
+  max_sensors: 0
+  supports_combined_state: true
+  supports_event_timestamp: true
+  supports_stacked_watering: true
+  supports_flow_sensor: false
 
 - device_id: "0009"
   code: ESP_ME3
@@ -49,6 +104,17 @@
   max_run_times: 6
   max_stations: 22
   retries: true
+  program_based: true
+  seconds_based: false
+  max_station_pages: 1
+  max_rain_delay_days: 14
+  max_runtime_seconds: 21600
+  max_seasonal_adjust: 200
+  max_sensors: 0
+  supports_combined_state: false
+  supports_event_timestamp: true
+  supports_stacked_watering: false
+  supports_flow_sensor: true
 
 - device_id: "0010"
   code: MOCK_ESP_ME2
@@ -58,6 +124,17 @@
   max_run_times: 6
   max_stations: 22
   retries: true
+  program_based: true
+  seconds_based: false
+  max_station_pages: 0
+  max_rain_delay_days: 14
+  max_runtime_seconds: 21600
+  max_seasonal_adjust: 200
+  max_sensors: 0
+  supports_combined_state: false
+  supports_event_timestamp: false
+  supports_stacked_watering: false
+  supports_flow_sensor: false
 
 - device_id: "000a"
   code: ESP_TM2v2
@@ -66,6 +143,17 @@
   max_programs: 3
   max_run_times: 4
   max_stations: 12
+  program_based: true
+  seconds_based: false
+  max_station_pages: 0
+  max_rain_delay_days: 14
+  max_runtime_seconds: 21600
+  max_seasonal_adjust: 200
+  max_sensors: 0
+  supports_combined_state: true
+  supports_event_timestamp: true
+  supports_stacked_watering: true
+  supports_flow_sensor: false
 
 - device_id: "010a"
   code: ESP_TM2v3
@@ -74,6 +162,17 @@
   max_programs: 3
   max_run_times: 4
   max_stations: 12
+  program_based: true
+  seconds_based: false
+  max_station_pages: 0
+  max_rain_delay_days: 14
+  max_runtime_seconds: 21600
+  max_seasonal_adjust: 200
+  max_sensors: 0
+  supports_combined_state: true
+  supports_event_timestamp: true
+  supports_stacked_watering: true
+  supports_flow_sensor: false
 
 - device_id: "0099"
   code: TBOS_BT
@@ -82,6 +181,17 @@
   max_programs: 3
   max_run_times: 8
   max_stations: 8
+  program_based: true
+  seconds_based: false
+  max_station_pages: 0
+  max_rain_delay_days: 14
+  max_runtime_seconds: 21600
+  max_seasonal_adjust: 200
+  max_sensors: 0
+  supports_combined_state: false
+  supports_event_timestamp: false
+  supports_stacked_watering: false
+  supports_flow_sensor: false
 
 - device_id: "0100"
   code: TBOS_BT
@@ -90,6 +200,17 @@
   max_programs: 3
   max_run_times: 8
   max_stations: 8
+  program_based: true
+  seconds_based: false
+  max_station_pages: 0
+  max_rain_delay_days: 14
+  max_runtime_seconds: 21600
+  max_seasonal_adjust: 200
+  max_sensors: 0
+  supports_combined_state: false
+  supports_event_timestamp: false
+  supports_stacked_watering: false
+  supports_flow_sensor: false
 
 - device_id: "0107"
   code: ESP_MEv2
@@ -99,6 +220,17 @@
   max_run_times: 6
   max_stations: 22
   retries: true
+  program_based: true
+  seconds_based: false
+  max_station_pages: 0
+  max_rain_delay_days: 14
+  max_runtime_seconds: 21600
+  max_seasonal_adjust: 200
+  max_sensors: 0
+  supports_combined_state: false
+  supports_event_timestamp: false
+  supports_stacked_watering: false
+  supports_flow_sensor: false
 
 - device_id: "0103"
   code: ESP_RZXe2
@@ -107,6 +239,17 @@
   max_programs: 8
   max_run_times: 6
   max_stations: 8
+  program_based: false
+  seconds_based: false
+  max_station_pages: 0
+  max_rain_delay_days: 14
+  max_runtime_seconds: 21600
+  max_seasonal_adjust: 200
+  max_sensors: 0
+  supports_combined_state: true
+  supports_event_timestamp: true
+  supports_stacked_watering: true
+  supports_flow_sensor: false
 
 - device_id: "0812"
   code: RC2
@@ -115,6 +258,17 @@
   max_programs: 3
   max_run_times: 4
   max_stations: 8
+  program_based: true
+  seconds_based: false
+  max_station_pages: 0
+  max_rain_delay_days: 14
+  max_runtime_seconds: 21600
+  max_seasonal_adjust: 200
+  max_sensors: 0
+  supports_combined_state: false
+  supports_event_timestamp: true
+  supports_stacked_watering: false
+  supports_flow_sensor: false
 
 - device_id: "0813"
   code: ARC8
@@ -123,6 +277,17 @@
   max_programs: 3
   max_run_times: 4
   max_stations: 8
+  program_based: true
+  seconds_based: false
+  max_station_pages: 0
+  max_rain_delay_days: 14
+  max_runtime_seconds: 21600
+  max_seasonal_adjust: 200
+  max_sensors: 0
+  supports_combined_state: false
+  supports_event_timestamp: true
+  supports_stacked_watering: false
+  supports_flow_sensor: false
 
 - device_id: "0014"
   code: TM2R
@@ -131,6 +296,17 @@
   max_programs: 3
   max_run_times: 4
   max_stations: 12
+  program_based: true
+  seconds_based: false
+  max_station_pages: 0
+  max_rain_delay_days: 14
+  max_runtime_seconds: 21600
+  max_seasonal_adjust: 200
+  max_sensors: 0
+  supports_combined_state: true
+  supports_event_timestamp: true
+  supports_stacked_watering: true
+  supports_flow_sensor: false
 
 - device_id: "0015"
   code: TRU
@@ -139,6 +315,17 @@
   max_programs: 3
   max_run_times: 4
   max_stations: 12
+  program_based: true
+  seconds_based: false
+  max_station_pages: 0
+  max_rain_delay_days: 14
+  max_runtime_seconds: 21600
+  max_seasonal_adjust: 200
+  max_sensors: 0
+  supports_combined_state: true
+  supports_event_timestamp: true
+  supports_stacked_watering: true
+  supports_flow_sensor: false
 
 - device_id: "0011"
   code: ESP_2WIRE
@@ -147,6 +334,17 @@
   max_programs: 4
   max_run_times: 6
   max_stations: 50
+  program_based: true
+  seconds_based: false
+  max_station_pages: 1
+  max_rain_delay_days: 14
+  max_runtime_seconds: 21600
+  max_seasonal_adjust: 200
+  max_sensors: 0
+  supports_combined_state: false
+  supports_event_timestamp: true
+  supports_stacked_watering: false
+  supports_flow_sensor: true
 
 - device_id: "000c"
   code: LXME2
@@ -155,6 +353,17 @@
   max_programs: 40
   max_run_times: 10
   max_stations: 48
+  program_based: true
+  seconds_based: false
+  max_station_pages: 1
+  max_rain_delay_days: 30
+  max_runtime_seconds: 345600
+  max_seasonal_adjust: 300
+  max_sensors: 0
+  supports_combined_state: false
+  supports_event_timestamp: true
+  supports_stacked_watering: true
+  supports_flow_sensor: false
 
 - device_id: "000d"
   code: LX_IVM
@@ -163,6 +372,17 @@
   max_programs: 10
   max_run_times: 8
   max_stations: 60
+  program_based: true
+  seconds_based: false
+  max_station_pages: 1
+  max_rain_delay_days: 30
+  max_runtime_seconds: 345600
+  max_seasonal_adjust: 300
+  max_sensors: 3
+  supports_combined_state: false
+  supports_event_timestamp: false
+  supports_stacked_watering: true
+  supports_flow_sensor: true
 
 - device_id: "000e"
   code: LX_IVM_PRO
@@ -171,6 +391,17 @@
   max_programs: 40
   max_run_times: 8
   max_stations: 240
+  program_based: true
+  seconds_based: false
+  max_station_pages: 7
+  max_rain_delay_days: 30
+  max_runtime_seconds: 345600
+  max_seasonal_adjust: 300
+  max_sensors: 7
+  supports_combined_state: false
+  supports_event_timestamp: false
+  supports_stacked_watering: true
+  supports_flow_sensor: true
 
 - device_id: "UNKNOWN"
   code: UNKNOWN
@@ -180,3 +411,14 @@
   max_run_times: 0
   max_stations: 0
   retries: false
+  program_based: false
+  seconds_based: false
+  max_station_pages: 0
+  max_rain_delay_days: 0
+  max_runtime_seconds: 0
+  max_seasonal_adjust: 0
+  max_sensors: 0
+  supports_combined_state: false
+  supports_event_timestamp: false
+  supports_stacked_watering: false
+  supports_flow_sensor: false
