@@ -4,7 +4,13 @@ from typing import Any
 import pytest
 from parameterized import parameterized
 
-from pyrainbird.data import Feature, ModelAndVersion, ModelLimits, States
+from pyrainbird.data import (
+    Feature,
+    ModelAndVersion,
+    ModelInfo,
+    ModelLimits,
+    States,
+)
 
 
 def encode_name_func(testcase_func, param_num, param):
@@ -277,3 +283,55 @@ def test_feature_flag_and_limits_structures() -> None:
     assert Feature.EVENT_TIMESTAMP in lxme2.features
     assert Feature.FLOW_SENSOR not in lxme2.features
     assert not lxme2.is_feature_supported(Feature.FLOW_SENSOR)
+
+
+def test_model_info_from_dict_compatibility() -> None:
+    """Test ModelInfo.from_dict handles both legacy flat and direct Feature formats."""
+    # Legacy flat dictionary
+    legacy = ModelInfo.from_dict(
+        {
+            "device_id": "0009",
+            "code": "ESP_ME3",
+            "name": "ESP-ME3",
+            "max_stations": 22,
+            "max_programs": 4,
+            "max_run_times": 6,
+            "max_station_pages": 1,
+            "program_based": True,
+            "seconds_based": True,
+            "supports_water_budget": True,
+            "supports_combined_state": True,
+            "supports_event_timestamp": True,
+            "supports_stacked_watering": True,
+            "supports_flow_sensor": True,
+        }
+    )
+    assert legacy.limits.max_stations == 22
+    assert legacy.max_stations == 22
+    assert legacy.is_feature_supported(Feature.SECONDS_BASED)
+    assert legacy.is_feature_supported(Feature.COMBINED_STATE)
+
+    # Direct Feature instance
+    direct_feat = ModelInfo.from_dict(
+        {
+            "device_id": "0009",
+            "code": "ESP_ME3",
+            "name": "ESP-ME3",
+            "limits": {"max_stations": 22},
+            "features": Feature.WATER_BUDGET | Feature.FLOW_SENSOR,
+        }
+    )
+    assert direct_feat.is_feature_supported(Feature.WATER_BUDGET)
+    assert direct_feat.is_feature_supported(Feature.FLOW_SENSOR)
+
+    # List of Feature enums
+    enum_list = ModelInfo.from_dict(
+        {
+            "device_id": "0009",
+            "code": "ESP_ME3",
+            "name": "ESP-ME3",
+            "limits": {"max_stations": 22},
+            "features": [Feature.FLOW_SENSOR],
+        }
+    )
+    assert enum_list.is_feature_supported(Feature.FLOW_SENSOR)
