@@ -1,3 +1,4 @@
+---
 # pyrainbird/resources/openapi/rb2/schemas/user.yaml
 UserResponse:
   type: object

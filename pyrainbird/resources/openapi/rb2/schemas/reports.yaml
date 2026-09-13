@@ -1,3 +1,4 @@
+---
 # pyrainbird/resources/openapi/rb2/schemas/reports.yaml
 EventLogResponse:
   type: object

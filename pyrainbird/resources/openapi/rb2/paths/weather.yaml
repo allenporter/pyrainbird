@@ -1,3 +1,4 @@
+---
 # pyrainbird/resources/openapi/rb2/paths/weather.yaml
 /WeatherData/Forecast:
   get:

@@ -67,7 +67,9 @@ def _bundle_refs(
                     cache[target_file] = yaml.safe_load(f)
 
             target_data = cache[target_file]
-            target_sub = _get_by_pointer(target_data, fragment) if fragment else target_data
+            target_sub = (
+                _get_by_pointer(target_data, fragment) if fragment else target_data
+            )
             resolved = copy.deepcopy(target_sub)
             return _bundle_refs(resolved, target_file, cache, seen)
 

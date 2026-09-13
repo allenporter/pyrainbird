@@ -1,3 +1,4 @@
+---
 # pyrainbird/resources/openapi/legacy/schemas/models.yaml
 LandscapeInfoResponse:
   type: object

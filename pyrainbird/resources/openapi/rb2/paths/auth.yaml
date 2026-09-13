@@ -1,3 +1,4 @@
+---
 # pyrainbird/resources/openapi/rb2/paths/auth.yaml
 /.well-known/openid-configuration:
   get:
@@ -282,4 +283,3 @@
         description: Logout confirmation page.
       '302':
         description: Redirected to post_logout_redirect_uri.
-

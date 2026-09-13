@@ -1,3 +1,4 @@
+---
 # pyrainbird/resources/openapi/rb2/schemas/sites.yaml
 SiteResponse:
   type: object

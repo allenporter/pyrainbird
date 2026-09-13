@@ -1,3 +1,4 @@
+---
 # pyrainbird/resources/openapi/legacy/paths/programs.yaml
 /Program/GetPrograms:
   get:

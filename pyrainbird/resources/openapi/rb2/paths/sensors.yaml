@@ -1,3 +1,4 @@
+---
 # pyrainbird/resources/openapi/rb2/paths/sensors.yaml
 /Sensor/GetSensors:
   get:

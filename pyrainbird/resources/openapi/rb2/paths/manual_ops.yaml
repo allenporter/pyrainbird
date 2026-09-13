@@ -1,3 +1,4 @@
+---
 # pyrainbird/resources/openapi/rb2/paths/manual_ops.yaml
 /ManualOps/StartStations:
   post:

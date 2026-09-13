@@ -39,7 +39,9 @@ def test_load_rb2_bundled_spec() -> None:
     assert "/ManualOps/StartStations" in paths
     start_stations_post = paths["/ManualOps/StartStations"]["post"]
     assert "requestBody" in start_stations_post
-    body_schema = start_stations_post["requestBody"]["content"]["application/json"]["schema"]
+    body_schema = start_stations_post["requestBody"]["content"]["application/json"][
+        "schema"
+    ]
     assert "stationIds" in body_schema["properties"]
     assert "seconds" in body_schema["properties"]
 
@@ -116,7 +118,9 @@ def test_rb2_auth_and_oauth_endpoints() -> None:
     # Account Login
     assert "/Account/Login" in paths
     login_post = paths["/Account/Login"]["post"]
-    login_req = login_post["requestBody"]["content"]["application/x-www-form-urlencoded"]["schema"]
+    login_req = login_post["requestBody"]["content"][
+        "application/x-www-form-urlencoded"
+    ]["schema"]
     assert "Username" in login_req["properties"]
     assert "Password" in login_req["properties"]
     assert "__RequestVerificationToken" in login_req["properties"]
@@ -136,7 +140,9 @@ def test_rb2_auth_and_oauth_endpoints() -> None:
     # Connect Token
     assert "/connect/token" in paths
     token_post = paths["/connect/token"]["post"]
-    token_req = token_post["requestBody"]["content"]["application/x-www-form-urlencoded"]["schema"]
+    token_req = token_post["requestBody"]["content"][
+        "application/x-www-form-urlencoded"
+    ]["schema"]
     assert "grant_type" in token_req["properties"]
     assert "client_id" in token_req["properties"]
     assert "client_secret" in token_req["properties"]
@@ -146,12 +152,12 @@ def test_rb2_auth_and_oauth_endpoints() -> None:
 
     # Connect UserInfo, Revocation, Introspection & EndSession
     assert "/connect/userinfo" in paths
-    userinfo_schema = paths["/connect/userinfo"]["get"]["responses"]["200"]["content"]["application/json"]["schema"]
+    userinfo_schema = paths["/connect/userinfo"]["get"]["responses"]["200"]["content"][
+        "application/json"
+    ]["schema"]
     assert "company_id" in userinfo_schema["properties"]
     assert "user_id" in userinfo_schema["properties"]
 
     assert "/connect/revocation" in paths
     assert "/connect/introspect" in paths
     assert "/connect/endsession" in paths
-
-

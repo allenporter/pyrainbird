@@ -1,3 +1,4 @@
+---
 # pyrainbird/resources/openapi/rb2/paths/satellites.yaml
 /Satellite/GetSatelliteList:
   get:

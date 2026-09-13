@@ -1,3 +1,4 @@
+---
 # pyrainbird/resources/openapi/rb2/schemas/satellites.yaml
 ModuleResponse:
   type: object

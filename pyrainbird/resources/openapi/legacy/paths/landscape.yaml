@@ -1,3 +1,4 @@
+---
 # pyrainbird/resources/openapi/legacy/paths/landscape.yaml
 /LandscapeInfo/GetLandscapeInfo:
   get:
