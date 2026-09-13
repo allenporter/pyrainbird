@@ -1,0 +1,102 @@
+---
+# pyrainbird/resources/openapi/rb2/paths/sensors.yaml
+/Sensor/GetSensors:
+  get:
+    tags: [Sensors & Flow]
+    summary: List sensors for satellite
+    parameters:
+      - name: satelliteId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+    responses:
+      '200':
+        description: List of sensors.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: ../schemas/sensors.yaml#/SensorListResponse
+
+/Sensor/GetSensor:
+  get:
+    tags: [Sensors & Flow]
+    summary: Get detailed sensor settings
+    parameters:
+      - name: sensorId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+    responses:
+      '200':
+        description: Sensor details.
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/sensors.yaml#/SensorResponse
+
+/Sensor/GetFlowSensorModels:
+  get:
+    tags: [Sensors & Flow]
+    summary: List supported flow sensor hardware models
+    parameters:
+      - name: controllerType
+        in: query
+        required: false
+        schema:
+          type: integer
+    responses:
+      '200':
+        description: Flow sensor models.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: ../schemas/sensors.yaml#/FlowSensorModelResponse
+
+/Sensor/UpdateBatches:
+  patch:
+    tags: [Sensors & Flow]
+    summary: Update sensor settings via JSON Patch
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/common.yaml#/UpdateBatchRequest
+    responses:
+      '200':
+        description: Sensor updated.
+
+/FlowElement/GetFlowElements:
+  get:
+    tags: [Sensors & Flow]
+    summary: Get flow elements/zones for satellite
+    parameters:
+      - name: satelliteId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: includeHiddenFlowZones
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+    responses:
+      '200':
+        description: List of flow elements.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: ../schemas/sensors.yaml#/FlowZoneResponse

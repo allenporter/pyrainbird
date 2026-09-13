@@ -1,0 +1,73 @@
+---
+# pyrainbird/resources/openapi/rb2/schemas/reports.yaml
+EventLogResponse:
+  type: object
+  properties:
+    id:
+      type: integer
+      format: int64
+    satelliteId:
+      type: integer
+      format: int64
+    eventCode:
+      type: integer
+      description: Event identifier (e.g. 97=Station On, 98=Station Off, 15000=Irrigation Completed).
+    eventTimestamp:
+      type: string
+      format: date-time
+    eventParameter1:
+      type: integer
+      description: Context parameter (e.g. station number).
+    eventParameter2:
+      type: integer
+    message:
+      type: string
+    isAcknowledged:
+      type: boolean
+
+StationRunTimeReportResponse:
+  type: object
+  properties:
+    satelliteId:
+      type: integer
+      format: int64
+    totalRunTimeMinutes:
+      type: integer
+    stationRuntimes:
+      type: array
+      items:
+        type: object
+        properties:
+          stationId:
+            type: integer
+            format: int64
+          runTimeMinutes:
+            type: integer
+
+FlowHistoryResponse:
+  type: object
+  properties:
+    satelliteId:
+      type: integer
+      format: int64
+    month:
+      type: integer
+    year:
+      type: integer
+    totalGallons:
+      type: number
+      format: float
+
+YearlyWaterConsumptionReportResponse:
+  type: object
+  properties:
+    satelliteId:
+      type: integer
+      format: int64
+    year:
+      type: integer
+    monthlyConsumption:
+      type: array
+      items:
+        type: number
+        format: float

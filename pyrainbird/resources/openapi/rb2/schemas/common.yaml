@@ -1,0 +1,184 @@
+---
+# pyrainbird/resources/openapi/rb2/schemas/common.yaml
+ErrorResponse:
+  type: object
+  properties:
+    message:
+      type: string
+      description: Error message describing the failure.
+    statusCode:
+      type: integer
+      description: HTTP status code.
+    error:
+      type: string
+      description: Detailed error classification or exception name.
+
+EmptySuccessResponse:
+  type: object
+  description: Successful operation with empty response body.
+
+PresignedPostResponse:
+  type: object
+  properties:
+    url:
+      type: string
+      format: uri
+      description: S3/Cloud storage presigned upload URL.
+    fields:
+      type: object
+      additionalProperties:
+        type: string
+      description: Form fields to include in multipart/form-data upload.
+
+TimeZoneResponse:
+  type: object
+  properties:
+    id:
+      type: string
+      description: Timezone identifier (e.g. America/Los_Angeles).
+    displayName:
+      type: string
+      description: Human-readable timezone name.
+    baseUtcOffset:
+      type: string
+      description: Base offset from UTC in ISO-8601 duration or HH:MM:SS format.
+    supportsDaylightSavingTime:
+      type: boolean
+      description: Whether the timezone observes daylight saving time.
+
+PatchPath:
+  type: string
+  description: Supported JSON Patch RFC 6902 paths for Rain Bird controllers and communication devices.
+  enum:
+    - /name
+    - /programId
+    - /programName
+    - /programAdjust
+    - /useProgramAdjust
+    - /etAdjustType
+    - /applySeasonalAdjustByMonth
+    - /tempAdjustDays
+    - /type
+    - /hybridWeekDays
+    - /weekDays
+    - /skipDays
+    - /nextCyclicalStartDate
+    - /daysRemaining
+    - /soakTimeLong
+    - /cycleTimeLong
+    - /siteIds
+    - /controllerIds
+    - /flowSensorModel
+    - /localWeatherSensorTypeId
+    - /weatherSensorModel
+    - /settlingTime
+    - /kfactor
+    - /offset
+    - /flowMonitoring
+    - /rainDelayLong
+    - /rainDelayStart
+    - /postalCode
+    - /zip
+    - /timeZone
+    - /countryCode
+    - /address
+    - /state
+    - /city
+    - /country
+    - /latitude
+    - /longitude
+    - /locationDisplayName
+    - /geocodedCity
+    - /geocodedState
+    - /baseRunTime
+    - /isLocked
+    - /dateTime
+    - /enabled
+    - /defaultWeatherSourceId
+    - /weatherSourceId
+    - /logicalDialPos
+    - /flowRate
+    - /flowRateLearned
+    - /add
+    - /delete
+    - /useForecast
+    - /forecastPercentLimit
+    - /forecastInchesLimit
+    - /forecastedFreezeDelayEnabled
+    - /forecastedFreezeDelayTempThresholdF
+    - /forecastedFreezeDelayTempThresholdC
+    - /forecastedWindDelayEnabled
+    - /forecastedWindDelaySpeedThresholdMph
+    - /forecastedWindDelaySpeedThresholdKph
+    - /forecastDelayDays
+    - /sensorIds
+    - /simultaneousStations
+    - /excessAddresses
+    - /nonIrrigationSimultaneousStations
+    - /stationDelayLong
+    - /interStationDelay
+    - /restrictionStart
+    - /restrictionEnd
+    - /priority
+    - /mvDelayLong
+    - /flowZoneId
+    - /valveType
+    - /pumpId
+    - /flowMonitoringId
+    - /maxFlowRate
+    - /wateringStartTimeLocal
+    - /wateringEndTimeLocal
+    - /stationSequencing
+    - /floManagerEnabled
+    - /flowZone/flowRate
+    - /addressInt
+    - /onOffState
+    - /bypassGlobalSensor
+    - /eventDayOff
+    - /isAlexaTarget
+    - /hasFlowAlarm
+    - /pipeDiameter
+    - /seasonalAdjustType
+    - /satelliteSeasonalAdjust
+    - /description
+    - /pumpIds
+    - /seasonalAdjust
+    - /scheduleColor
+    - /proFlowIds
+    - /batteryInstallDateUtc
+
+PatchOperation:
+  type: object
+  required:
+    - op
+    - path
+  properties:
+    op:
+      type: string
+      enum: [add, remove, replace, move, copy, test]
+      description: The operation to perform according to RFC 6902.
+    path:
+      $ref: "#/PatchPath"
+    value:
+      description: The value to apply for the given path.
+    id:
+      type: integer
+      format: int64
+      description: Optional entity ID targeted within batch operation.
+
+UpdateBatchRequest:
+  type: object
+  required:
+    - patch
+  properties:
+    ids:
+      type: array
+      items:
+        type: integer
+        format: int64
+      description: Target entity IDs (e.g. satelliteId, programId, stationId).
+    patch:
+      type: array
+      items:
+        $ref: "#/PatchOperation"
+      description: Array of JSON patch operations to apply.

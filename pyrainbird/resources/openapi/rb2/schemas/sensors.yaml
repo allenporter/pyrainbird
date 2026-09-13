@@ -1,0 +1,109 @@
+---
+# pyrainbird/resources/openapi/rb2/schemas/sensors.yaml
+SensorListResponse:
+  type: object
+  properties:
+    id:
+      type: integer
+      format: int64
+    name:
+      type: string
+    satelliteId:
+      type: integer
+      format: int64
+    type:
+      type: integer
+      description: Sensor type (e.g. rain, wind, freeze, soil moisture, flow).
+    isActive:
+      type: boolean
+    state:
+      type: integer
+
+SensorResponse:
+  type: object
+  properties:
+    id:
+      type: integer
+      format: int64
+    name:
+      type: string
+    satelliteId:
+      type: integer
+      format: int64
+    type:
+      type: integer
+    model:
+      type: string
+    kFactor:
+      type: number
+      format: float
+    offset:
+      type: number
+      format: float
+    settlingTime:
+      type: integer
+
+FlowZoneResponse:
+  type: object
+  properties:
+    id:
+      type: integer
+      format: int64
+    name:
+      type: string
+    satelliteId:
+      type: integer
+      format: int64
+    flowRate:
+      type: number
+      format: float
+    highFlowLimit:
+      type: number
+      format: float
+    lowFlowLimit:
+      type: number
+      format: float
+
+FlowSensorModelResponse:
+  type: object
+  properties:
+    id:
+      type: integer
+      format: int64
+    modelName:
+      type: string
+    kFactor:
+      type: number
+      format: float
+    offset:
+      type: number
+      format: float
+    pipeDiameter:
+      type: string
+
+FlowMonitoringResponse:
+  type: object
+  properties:
+    id:
+      type: integer
+      format: int64
+    satelliteId:
+      type: integer
+      format: int64
+    floManagerEnabled:
+      type: boolean
+    floWatchEnabled:
+      type: boolean
+    maxFlowRate:
+      type: number
+      format: float
+
+FloWatchActionTypeResponse:
+  type: object
+  properties:
+    id:
+      type: integer
+    actionName:
+      type: string
+    description:
+      type: string

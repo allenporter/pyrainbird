@@ -1,0 +1,79 @@
+---
+# pyrainbird/resources/openapi/legacy/paths/sites.yaml
+/Site/GetSite:
+  get:
+    tags: [Sites]
+    summary: Get site
+    parameters:
+      - name: siteId
+        in: query
+        required: true
+        schema:
+          type: integer
+    responses:
+      '200':
+        description: Site details.
+        content:
+          application/json:
+            schema:
+              $ref: ../../rb2/schemas/sites.yaml#/SiteResponse
+
+/Site/GetNextDefaultName:
+  get:
+    tags: [Sites]
+    summary: Get next default site name
+    responses:
+      '200':
+        description: Next default name.
+        content:
+          application/json:
+            schema:
+              $ref: ../../rb2/schemas/sites.yaml#/NextDefaultNameResponse
+
+/Site/CreateSite:
+  post:
+    tags: [Sites]
+    summary: Create site
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../../rb2/schemas/sites.yaml#/CreateSiteRequest
+    responses:
+      '200':
+        description: Site created.
+        content:
+          application/json:
+            schema:
+              $ref: ../../rb2/schemas/sites.yaml#/CreateSiteResponse
+
+/Site/UpdateBatches:
+  patch:
+    tags: [Sites]
+    summary: Update site batch
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/models.yaml#/LegacyPayloadRequest
+    responses:
+      '200':
+        description: Updated.
+
+/Site/DeleteSites_V2:
+  delete:
+    tags: [Sites]
+    summary: Delete sites
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: integer
+    responses:
+      '200':
+        description: Deleted.

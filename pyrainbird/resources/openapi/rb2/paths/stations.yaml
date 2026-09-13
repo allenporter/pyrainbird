@@ -1,0 +1,136 @@
+---
+# pyrainbird/resources/openapi/rb2/paths/stations.yaml
+/Station/GetStationListForSatellite:
+  get:
+    tags: [Stations]
+    summary: List stations for satellite
+    description: Retrieves configuration, active state, and cycle & soak parameters for stations on a controller.
+    parameters:
+      - name: satelliteId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+    responses:
+      '200':
+        description: List of stations.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: ../schemas/stations.yaml#/StationResponse
+
+/Station/GetMasterValves:
+  get:
+    tags: [Stations]
+    summary: Get master valve stations
+    parameters:
+      - name: satelliteId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+    responses:
+      '200':
+        description: List of master valve stations.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: ../schemas/stations.yaml#/StationResponse
+
+/Station/{stationId}/presignedPOST:
+  get:
+    tags: [Stations]
+    summary: Get presigned image upload URL for station
+    parameters:
+      - name: stationId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    responses:
+      '200':
+        description: Upload policy.
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/common.yaml#/PresignedPostResponse
+
+/Station/{stationId}/appimage:
+  delete:
+    tags: [Stations]
+    summary: Delete station image
+    parameters:
+      - name: stationId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    responses:
+      '200':
+        description: Station image deleted.
+
+/Station/UpdateMultipleBatches:
+  patch:
+    tags: [Stations]
+    summary: Batch update multiple stations
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: ../schemas/common.yaml#/UpdateBatchRequest
+    responses:
+      '200':
+        description: Stations updated successfully.
+
+/StationPump/GetStationPumps:
+  get:
+    tags: [Stations]
+    summary: Get pump assignments for station
+    parameters:
+      - name: stationId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+    responses:
+      '200':
+        description: List of pump associations.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: ../schemas/stations.yaml#/StationPumpResponse
+
+/StationSensor/GetStationSensors:
+  get:
+    tags: [Stations]
+    summary: Get sensor bindings for station
+    parameters:
+      - name: stationId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+    responses:
+      '200':
+        description: List of sensor bindings.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: ../schemas/stations.yaml#/StationSensorResponse

@@ -1,0 +1,256 @@
+---
+# pyrainbird/resources/openapi/rb2/schemas/auth.yaml
+OidcConfigurationResponse:
+  type: object
+  description: OpenID Connect discovery document containing authorization authority endpoints.
+  properties:
+    issuer:
+      type: string
+      format: uri
+    authorization_endpoint:
+      type: string
+      format: uri
+    token_endpoint:
+      type: string
+      format: uri
+    userinfo_endpoint:
+      type: string
+      format: uri
+    end_session_endpoint:
+      type: string
+      format: uri
+    check_session_iframe:
+      type: string
+      format: uri
+    revocation_endpoint:
+      type: string
+      format: uri
+    introspection_endpoint:
+      type: string
+      format: uri
+    device_authorization_endpoint:
+      type: string
+      format: uri
+    backchannel_authentication_endpoint:
+      type: string
+      format: uri
+    pushed_authorization_request_endpoint:
+      type: string
+      format: uri
+    jwks_uri:
+      type: string
+      format: uri
+    grant_types_supported:
+      type: array
+      items:
+        type: string
+    response_types_supported:
+      type: array
+      items:
+        type: string
+    response_modes_supported:
+      type: array
+      items:
+        type: string
+    scopes_supported:
+      type: array
+      items:
+        type: string
+    claims_supported:
+      type: array
+      items:
+        type: string
+    code_challenge_methods_supported:
+      type: array
+      items:
+        type: string
+    token_endpoint_auth_methods_supported:
+      type: array
+      items:
+        type: string
+    id_token_signing_alg_values_supported:
+      type: array
+      items:
+        type: string
+    prompt_values_supported:
+      type: array
+      items:
+        type: string
+    GetResetPasswordCode:
+      type: string
+      format: uri
+    add_client_endpoint:
+      type: string
+      format: uri
+    remove_client_endpoint:
+      type: string
+      format: uri
+
+LoginCredentialsRequest:
+  type: object
+  required:
+    - Username
+    - Password
+    - ReturnUrl
+    - __RequestVerificationToken
+  properties:
+    Username:
+      type: string
+      description: Rain Bird user account email.
+    Password:
+      type: string
+      format: password
+      description: Rain Bird user account password.
+    ReturnUrl:
+      type: string
+      description: Return callback path and query string passed in the authorization initiation.
+    __RequestVerificationToken:
+      type: string
+      description: Anti-forgery CSRF token extracted from the login page form.
+
+OAuthTokenRequest:
+  type: object
+  required:
+    - grant_type
+    - client_id
+  properties:
+    grant_type:
+      type: string
+      enum: [authorization_code, refresh_token, client_credentials, password]
+      description: OAuth 2.0 grant type. The communication device client primarily uses `authorization_code` and `refresh_token`.
+    client_id:
+      type: string
+      example: "00000000-0000-0000-0000-000000000000"
+      description: >
+        OAuth 2.0 client identifier UUID assigned to the application.
+    client_secret:
+      type: string
+      example: "00000000-0000-0000-0000-000000000000"
+      description: >
+        Client secret for confidential client authentication if required by the client registration.
+    code:
+      type: string
+      description: Authorization code returned from the `/connect/authorize` endpoint.
+    code_verifier:
+      type: string
+      description: PKCE code verifier matching the code_challenge sent during the authorization request.
+    redirect_uri:
+      type: string
+      format: uri
+      default: "com.rainbird.auth://authredirect"
+      description: >
+        Redirect callback URI. The communication device protocol registers `com.rainbird.auth://authredirect`.
+        Note: documentation citing `https://iq4.rainbird.com/auth.html` is specific to the web portal.
+    refresh_token:
+      type: string
+      description: Refresh token when using `grant_type=refresh_token`.
+    scope:
+      type: string
+      default: "openid coreAPI.read coreAPI.write profile offline_access"
+      description: >
+        Requested OAuth scopes. Crucially includes `offline_access` to receive a refresh token.
+
+OAuthTokenResponse:
+  type: object
+  properties:
+    access_token:
+      type: string
+      description: JSON Web Token (JWT) access token for API authorization.
+    token_type:
+      type: string
+      example: Bearer
+    expires_in:
+      type: integer
+      description: Token lifetime in seconds.
+    refresh_token:
+      type: string
+      description: Optional refresh token.
+    id_token:
+      type: string
+      description: OpenID Connect identity token.
+    scope:
+      type: string
+      description: Granted scopes.
+
+UserInfoResponse:
+  type: object
+  description: User identity claims from the OIDC UserInfo endpoint.
+  properties:
+    sub:
+      type: string
+      description: Subject unique identifier.
+    name:
+      type: string
+    given_name:
+      type: string
+    family_name:
+      type: string
+    email:
+      type: string
+      format: email
+    email_verified:
+      type: boolean
+    preferred_username:
+      type: string
+    role:
+      type: string
+    company_id:
+      type: string
+      description: Rain Bird company organization ID claim.
+    user_id:
+      type: string
+      description: Rain Bird user profile ID claim.
+    group_level:
+      type: string
+      description: User authorization group level.
+    culture_id:
+      type: string
+      description: User localization / language culture claim (e.g. en-US).
+
+TokenRevocationRequest:
+  type: object
+  required:
+    - token
+  properties:
+    token:
+      type: string
+      description: Access or refresh token to revoke.
+    token_type_hint:
+      type: string
+      enum: [access_token, refresh_token]
+
+TokenIntrospectionRequest:
+  type: object
+  required:
+    - token
+  properties:
+    token:
+      type: string
+      description: The token to query.
+    token_type_hint:
+      type: string
+      enum: [access_token, refresh_token]
+
+TokenIntrospectionResponse:
+  type: object
+  required:
+    - active
+  properties:
+    active:
+      type: boolean
+      description: Boolean indicator of whether or not the presented token is currently active.
+    scope:
+      type: string
+      description: Space-separated list of scopes for this token.
+    client_id:
+      type: string
+      description: Client ID that requested the token.
+    sub:
+      type: string
+      description: Subject identifier for the user.
+    exp:
+      type: integer
+      description: Expiration timestamp in seconds since epoch.
+    iat:
+      type: integer
+      description: Issuance timestamp in seconds since epoch.

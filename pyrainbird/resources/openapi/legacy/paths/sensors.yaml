@@ -1,0 +1,99 @@
+---
+# pyrainbird/resources/openapi/legacy/paths/sensors.yaml
+/Sensor/GetSensors:
+  get:
+    tags: [Sensors & Flow]
+    summary: List sensors
+    parameters:
+      - name: satelliteId
+        in: query
+        required: true
+        schema:
+          type: integer
+    responses:
+      '200':
+        description: Sensors list.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: ../../rb2/schemas/sensors.yaml#/SensorListResponse
+
+/Sensor/GetSensor:
+  get:
+    tags: [Sensors & Flow]
+    summary: Get sensor
+    parameters:
+      - name: sensorId
+        in: query
+        required: true
+        schema:
+          type: integer
+    responses:
+      '200':
+        description: Sensor details.
+        content:
+          application/json:
+            schema:
+              $ref: ../../rb2/schemas/sensors.yaml#/SensorResponse
+
+/Sensor/GetFlowSensorModels:
+  get:
+    tags: [Sensors & Flow]
+    summary: Get flow sensor models
+    responses:
+      '200':
+        description: Models list.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: ../../rb2/schemas/sensors.yaml#/FlowSensorModelResponse
+
+/Sensor/UpdateBatches:
+  patch:
+    tags: [Sensors & Flow]
+    summary: Update sensor batch
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/models.yaml#/LegacyPayloadRequest
+    responses:
+      '200':
+        description: Updated.
+
+/FlowMonitoring/GetFlowMonitoringBySatelliteId:
+  get:
+    tags: [Sensors & Flow]
+    summary: Get flow monitoring config
+    parameters:
+      - name: satelliteId
+        in: query
+        required: true
+        schema:
+          type: integer
+    responses:
+      '200':
+        description: Flow monitoring config.
+        content:
+          application/json:
+            schema:
+              $ref: ../../rb2/schemas/sensors.yaml#/FlowMonitoringResponse
+
+/FlowMonitoring/GetFloWatchActionTypes:
+  get:
+    tags: [Sensors & Flow]
+    summary: Get FloWatch action types
+    responses:
+      '200':
+        description: List of action types.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: ../../rb2/schemas/sensors.yaml#/FloWatchActionTypeResponse

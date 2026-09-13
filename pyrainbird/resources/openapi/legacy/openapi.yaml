@@ -1,0 +1,140 @@
+---
+openapi: 3.1.0
+info:
+  title: Rain Bird Legacy Communication Service API
+  description: >
+    OpenAPI 3.1 specification of the legacy Rain Bird Cloud APIService
+    for communication devices and irrigation controllers.
+  version: 1.0.0
+  contact:
+    name: pyrainbird Developers
+    url: https://github.com/allenporter/pyrainbird
+servers:
+  - url: https://iq4server.rainbird.com/coreapi/api
+    description: Production Rain Bird Cloud API Gateway
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: Satellites
+  - name: Stations
+  - name: Programs
+  - name: Manual Operations
+  - name: Sensors & Flow
+  - name: Sites
+  - name: Weather
+  - name: Landscape
+  - name: Utility
+
+paths:
+  # Landscape
+  /LandscapeInfo/GetLandscapeInfo:
+    $ref: './paths/landscape.yaml#/~1LandscapeInfo~1GetLandscapeInfo'
+  /LandscapeInfo/CreateLandscapeInfo:
+    $ref: './paths/landscape.yaml#/~1LandscapeInfo~1CreateLandscapeInfo'
+  /LandscapeInfo/UpdateLandscapeInfo:
+    $ref: './paths/landscape.yaml#/~1LandscapeInfo~1UpdateLandscapeInfo'
+
+  # Manual Operations
+  /ManualOps/StartStations:
+    $ref: './paths/manual_ops.yaml#/~1ManualOps~1StartStations'
+  /ManualOps/AdvanceStations:
+    $ref: './paths/manual_ops.yaml#/~1ManualOps~1AdvanceStations'
+  /ManualOps/StartPrograms:
+    $ref: './paths/manual_ops.yaml#/~1ManualOps~1StartPrograms'
+  /ManualOps/OverrideDial:
+    $ref: './paths/manual_ops.yaml#/~1ManualOps~1OverrideDial'
+  /ManualOps/InitiateLearnedFlow:
+    $ref: './paths/manual_ops.yaml#/~1ManualOps~1InitiateLearnedFlow'
+  /ManualOps/CancelLearnedFlow:
+    $ref: './paths/manual_ops.yaml#/~1ManualOps~1CancelLearnedFlow'
+
+  # Satellites
+  /Satellite/GetSatelliteList:
+    $ref: './paths/satellites.yaml#/~1Satellite~1GetSatelliteList'
+  /Satellite/GetSatellite:
+    $ref: './paths/satellites.yaml#/~1Satellite~1GetSatellite'
+  /Satellite/CreateSatellite:
+    $ref: './paths/satellites.yaml#/~1Satellite~1CreateSatellite'
+  /Satellite/ReverseSynchronize:
+    $ref: './paths/satellites.yaml#/~1Satellite~1ReverseSynchronize'
+  /Satellite/StopAllIrrigation:
+    $ref: './paths/satellites.yaml#/~1Satellite~1StopAllIrrigation'
+  /Satellite/UpdateBatches:
+    $ref: './paths/satellites.yaml#/~1Satellite~1UpdateBatches'
+  /Satellite/v2/UpdateBatches:
+    $ref: './paths/satellites.yaml#/~1Satellite~1v2~1UpdateBatches'
+  /Satellite/DeleteSatellites:
+    $ref: './paths/satellites.yaml#/~1Satellite~1DeleteSatellites'
+
+  # Stations
+  /Station/GetStationListForSatellite:
+    $ref: './paths/stations.yaml#/~1Station~1GetStationListForSatellite'
+  /Station/GetStationsNotInProgram:
+    $ref: './paths/stations.yaml#/~1Station~1GetStationsNotInProgram'
+  /Station/V3/UpdateBatches:
+    $ref: './paths/stations.yaml#/~1Station~1V3~1UpdateBatches'
+
+  # Programs
+  /Program/GetPrograms:
+    $ref: './paths/programs.yaml#/~1Program~1GetPrograms'
+  /Program/UpdateBatches:
+    $ref: './paths/programs.yaml#/~1Program~1UpdateBatches'
+  /ProgramStep/GetProgramSteps:
+    $ref: './paths/programs.yaml#/~1ProgramStep~1GetProgramSteps'
+  /ProgramStep/CreateProgramSteps:
+    $ref: './paths/programs.yaml#/~1ProgramStep~1CreateProgramSteps'
+  /ProgramStep/V3/UpdateBatches:
+    $ref: './paths/programs.yaml#/~1ProgramStep~1V3~1UpdateBatches'
+  /StartTime/GetStartTimes:
+    $ref: './paths/programs.yaml#/~1StartTime~1GetStartTimes'
+  /StartTime/v2/UpdateBatches:
+    $ref: './paths/programs.yaml#/~1StartTime~1v2~1UpdateBatches'
+
+  # Sensors & Flow
+  /Sensor/GetSensors:
+    $ref: './paths/sensors.yaml#/~1Sensor~1GetSensors'
+  /Sensor/GetSensor:
+    $ref: './paths/sensors.yaml#/~1Sensor~1GetSensor'
+  /Sensor/GetFlowSensorModels:
+    $ref: './paths/sensors.yaml#/~1Sensor~1GetFlowSensorModels'
+  /Sensor/UpdateBatches:
+    $ref: './paths/sensors.yaml#/~1Sensor~1UpdateBatches'
+  /FlowMonitoring/GetFlowMonitoringBySatelliteId:
+    $ref: './paths/sensors.yaml#/~1FlowMonitoring~1GetFlowMonitoringBySatelliteId'
+  /FlowMonitoring/GetFloWatchActionTypes:
+    $ref: './paths/sensors.yaml#/~1FlowMonitoring~1GetFloWatchActionTypes'
+
+  # Sites
+  /Site/GetSite:
+    $ref: './paths/sites.yaml#/~1Site~1GetSite'
+  /Site/GetNextDefaultName:
+    $ref: './paths/sites.yaml#/~1Site~1GetNextDefaultName'
+  /Site/CreateSite:
+    $ref: './paths/sites.yaml#/~1Site~1CreateSite'
+  /Site/UpdateBatches:
+    $ref: './paths/sites.yaml#/~1Site~1UpdateBatches'
+  /Site/DeleteSites_V2:
+    $ref: './paths/sites.yaml#/~1Site~1DeleteSites_V2'
+
+  # Weather & Utility
+  /WeatherData/Forecast:
+    $ref: './paths/weather.yaml#/~1WeatherData~1Forecast'
+  /WeatherData/ET:
+    $ref: './paths/weather.yaml#/~1WeatherData~1ET'
+  /WeatherSource/CreateWeatherSource:
+    $ref: './paths/weather.yaml#/~1WeatherSource~1CreateWeatherSource'
+  /WeatherSource/v2/Update:
+    $ref: './paths/weather.yaml#/~1WeatherSource~1v2~1Update'
+  /WeatherSource/DeleteWeatherSource:
+    $ref: './paths/weather.yaml#/~1WeatherSource~1DeleteWeatherSource'
+  /Utility/Timezones:
+    $ref: './paths/weather.yaml#/~1Utility~1Timezones'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

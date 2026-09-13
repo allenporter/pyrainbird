@@ -1,0 +1,113 @@
+---
+# pyrainbird/resources/openapi/rb2/paths/weather.yaml
+/WeatherData/Forecast:
+  get:
+    tags: [Weather]
+    summary: Get weather forecast data
+    parameters:
+      - name: location
+        in: query
+        required: true
+        schema:
+          type: string
+        description: Location string (e.g. zip or coordinates).
+      - name: type
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 26
+    responses:
+      '200':
+        description: Weather forecast data.
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/weather.yaml#/WeatherForecastResponse
+
+/WeatherData/GetMonthlyAverages:
+  get:
+    tags: [Weather]
+    summary: Get monthly ET averages for weather source
+    parameters:
+      - name: weatherSourceId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+    responses:
+      '200':
+        description: Monthly averages.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: ../schemas/weather.yaml#/MonthlySeasonalAdjustAverageResponse
+
+/WeatherSource/GetWeatherSources:
+  get:
+    tags: [Weather]
+    summary: List weather sources
+    responses:
+      '200':
+        description: List of weather sources.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: ../schemas/weather.yaml#/WeatherSourceResponse
+
+/WeatherSource/GetWeatherSource:
+  get:
+    tags: [Weather]
+    summary: Get weather source details
+    parameters:
+      - name: weatherSourceId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+    responses:
+      '200':
+        description: Weather source details.
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/weather.yaml#/WeatherSourceResponse
+
+/WeatherSource/CreateWeatherSource:
+  post:
+    tags: [Weather]
+    summary: Create weather source
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/weather.yaml#/CreateWeatherSourceRequest
+    responses:
+      '200':
+        description: Weather source created.
+
+/WeatherSource/DeleteWeatherSource:
+  delete:
+    tags: [Weather]
+    summary: Delete weather sources
+    parameters:
+      - name: weatherSourceIds
+        in: query
+        required: true
+        schema:
+          type: array
+          items:
+            type: integer
+            format: int64
+        style: form
+        explode: true
+    responses:
+      '200':
+        description: Weather sources deleted.

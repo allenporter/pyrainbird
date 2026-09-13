@@ -1,0 +1,35 @@
+---
+# pyrainbird/resources/openapi/rb2/schemas/manual_ops.yaml
+StartStationRequest:
+  type: object
+  required:
+    - stationIds
+    - seconds
+  properties:
+    stationIds:
+      type: array
+      items:
+        type: integer
+        format: int64
+      description: List of station IDs to activate.
+    seconds:
+      type: array
+      items:
+        type: integer
+      description: Run durations in seconds corresponding to each station ID.
+
+ScanStationsRequest:
+  type: object
+  required:
+    - startAddress
+    - endAddress
+  properties:
+    startAddress:
+      type: integer
+      description: 2-Wire decoder start address to scan.
+    endAddress:
+      type: integer
+      description: 2-Wire decoder end address to scan.
+    wirepath:
+      type: integer
+      description: Wire path index (0 for default).

@@ -1,0 +1,281 @@
+---
+# pyrainbird/resources/openapi/rb2/schemas/satellites.yaml
+ModuleResponse:
+  type: object
+  properties:
+    id:
+      type: integer
+      format: int64
+    moduleType:
+      type: integer
+    modelId:
+      type: integer
+    stationCount:
+      type: integer
+
+SatelliteListResponse:
+  type: object
+  properties:
+    id:
+      type: integer
+      format: int64
+      description: Unique identifier of the satellite/controller.
+    name:
+      type: string
+      description: Name of the controller.
+    type:
+      type: integer
+      description: Controller model hardware type code.
+    siteId:
+      type: integer
+      format: int64
+      description: ID of the site the controller belongs to.
+    siteName:
+      type: string
+      description: Name of the associated site.
+    companyId:
+      type: integer
+      format: int64
+      description: ID of the account's parent company.
+    rainDelay:
+      type: integer
+      description: Remaining rain delay in days or hours.
+    isShutdown:
+      type: boolean
+      description: Whether the controller is manually shut down.
+    latitude:
+      type: number
+      format: double
+    longitude:
+      type: number
+      format: double
+    city:
+      type: string
+    state:
+      type: string
+    locationDisplayName:
+      type: string
+    stationCount:
+      type: integer
+      description: Number of active stations/terminals on the controller.
+    deviceUUID:
+      type: string
+      description: Unique hardware device UUID.
+    macAddress:
+      type: string
+    version:
+      type: string
+      description: Controller firmware version string.
+    lastContact:
+      type: string
+      format: date-time
+      description: Timestamp of last successful contact with cloud servers.
+    baseModule:
+      $ref: "#/ModuleResponse"
+    appImageURL:
+      type: string
+      format: uri
+      description: URL to user-uploaded controller image.
+    appImageUpdatedAt:
+      type: string
+      format: date-time
+    isLicensed:
+      type: boolean
+    isMQTT:
+      type: boolean
+    numberOfSharing:
+      type: integer
+    ioTGatewayUUID:
+      type: string
+
+SatelliteResponse:
+  type: object
+  properties:
+    id:
+      type: integer
+      format: int64
+    name:
+      type: string
+    type:
+      type: integer
+    siteId:
+      type: integer
+      format: int64
+    deviceUUID:
+      type: string
+    macAddress:
+      type: string
+    firmwareVersion:
+      type: string
+    serialNumber:
+      type: string
+    rainDelayLong:
+      type: integer
+      format: int64
+      description: Rain delay duration in .NET ticks (100ns units).
+    rainDelayStart:
+      type: string
+      format: date-time
+    useForecast:
+      type: boolean
+    forecastPercentLimit:
+      type: integer
+    forecastInchesLimit:
+      type: number
+      format: float
+    forecastDelayDays:
+      type: integer
+    forecastedFreezeDelayEnabled:
+      type: boolean
+    forecastedFreezeDelayTempThresholdF:
+      type: integer
+    forecastedFreezeDelayTempThresholdC:
+      type: integer
+    forecastedWindDelayEnabled:
+      type: boolean
+    forecastedWindDelaySpeedThresholdMph:
+      type: integer
+    forecastedWindDelaySpeedThresholdKph:
+      type: integer
+    simultaneousStations:
+      type: integer
+    nonIrrigationSimultaneousStations:
+      type: integer
+    interStationDelay:
+      type: integer
+    isLocked:
+      type: boolean
+    stationCount:
+      type: integer
+    baseModule:
+      $ref: "#/ModuleResponse"
+
+CreateSatelliteRequest:
+  type: object
+  required:
+    - name
+    - type
+    - siteId
+  properties:
+    name:
+      type: string
+    type:
+      type: integer
+    siteId:
+      type: integer
+      format: int64
+    deviceUUID:
+      type: string
+    macAddress:
+      type: string
+    serialNumber:
+      type: string
+    timeZone:
+      type: string
+
+CreateSatelliteFromRBNRequest:
+  type: object
+  required:
+    - name
+    - siteId
+    - rbnFileKey
+  properties:
+    name:
+      type: string
+    siteId:
+      type: integer
+      format: int64
+    rbnFileKey:
+      type: string
+
+CreateSatelliteResponse:
+  type: object
+  properties:
+    satelliteId:
+      type: integer
+      format: int64
+    name:
+      type: string
+    siteId:
+      type: integer
+      format: int64
+    deviceUUID:
+      type: string
+
+RegisterDeviceRequest:
+  type: object
+  required:
+    - deviceUUID
+  properties:
+    deviceUUID:
+      type: string
+    hardwareModel:
+      type: string
+    firmwareVersion:
+      type: string
+
+ConnectionStatusResponse:
+  type: object
+  properties:
+    satelliteId:
+      type: integer
+      format: int64
+    isConnected:
+      type: boolean
+    lastContactDate:
+      type: string
+      format: date-time
+    lastDisconnectDate:
+      type: string
+      format: date-time
+
+ConnectionStatusListResponse:
+  type: object
+  properties:
+    satellites:
+      type: array
+      items:
+        type: integer
+        format: int64
+      description: List of connected satellite IDs.
+    statusList:
+      type: array
+      items:
+        $ref: "#/ConnectionStatusResponse"
+
+SatelliteFirmwareVersionResponse:
+  type: object
+  properties:
+    satelliteId:
+      type: integer
+      format: int64
+    firmwareVersion:
+      type: string
+    radioFirmwareVersion:
+      type: string
+    bleFirmwareVersion:
+      type: string
+    bootloaderVersion:
+      type: string
+
+WeatherForecastDelaysResponse:
+  type: object
+  properties:
+    satelliteId:
+      type: integer
+      format: int64
+    isDelayActive:
+      type: boolean
+    delayRemainingSeconds:
+      type: integer
+    forecastRainProbability:
+      type: integer
+    forecastPrecipitationInches:
+      type: number
+      format: float
+
+IsNameUniqueResponse:
+  type: object
+  properties:
+    isUnique:
+      type: boolean

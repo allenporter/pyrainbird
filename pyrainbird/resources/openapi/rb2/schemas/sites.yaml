@@ -1,0 +1,90 @@
+---
+# pyrainbird/resources/openapi/rb2/schemas/sites.yaml
+SiteResponse:
+  type: object
+  properties:
+    id:
+      type: integer
+      format: int64
+    name:
+      type: string
+    companyId:
+      type: integer
+      format: int64
+    address:
+      type: string
+    city:
+      type: string
+    state:
+      type: string
+    zipCode:
+      type: string
+    country:
+      type: string
+    timeZone:
+      type: string
+    latitude:
+      type: number
+      format: double
+    longitude:
+      type: number
+      format: double
+    locationDisplayName:
+      type: string
+
+CreateSiteRequest:
+  type: object
+  required:
+    - name
+    - timeZone
+  properties:
+    name:
+      type: string
+    timeZone:
+      type: string
+    address:
+      type: string
+    city:
+      type: string
+    state:
+      type: string
+    zipCode:
+      type: string
+    country:
+      type: string
+    latitude:
+      type: number
+      format: double
+    longitude:
+      type: number
+      format: double
+
+CreateSiteResponse:
+  type: object
+  properties:
+    siteId:
+      type: integer
+      format: int64
+    name:
+      type: string
+
+NextDefaultNameResponse:
+  type: object
+  properties:
+    name:
+      type: string
+      description: Next suggested unique name.
+
+SiteSeasonalAdjustResponse:
+  type: object
+  properties:
+    siteId:
+      type: integer
+      format: int64
+    seasonalAdjustType:
+      type: integer
+    seasonalAdjust:
+      type: integer
+    weatherSourceId:
+      type: integer
+      format: int64

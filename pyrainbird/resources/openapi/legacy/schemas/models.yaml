@@ -1,0 +1,107 @@
+---
+# pyrainbird/resources/openapi/legacy/schemas/models.yaml
+LandscapeInfoResponse:
+  type: object
+  properties:
+    id:
+      type: integer
+      format: int64
+    programId:
+      type: integer
+      format: int64
+    companyId:
+      type: integer
+      format: int64
+    landscapeName:
+      type: string
+    plantType:
+      type: string
+    soilType:
+      type: string
+    exposure:
+      type: string
+    slope:
+      type: string
+
+CreateLandscapeInfoRequest:
+  type: object
+  required:
+    - programId
+  properties:
+    programId:
+      type: integer
+      format: int64
+    companyId:
+      type: integer
+      format: int64
+    landscapeName:
+      type: string
+    plantType:
+      type: string
+    soilType:
+      type: string
+    exposure:
+      type: string
+    slope:
+      type: string
+
+ManualOpsModel:
+  type: object
+  properties:
+    stationIds:
+      type: array
+      items:
+        type: integer
+        format: int64
+    seconds:
+      type: array
+      items:
+        type: integer
+    isGroupStart:
+      type: boolean
+      default: false
+
+ProgramSkipRequest:
+  type: object
+  properties:
+    programId:
+      type: integer
+      format: int64
+      default: -1
+    stationId:
+      type: integer
+      format: int64
+
+WeatherDataETResponse:
+  type: object
+  properties:
+    location:
+      type: string
+    date:
+      type: string
+      format: date-time
+    evapotranspirationInches:
+      type: number
+      format: float
+    solarRadiation:
+      type: number
+      format: float
+
+LegacyPayloadRequest:
+  type: object
+  properties:
+    ids:
+      type: array
+      items:
+        type: integer
+        format: int64
+    patch:
+      type: array
+      items:
+        type: object
+        properties:
+          op:
+            type: string
+          path:
+            type: string
+          value: {}

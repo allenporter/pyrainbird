@@ -1,0 +1,183 @@
+---
+# pyrainbird/resources/openapi/rb2/schemas/user.yaml
+UserResponse:
+  type: object
+  properties:
+    userId:
+      type: integer
+      format: int64
+    userName:
+      type: string
+    email:
+      type: string
+      format: email
+    companyId:
+      type: integer
+      format: int64
+    companyName:
+      type: string
+    cultureSettings:
+      $ref: "#/CultureSettingsResponse"
+
+CultureSettingsResponse:
+  type: object
+  properties:
+    userId:
+      type: integer
+      format: int64
+    language:
+      type: string
+    units:
+      type: integer
+      description: 0=US customary (gallons, Fahrenheit), 1=Metric (liters, Celsius).
+    dateFormat:
+      type: string
+    timeFormat:
+      type: string
+
+UserEventSubscriptionRequest:
+  type: object
+  required:
+    - eventType
+    - isSubscribed
+  properties:
+    eventType:
+      type: integer
+    isSubscribed:
+      type: boolean
+    channel:
+      type: string
+      enum: [Push, Email, SMS]
+
+UserEventSubscriptionResponse:
+  type: object
+  properties:
+    id:
+      type: integer
+      format: int64
+    eventType:
+      type: integer
+    isSubscribed:
+      type: boolean
+    channel:
+      type: string
+
+DeviceNotificationTokenRequest:
+  type: object
+  required:
+    - deviceToken
+    - deviceType
+  properties:
+    deviceToken:
+      type: string
+      description: Firebase FCM or APNS push notification device token.
+    deviceType:
+      type: string
+      enum: [Android, iOS]
+
+DeviceNotificationTokenResponse:
+  type: object
+  properties:
+    id:
+      type: integer
+      format: int64
+    deviceToken:
+      type: string
+    deviceType:
+      type: string
+
+CompanyResponse:
+  type: object
+  properties:
+    companyId:
+      type: integer
+      format: int64
+    name:
+      type: string
+    shareCode:
+      type: string
+
+SharedCompanyDetailResponse:
+  type: object
+  properties:
+    companyId:
+      type: integer
+      format: int64
+    companyName:
+      type: string
+    siteCount:
+      type: integer
+
+CompanySiteSharedResponse:
+  type: object
+  properties:
+    siteId:
+      type: integer
+      format: int64
+    borrowCompanyId:
+      type: integer
+      format: int64
+    isShared:
+      type: boolean
+
+StartSharingRequest:
+  type: object
+  required:
+    - siteIds
+    - shareCode
+  properties:
+    siteIds:
+      type: array
+      items:
+        type: integer
+        format: int64
+    shareCode:
+      type: string
+
+CreateIoTGatewayRequest:
+  type: object
+  required:
+    - gatewayUUID
+  properties:
+    gatewayUUID:
+      type: string
+    name:
+      type: string
+
+CreateIoTGatewayResponse:
+  type: object
+  properties:
+    gatewayId:
+      type: integer
+      format: int64
+    gatewayUUID:
+      type: string
+
+LoraProvisioningSessionRequest:
+  type: object
+  required:
+    - deviceEui
+  properties:
+    deviceEui:
+      type: string
+    appKey:
+      type: string
+
+LoraProvisioningSessionResponse:
+  type: object
+  properties:
+    sessionId:
+      type: string
+    status:
+      type: string
+
+AccessRequestInfoResponse:
+  type: object
+  properties:
+    requestId:
+      type: integer
+      format: int64
+    status:
+      type: string
+    requestedRole:
+      type: string
