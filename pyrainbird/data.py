@@ -970,3 +970,12 @@ class CloudSatellite(DataClassDictMixin):
     station_count: int = field(metadata=field_options(alias="stationCount"))
     satellite_enabled: bool = field(metadata=field_options(alias="satelliteEnabled"))
     description: str | None = None
+
+
+@dataclass
+class FirmwareUpdateStatus(DataClassDictMixin):
+    """Firmware update status response."""
+
+    update_status: int = field(metadata=field_options(alias="updateStatus"))
+    lnk_progress: int = field(metadata=field_options(alias="lnkProgress"))
+    unv_progress: int = field(metadata=field_options(alias="unvProgress"))

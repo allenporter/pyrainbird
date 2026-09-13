@@ -50,6 +50,7 @@ from .data import (
     AvailableStations,
     ControllerFirmwareVersion,
     ControllerState,
+    FirmwareUpdateStatus,
     ModelAndVersion,
     NetworkStatus,
     ProgramInfo,
@@ -488,6 +489,27 @@ class AsyncRainbirdController(RainbirdController):
         """Return details about the device server setup."""
         result = await self._local_client.request("getServerMode")
         return ServerMode.from_dict(result)
+
+    async def get_firmware_update_status(self) -> FirmwareUpdateStatus:
+        """Return details about firmware update status."""
+        result = await self._local_client.request("getFwUpdateStatus")
+        return FirmwareUpdateStatus.from_dict(result)
+
+    get_fw_update_status = get_firmware_update_status
+
+    async def request_firmware_update(
+        self, lnk_update_url: str = "", unv_update_url: str = ""
+    ) -> dict[str, Any]:
+        """Trigger a firmware update on the controller."""
+        return await self._local_client.request(
+            "requestFwUpdate",
+            {
+                "lnk_update_url": lnk_update_url,
+                "unv_update_url": unv_update_url,
+            },
+        )
+
+    request_fw_update = request_firmware_update
 
     async def water_budget(self, budget) -> WaterBudget:
         """Return the water budget."""
