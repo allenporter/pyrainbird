@@ -30,10 +30,10 @@ This page documents details about Rainbird Device types and various levels of su
 | CBOS_BT_2 | BAT-BT | `000B` | ✅ | 4 | 8 | 0 | 2 | BLE (Solem) |
 | CBOS_BT_4 | BAT-BT | `000B` | ✅ | 4 | 8 | 0 | 4 | BLE (Solem) |
 | CBOS_BT_6 | BAT-BT | `000B` | ✅ | 4 | 8 | 0 | 6 | BLE (Solem) |
-| ESP_BAT_PRO | BAT-Pro | `0016` | ✅ | 24 | 8 | 0 | 6 | BLE (Solem) |
-| ESP_BAT_PRO_EU | BAT-Pro EU | `0017` | ✅ | 24 | 8 | 0 | 6 | BLE (Solem) |
-| ESP_BAT_PRO_FLOW | BAT-Pro Flow | `0018` | ✅ | 24 | 8 | 0 | 6 | BLE (Solem) |
-| ESP_BAT_PRO_FLOW_EU | BAT-Pro Flow EU | `0019` | ✅ | 24 | 8 | 0 | 6 | BLE (Solem) |
+| ESP_BAT_PRO | BAT-Pro | `0016` | ✅ | 12 | 8 | 0 | 6 | BLE (Solem) |
+| ESP_BAT_PRO_EU | BAT-Pro EU | `0017` | ✅ | 12 | 8 | 0 | 6 | BLE (Solem) |
+| ESP_BAT_PRO_FLOW | BAT-Pro Flow | `0018` | ✅ | 12 | 8 | 0 | 6 | BLE (Solem) |
+| ESP_BAT_PRO_FLOW_EU | BAT-Pro Flow EU | `0019` | ✅ | 12 | 8 | 0 | 6 | BLE (Solem) |
 | MOCK_ESP_ME2 | ESP=Me2 | `0010` | ✅ | 4 | 6 | 0 | 22 | Legacy SIP (ME) |
 
 ---

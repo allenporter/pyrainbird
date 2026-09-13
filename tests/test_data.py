@@ -354,3 +354,36 @@ def test_model_info_from_dict_compatibility() -> None:
     assert defaults.limits.max_stations == 0
     assert defaults.features == Feature.NONE
     assert defaults.retries is False
+
+
+def test_battery_bluetooth_series_capabilities() -> None:
+    """Test battery-operated Bluetooth controller architecture profile (TBOS-BT, BAT-BT, BAT-PRO)."""
+    tbos = ModelAndVersion(0x0099, 1, 0).model_info
+    assert tbos.code == "TBOS_BT"
+    assert tbos.limits.max_stations == 6
+    assert tbos.max_stations == 6
+    assert tbos.limits.max_programs == 3
+    assert tbos.limits.max_run_times == 8
+    assert tbos.limits.max_runtime_seconds == 32400
+    assert tbos.is_feature_supported(Feature.SECONDS_BASED)
+    assert tbos.is_feature_supported(Feature.PROGRAM_BASED)
+
+    bat_bt = ModelAndVersion(0x000B, 1, 0).model_info
+    assert bat_bt.code == "ESP_BAT_BT"
+    assert bat_bt.limits.max_stations == 6
+    assert bat_bt.limits.max_programs == 4
+    assert bat_bt.limits.max_run_times == 8
+    assert bat_bt.is_feature_supported(Feature.SECONDS_BASED)
+    assert bat_bt.is_feature_supported(Feature.COMBINED_STATE)
+    assert bat_bt.is_feature_supported(Feature.STACKED_WATERING)
+
+    bat_pro = ModelAndVersion(0x0016, 1, 0).model_info
+    assert bat_pro.code == "ESP_BAT_PRO"
+    assert bat_pro.limits.max_programs == 12
+    assert bat_pro.limits.max_rain_delay_days == 30
+    assert bat_pro.limits.max_stations == 6
+
+    bat_pro_flow = ModelAndVersion(0x0018, 1, 0).model_info
+    assert bat_pro_flow.code == "ESP_BAT_PRO_FLOW"
+    assert bat_pro_flow.limits.max_programs == 12
+    assert bat_pro_flow.is_feature_supported(Feature.FLOW_SENSOR)
