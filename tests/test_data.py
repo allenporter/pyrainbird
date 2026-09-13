@@ -286,43 +286,49 @@ def test_feature_flag_and_limits_structures() -> None:
 
 
 def test_model_info_from_dict_compatibility() -> None:
-    """Test ModelInfo.from_dict handles both legacy flat and direct Feature formats."""
-    # Legacy flat dictionary
-    legacy = ModelInfo.from_dict(
+    """Test ModelInfo.from_dict handles structured, direct object, and string list formats."""
+    # Structured dictionary (as parsed from models.yaml)
+    structured = ModelInfo.from_dict(
         {
             "device_id": "0009",
             "code": "ESP_ME3",
             "name": "ESP-ME3",
-            "max_stations": 22,
-            "max_programs": 4,
-            "max_run_times": 6,
-            "max_station_pages": 1,
-            "program_based": True,
-            "seconds_based": True,
-            "supports_water_budget": True,
-            "supports_combined_state": True,
-            "supports_event_timestamp": True,
-            "supports_stacked_watering": True,
-            "supports_flow_sensor": True,
+            "limits": {
+                "max_stations": 22,
+                "max_programs": 4,
+                "max_run_times": 6,
+                "max_station_pages": 1,
+            },
+            "features": [
+                "PROGRAM_BASED",
+                "SECONDS_BASED",
+                "WATER_BUDGET",
+                "COMBINED_STATE",
+                "FLOW_SENSOR",
+            ],
+            "retries": True,
         }
     )
-    assert legacy.limits.max_stations == 22
-    assert legacy.max_stations == 22
-    assert legacy.is_feature_supported(Feature.SECONDS_BASED)
-    assert legacy.is_feature_supported(Feature.COMBINED_STATE)
+    assert structured.limits.max_stations == 22
+    assert structured.max_stations == 22
+    assert structured.retries is True
+    assert structured.is_feature_supported(Feature.SECONDS_BASED)
+    assert structured.is_feature_supported(Feature.COMBINED_STATE)
+    assert structured.is_feature_supported(Feature.FLOW_SENSOR)
 
-    # Direct Feature instance
-    direct_feat = ModelInfo.from_dict(
+    # Direct Feature instance and ModelLimits instance
+    direct_obj = ModelInfo.from_dict(
         {
             "device_id": "0009",
             "code": "ESP_ME3",
             "name": "ESP-ME3",
-            "limits": {"max_stations": 22},
+            "limits": ModelLimits(max_stations=22),
             "features": Feature.WATER_BUDGET | Feature.FLOW_SENSOR,
         }
     )
-    assert direct_feat.is_feature_supported(Feature.WATER_BUDGET)
-    assert direct_feat.is_feature_supported(Feature.FLOW_SENSOR)
+    assert direct_obj.limits.max_stations == 22
+    assert direct_obj.is_feature_supported(Feature.WATER_BUDGET)
+    assert direct_obj.is_feature_supported(Feature.FLOW_SENSOR)
 
     # List of Feature enums or strings
     enum_list = ModelInfo.from_dict(
@@ -330,22 +336,21 @@ def test_model_info_from_dict_compatibility() -> None:
             "device_id": "0009",
             "code": "ESP_ME3",
             "name": "ESP-ME3",
-            "limits": {"max_stations": 22},
             "features": [Feature.FLOW_SENSOR, "WATER_BUDGET", "UNKNOWN_FEATURE", 123],
         }
     )
     assert enum_list.is_feature_supported(Feature.FLOW_SENSOR)
     assert enum_list.is_feature_supported(Feature.WATER_BUDGET)
+    assert enum_list.limits.max_stations == 0
 
-    # Legacy flat dictionary with defaults / falses
-    legacy_defaults = ModelInfo.from_dict(
+    # Minimal dictionary with defaults
+    defaults = ModelInfo.from_dict(
         {
             "device_id": "0003",
             "code": "ESP_RZXe",
             "name": "ESP-RZXe",
-            "program_based": False,
         }
     )
-    assert not legacy_defaults.is_feature_supported(Feature.PROGRAM_BASED)
-    assert not legacy_defaults.is_feature_supported(Feature.SECONDS_BASED)
-    assert not legacy_defaults.is_feature_supported(Feature.FLOW_SENSOR)
+    assert defaults.limits.max_stations == 0
+    assert defaults.features == Feature.NONE
+    assert defaults.retries is False
