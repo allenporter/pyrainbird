@@ -126,60 +126,27 @@ class ModelInfo:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "ModelInfo":
         """Construct ModelInfo from a dictionary."""
-        data = dict(data)
-        device_id = data["device_id"]
-        code = data["code"]
-        name = data["name"]
-        retries = data.get("retries", False)
+        limits = data.get("limits")
+        if not isinstance(limits, ModelLimits):
+            limits = ModelLimits(**limits) if limits else ModelLimits()
 
-        if "limits" in data:
-            limits = ModelLimits(**data["limits"])
-        else:
-            limits = ModelLimits(
-                max_stations=data.get("max_stations", 0),
-                max_programs=data.get("max_programs", 0),
-                max_run_times=data.get("max_run_times", 0),
-                max_station_pages=data.get("max_station_pages", 0),
-                max_rain_delay_days=data.get("max_rain_delay_days", 14),
-                max_runtime_seconds=data.get("max_runtime_seconds", 21600),
-                max_seasonal_adjust=data.get("max_seasonal_adjust", 200),
-                max_sensors=data.get("max_sensors", 0),
-            )
-
-        raw_features = data.get("features")
-        if isinstance(raw_features, Feature):
-            features = raw_features
-        elif isinstance(raw_features, (list, tuple, set)):
+        features = data.get("features", Feature.NONE)
+        if not isinstance(features, Feature):
+            raw_features = features
             features = Feature.NONE
             for f in raw_features:
                 if isinstance(f, Feature):
                     features |= f
                 elif isinstance(f, str) and f in Feature.__members__:
                     features |= Feature[f]
-        else:
-            features = Feature.NONE
-            if data.get("program_based", True):
-                features |= Feature.PROGRAM_BASED
-            if data.get("seconds_based", False):
-                features |= Feature.SECONDS_BASED
-            if data.get("supports_water_budget", False):
-                features |= Feature.WATER_BUDGET
-            if data.get("supports_combined_state", False):
-                features |= Feature.COMBINED_STATE
-            if data.get("supports_event_timestamp", False):
-                features |= Feature.EVENT_TIMESTAMP
-            if data.get("supports_stacked_watering", False):
-                features |= Feature.STACKED_WATERING
-            if data.get("supports_flow_sensor", False):
-                features |= Feature.FLOW_SENSOR
 
         return cls(
-            device_id=device_id,
-            code=code,
-            name=name,
+            device_id=data["device_id"],
+            code=data["code"],
+            name=data["name"],
             limits=limits,
             features=features,
-            retries=retries,
+            retries=data.get("retries", False),
         )
 
     def is_feature_supported(self, feature: Feature) -> bool:
