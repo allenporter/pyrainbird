@@ -21,9 +21,9 @@ This page documents details about Rainbird Device types and various levels of su
 | RC2 | RC2 | `0812` | ✅ | 3 | 4 | 0 | 12 | **Universal** (ISK) |
 | ARC8 | ARC | `0813` | ✅ | 3 | 4 | 0 | 12 | **Universal** (ISK) |
 | ESP_2WIRE | ESP-2WIRE | `0011` | ✅ | 4 | 6 | 1 | 50 | **Universal** |
-| LXME2 | LXME2 | `000C` | ✅ | 40 | 10 | 1 | 22* | **Universal** (LX) |
-| LX_IVM | LX-IVM | `000D` | ✅ | 10 | 8 | 1 | 22* | **Universal** (LX) |
-| LX_IVM_PRO | LX-IVM Pro | `000E` | ✅ | 40 | 8 | 7 | 22* | **Universal** (LX) |
+| LXME2 | LXME2 | `000C` | ✅ | 40 | 10 | 1 | 48 | **Universal** (LX) |
+| LX_IVM | LX-IVM | `000D` | ✅ | 10 | 8 | 1 | 60 | **Universal** (LX) |
+| LX_IVM_PRO | LX-IVM Pro | `000E` | ✅ | 40 | 8 | 7 | 240 | **Universal** (LX) |
 | TBOS_BT | TBOS-BT | `0099` | ✅ | 3 | 8 | 0 | — | BLE (Solem) |
 | TBOS_BT_LT | TBOS-BT | `0100` | ✅ | 3 | 8 | 0 | — | BLE (Solem) |
 | CBOS_BT | ESP-BAT-BT | `0011` | ✅ | 4 | 8 | 0 | — | BLE (Solem) |
@@ -31,8 +31,6 @@ This page documents details about Rainbird Device types and various levels of su
 | CBOS_BT_4 | ESP-BAT-BT | `0011` | ✅ | 4 | 8 | 0 | — | BLE (Solem) |
 | CBOS_BT_6 | ESP-BAT-BT | `0011` | ✅ | 4 | 8 | 0 | — | BLE (Solem) |
 | MOCK_ESP_ME2 | ESP=Me2 | `0010` | ✅ | 4 | 6 | 0 | 22 | Legacy SIP (ME) |
-
-*LX controllers default to 22 max stations.
 
 ---
 
