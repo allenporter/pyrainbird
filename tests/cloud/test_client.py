@@ -37,6 +37,7 @@ def mock_cloud_app() -> aiohttp.web.Application:
     app["fail_credentials"] = False
     app["invalid_redirect"] = False
     app["infinite_redirect"] = False
+    app["auth_code_flow"] = False
     app["login_attempts"] = 0
     app["get_satellites_attempts"] = 0
     app["token_valid"] = True
@@ -88,6 +89,8 @@ def mock_cloud_app() -> aiohttp.web.Application:
             )
         if app["invalid_redirect"]:
             location = f"{MOCK_REDIRECT_URI}#error=some_error"
+        elif app["auth_code_flow"]:
+            location = f"{MOCK_REDIRECT_URI}?code=valid_auth_code_123"
         else:
             location = f"{MOCK_REDIRECT_URI}#access_token=valid_access_token_abc123&token_type=Bearer"
         return aiohttp.web.Response(status=302, headers={"Location": location})
@@ -116,9 +119,39 @@ def mock_cloud_app() -> aiohttp.web.Application:
         ]
         return aiohttp.web.json_response(satellites)
 
+    async def post_token(request: aiohttp.web.Request) -> aiohttp.web.Response:
+        data = await request.post()
+        grant_type = data.get("grant_type")
+        if grant_type == "authorization_code":
+            if data.get("code") == "invalid_code":
+                return aiohttp.web.json_response({"error": "invalid_grant"}, status=400)
+            return aiohttp.web.json_response(
+                {
+                    "access_token": "valid_access_token_abc123",
+                    "refresh_token": "valid_refresh_token_xyz789",
+                    "expires_in": 3600,
+                    "token_type": "Bearer",
+                }
+            )
+        elif grant_type == "refresh_token":
+            if data.get("refresh_token") == "invalid_refresh_token":
+                return aiohttp.web.json_response({"error": "invalid_grant"}, status=400)
+            return aiohttp.web.json_response(
+                {
+                    "access_token": "refreshed_access_token_def456",
+                    "refresh_token": "new_refresh_token_uvw123",
+                    "expires_in": 3600,
+                    "token_type": "Bearer",
+                }
+            )
+        return aiohttp.web.json_response(
+            {"error": "unsupported_grant_type"}, status=400
+        )
+
     app.router.add_get("/coreidentityserver/Account/Login", get_login)
     app.router.add_post("/coreidentityserver/Account/Login", post_login)
     app.router.add_get("/coreidentityserver/connect/authorize/callback", get_callback)
+    app.router.add_post("/coreidentityserver/connect/token", post_token)
     app.router.add_get("/coreapi/api/Satellite/GetSatelliteList", get_satellite_list)
 
     return app
@@ -987,3 +1020,139 @@ async def test_token_provider_getter_setter(aiohttp_client: TestClient) -> None:
     )
     client.token_provider = provider2
     assert client.token_provider is provider2
+
+
+async def test_oauth_auth_code_pkce_login(
+    mock_cloud_app: aiohttp.web.Application,
+    aiohttp_client: TestClient,
+) -> None:
+    """Test OAuth authorization code flow with PKCE and token exchange."""
+    mock_cloud_app["auth_code_flow"] = True
+    client_session = await aiohttp_client(mock_cloud_app)
+    mock_auth_base = "/coreidentityserver"
+
+    with mock.patch("pyrainbird.cloud.client.AUTH_BASE", new=mock_auth_base):
+        provider = RainbirdCloudTokenProvider(
+            client_session,
+            "user@example.com",
+            "correct_password",
+            client_secret="mock_secret",
+            redirect_uri=MOCK_REDIRECT_URI,
+        )
+        token = await provider.login()
+        assert token == "valid_access_token_abc123"
+        assert provider.token == "valid_access_token_abc123"
+        assert provider.refresh_token == "valid_refresh_token_xyz789"
+
+
+async def test_token_refresh_via_refresh_token(
+    mock_cloud_app: aiohttp.web.Application,
+    aiohttp_client: TestClient,
+) -> None:
+    """Test refreshing an access token using a stored refresh_token without calling login."""
+    client_session = await aiohttp_client(mock_cloud_app)
+    mock_auth_base = "/coreidentityserver"
+
+    with mock.patch("pyrainbird.cloud.client.AUTH_BASE", new=mock_auth_base):
+        provider = RainbirdCloudTokenProvider(
+            client_session,
+            "user@example.com",
+            "correct_password",
+            token="expired_token",
+            refresh_token="valid_refresh_token_xyz789",
+        )
+        # Verify force_refresh uses the refresh token
+        new_token = await provider.async_get_token(force_refresh=True)
+        assert new_token == "refreshed_access_token_def456"
+        assert provider.token == "refreshed_access_token_def456"
+        assert provider.refresh_token == "new_refresh_token_uvw123"
+        # Verify no login page requests occurred
+        assert mock_cloud_app["login_attempts"] == 0
+
+
+async def test_token_refresh_fallback_on_invalid_grant(
+    mock_cloud_app: aiohttp.web.Application,
+    aiohttp_client: TestClient,
+) -> None:
+    """Test that failed refresh_token exchange falls back cleanly to credentials login."""
+    client_session = await aiohttp_client(mock_cloud_app)
+    mock_auth_base = "/coreidentityserver"
+
+    with mock.patch("pyrainbird.cloud.client.AUTH_BASE", new=mock_auth_base):
+        provider = RainbirdCloudTokenProvider(
+            client_session,
+            "user@example.com",
+            "correct_password",
+            refresh_token="invalid_refresh_token",
+        )
+        token = await provider.async_get_token(force_refresh=True)
+        assert token == "valid_access_token_abc123"
+        assert mock_cloud_app["login_attempts"] == 1
+
+
+async def test_caching_token_provider_refresh_token_persistence(
+    mock_cloud_app: aiohttp.web.Application,
+    aiohttp_client: TestClient,
+    tmp_path: Any,
+) -> None:
+    """Test CachingTokenProvider persists and reloads refresh_token."""
+    client_session = await aiohttp_client(mock_cloud_app)
+    mock_auth_base = "/coreidentityserver"
+
+    with mock.patch("pyrainbird.cloud.client.AUTH_BASE", new=mock_auth_base):
+        auth_provider = RainbirdCloudTokenProvider(
+            client_session,
+            "user@example.com",
+            "correct_password",
+            refresh_token="valid_refresh_token_xyz789",
+        )
+        config_file = tmp_path / "rainbird_refresh.json"
+        provider = CachingTokenProvider(str(config_file), auth_provider)
+
+        # 1. First fetch saves refresh token to cache file
+        token1 = await provider.async_get_token(force_refresh=True)
+        assert token1 == "refreshed_access_token_def456"
+        assert provider.refresh_token == "new_refresh_token_uvw123"
+        assert config_file.exists()
+
+        with open(config_file, "r") as f:
+            data = json.load(f)
+        assert data["token"] == "refreshed_access_token_def456"
+        assert data["refresh_token"] == "new_refresh_token_uvw123"
+
+        # 2. New instance reloads refresh token from cache file
+        new_auth_provider = RainbirdCloudTokenProvider(
+            client_session, "user@example.com", "correct_password"
+        )
+        new_provider = CachingTokenProvider(str(config_file), new_auth_provider)
+        token2 = await new_provider.async_get_token()
+        assert token2 == "refreshed_access_token_def456"
+        assert new_provider.refresh_token == "new_refresh_token_uvw123"
+
+
+async def test_token_update_callback_supports_two_arguments(
+    mock_cloud_app: aiohttp.web.Application,
+    aiohttp_client: TestClient,
+) -> None:
+    """Test that token_update_callback handles (token, refresh_token) callback signature."""
+    client_session = await aiohttp_client(mock_cloud_app)
+    mock_auth_base = "/coreidentityserver"
+    callback_calls = []
+
+    async def callback(access_token: str, refresh_token: str | None) -> None:
+        callback_calls.append((access_token, refresh_token))
+
+    with mock.patch("pyrainbird.cloud.client.AUTH_BASE", new=mock_auth_base):
+        provider = RainbirdCloudTokenProvider(
+            client_session,
+            "user@example.com",
+            "correct_password",
+            refresh_token="valid_refresh_token_xyz789",
+            token_update_callback=callback,
+        )
+        await provider.async_get_token(force_refresh=True)
+        assert len(callback_calls) == 1
+        assert callback_calls[0] == (
+            "refreshed_access_token_def456",
+            "new_refresh_token_uvw123",
+        )
