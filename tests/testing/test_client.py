@@ -77,3 +77,41 @@ async def test_get_zone_state(
     fake_server.device.zone_states = {"00": "BF0000000000"}  # Inactive zone 1
     zone_state = await controller.get_zone_state(1)
     assert zone_state is False
+
+
+@pytest.mark.asyncio
+async def test_firmware_update_status(
+    fake_server: RainbirdFakeServer, controller: AsyncRainbirdController
+) -> None:
+    """Test getting firmware update status."""
+    fake_server.device.update_status = 0
+    fake_server.device.lnk_progress = 50
+    fake_server.device.unv_progress = 75
+
+    status = await controller.get_firmware_update_status()
+    assert status.update_status == 0
+    assert status.lnk_progress == 50
+    assert status.unv_progress == 75
+
+    # Test alias
+    status_alias = await controller.get_fw_update_status()
+    assert status_alias == status
+
+
+@pytest.mark.asyncio
+async def test_request_firmware_update(
+    controller: AsyncRainbirdController,
+) -> None:
+    """Test triggering a firmware update."""
+    res = await controller.request_firmware_update(
+        lnk_update_url="http://test/lnk",
+        unv_update_url="http://test/unv",
+    )
+    assert res == {"status": "OK"}
+
+    # Test alias
+    res_alias = await controller.request_fw_update(
+        lnk_update_url="http://test/lnk",
+        unv_update_url="http://test/unv",
+    )
+    assert res_alias == {"status": "OK"}

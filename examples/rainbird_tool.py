@@ -18,9 +18,6 @@ import datetime
 import inspect
 import logging
 import os
-import select
-import socket
-import time
 from typing import Any
 
 import aiohttp
@@ -38,6 +35,7 @@ from pyrainbird.cloud import (
     StationStateEvent,
     create_cloud_controller,
 )
+from pyrainbird.discovery import async_discover_devices
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -138,73 +136,20 @@ async def stream_cloud(
 
 async def discover_local(timeout: float = 5.0) -> None:
     """Broadcast UDP discovery ping to find controllers on the local network."""
-    DISCOVERY_PAYLOAD = "RBD-ANDROID"
-    PORTS = [33667, 33668]
-
-    def do_discover():
-        # Ephemeral broadcast socket
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        sock.setblocking(False)
-
-        # Upgraded socket listening on port 33668
-        upgraded_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        try:
-            upgraded_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            try:
-                upgraded_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-            except AttributeError:
-                pass
-            upgraded_sock.bind(("0.0.0.0", 33668))
-            upgraded_sock.setblocking(False)
-            has_upgraded = True
-        except Exception as e:
-            _LOGGER.warning(
-                "Could not bind to port 33668 for upgraded discovery: %s", e
-            )
-            has_upgraded = False
-
-        print("Sending discovery broadcast for local Rain Bird devices...")
-        try:
-            for port in PORTS:
-                sock.sendto(DISCOVERY_PAYLOAD.encode(), ("255.255.255.255", port))
-
-            print(f"Listening for responses for {timeout} seconds...")
-            start_time = time.time()
-            sockets_to_watch = [sock]
-            if has_upgraded:
-                sockets_to_watch.append(upgraded_sock)
-
-            while True:
-                elapsed = time.time() - start_time
-                remaining = timeout - elapsed
-                if remaining <= 0:
-                    break
-
-                readable, _, _ = select.select(
-                    sockets_to_watch, [], [], max(0.1, remaining)
-                )
-                for r_sock in readable:
-                    data, addr = r_sock.recvfrom(1024)
-                    mode = "Upgraded" if r_sock is upgraded_sock else "Legacy"
-                    print(f"\n[+] Found Device ({mode} Mode)!")
-                    print(f"    IP Address: {addr[0]}")
-                    print(f"    Response (Hex): {data.hex().upper()}")
-                    try:
-                        decoded = data.decode("utf-8")
-                        print(f"    Response (String): {decoded}")
-                    except Exception:
-                        pass
-        except Exception as e:
-            print(f"Error during discovery: {e}")
-        finally:
-            sock.close()
-            if has_upgraded:
-                upgraded_sock.close()
-        print("\n--- Local discovery finished. ---")
-
-    loop = asyncio.get_running_loop()
-    await loop.run_in_executor(None, do_discover)
+    print("Sending discovery broadcast for local Rain Bird devices...")
+    devices = await async_discover_devices(timeout=timeout)
+    if not devices:
+        print("No devices found.")
+    for device in devices:
+        print("\n[+] Found Device!")
+        print(f"    IP Address:  {device.ip_address}")
+        if device.mac_address:
+            print(f"    MAC Address: {device.mac_address}")
+        if device.uuid:
+            print(f"    UUID:        {device.uuid}")
+        for raw in device.raw_responses:
+            print(f"    Raw (Hex):   {raw.hex().upper()}")
+    print("\n--- Local discovery finished. ---")
 
 
 def parse_args():
@@ -282,7 +227,11 @@ def parse_args():
     stream_parser.set_defaults(func=None)
 
     for method_name in dir(async_client.AsyncRainbirdController):
-        if method_name.startswith("_"):
+        if (
+            method_name.startswith("_")
+            or method_name in subcommand_parsers.choices
+            or method_name in ("request_firmware_update", "get_firmware_update_status")
+        ):
             continue
         method = getattr(async_client.AsyncRainbirdController, method_name)
         if not callable(method):
@@ -345,28 +294,6 @@ async def main():
 
         elif args.command == "stream_cloud":
             await stream_cloud(session, args.config_file, args.satellite_id)
-            return
-
-        elif args.command == "request_fw_update":
-            host = os.environ["RAINBIRD_SERVER"]
-            password = os.environ["RAINBIRD_PASSWORD"]
-            controller = await async_client.create_controller(session, host, password)
-            result = await controller._local_client.request(
-                "requestFwUpdate",
-                {
-                    "lnk_update_url": args.lnk_update_url,
-                    "unv_update_url": args.unv_update_url,
-                },
-            )
-            print(result)
-            return
-
-        elif args.command == "get_fw_update_status":
-            host = os.environ["RAINBIRD_SERVER"]
-            password = os.environ["RAINBIRD_PASSWORD"]
-            controller = await async_client.create_controller(session, host, password)
-            result = await controller._local_client.request("getFwUpdateStatus")
-            print(result)
             return
 
         satellite_id_str = os.environ.get("RAINBIRD_SATELLITE_ID")
