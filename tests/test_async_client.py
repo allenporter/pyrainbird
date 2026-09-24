@@ -1196,6 +1196,13 @@ async def test_cyclic_schedule(
         == []
     )
 
+    programs = schedule.to_dict()["programs"]
+    assert programs[0]["starts"] == ["04:00:00"]
+    assert programs[0]["days_of_week"] == []
+    assert programs[0]["durations"][0] == {"zone": 1, "duration": 1500.0}
+    assert programs[1]["starts"] == []
+    assert programs[1]["days_of_week"] == [0, 1, 2, 3, 4, 5, 6]
+
     events = list(
         schedule.timeline.overlapping(
             datetime.datetime(2023, 1, 21, 9, 32, 00),
@@ -1665,6 +1672,17 @@ async def test_get_schedule_non_program_based(
 
     assert schedule.zone_schedules[5].duration == datetime.timedelta(minutes=30)
     assert schedule.zone_schedules[5].starts == [datetime.time(12, 40)]
+
+    assert schedule.to_dict()["zone_schedules"][1] == {
+        "zone": 1,
+        "duration": 600.0,
+        "starts": ["08:30:00"],
+        "frequency": 0,
+        "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+        "period": None,
+        "synchro": 0,
+        "controller_info": None,
+    }
 
     # Test timeline iterates over the active zones natively!
     tz = datetime.UTC

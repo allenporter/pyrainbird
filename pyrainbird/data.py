@@ -623,8 +623,9 @@ class ZoneDuration(DataClassDictMixin):
 class TimeSerializationStrategy(SerializationStrategy):
     """Validate different ways the device time parameter is handled."""
 
-    def serialize(self, value: Any) -> Any:
-        raise ValueError("Serialize not implemented")
+    def serialize(self, value: list[datetime.time]) -> list[str]:
+        """Serialize the start times, matching the default for ZoneSchedule."""
+        return [start.isoformat() for start in value]
 
     def deserialize(self, starts: list[int]) -> list[datetime.time]:
         """Deserialize the device time fields."""
@@ -639,8 +640,9 @@ class TimeSerializationStrategy(SerializationStrategy):
 class DayOfWeekSerializationStrategy(SerializationStrategy):
     """Validate different ways the device time parameter is handled."""
 
-    def serialize(self, value: Any) -> str:
-        raise ValueError("Serialization not implemented")
+    def serialize(self, value: set[DayOfWeek]) -> list[int]:
+        """Serialize the days of the week, matching the default for ZoneSchedule."""
+        return sorted(day.value for day in value)
 
     def deserialize(self, mask: int) -> set[DayOfWeek]:
         """Deserialize the device time fields."""
