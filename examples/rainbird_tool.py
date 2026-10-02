@@ -46,18 +46,21 @@ def create_cloud_token_provider(
     session: aiohttp.ClientSession, config_file: str
 ) -> CachingTokenProvider:
     """Create a CachingTokenProvider wrapped around a RainbirdCloudTokenProvider."""
+    token = os.environ.get("RAINBIRD_CLOUD_TOKEN")
     username = os.environ.get("RAINBIRD_CLOUD_USERNAME") or os.environ.get(
         "RAINBIRD_USERNAME"
     )
     password = os.environ.get("RAINBIRD_CLOUD_PASSWORD") or os.environ.get(
         "RAINBIRD_PASSWORD"
     )
-    if not username or not password:
+    if not token and (not username or not password):
         raise ValueError(
-            "Username and password are required in environment variables "
-            "(RAINBIRD_CLOUD_USERNAME / RAINBIRD_CLOUD_PASSWORD)."
+            "Credentials required: set RAINBIRD_CLOUD_TOKEN or "
+            "(RAINBIRD_CLOUD_USERNAME / RAINBIRD_CLOUD_PASSWORD) in environment."
         )
-    auth_provider = RainbirdCloudTokenProvider(session, username, password)
+    auth_provider = RainbirdCloudTokenProvider(
+        session, username or "", password or "", token=token
+    )
     return CachingTokenProvider(config_file, auth_provider)
 
 
