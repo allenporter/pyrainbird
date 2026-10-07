@@ -5,6 +5,8 @@ from typing import Any
 
 import yaml
 
+from .openapi import get_openapi_yaml, load_openapi_spec
+
 COMMAND = "command"
 TYPE = "type"
 LENGTH = "length"
@@ -46,8 +48,6 @@ RAINBIRD_COMMANDS_BY_ID = {
     **build_id_map(SIP_COMMANDS[CONTROLLER_COMMANDS]),
     **build_id_map(SIP_COMMANDS[CONTROLLER_RESPONSES]),
 }
-
-from .openapi import get_openapi_yaml, load_openapi_spec
 
 __all__ = [
     "COMMAND",
