@@ -217,15 +217,12 @@ RegisterDeviceRequest:
 ConnectionStatusResponse:
   type: object
   properties:
-    satelliteId:
+    id:
       type: integer
       format: int64
     isConnected:
       type: boolean
-    lastContactDate:
-      type: string
-      format: date-time
-    lastDisconnectDate:
+    timestamp:
       type: string
       format: date-time
 
@@ -235,13 +232,8 @@ ConnectionStatusListResponse:
     satellites:
       type: array
       items:
-        type: integer
-        format: int64
-      description: List of connected satellite IDs.
-    statusList:
-      type: array
-      items:
         $ref: "#/ConnectionStatusResponse"
+      description: List of connected satellite status objects.
 
 SatelliteFirmwareVersionResponse:
   type: object
