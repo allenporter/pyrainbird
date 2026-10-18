@@ -12,7 +12,7 @@ from pyrainbird.cloud import (
     RainbirdCloudTokenProvider,
     create_cloud_controller,
 )
-from pyrainbird.const import DayOfWeek
+from pyrainbird.const import DayOfWeek, ProgramFrequency
 
 SATELLITE_ID = 12345
 PASSWORD = "keepsecret"
@@ -456,3 +456,123 @@ async def test_cloud_controller_is_connected(
     )
 
     assert await controller.is_connected() is expected
+
+
+@pytest.mark.asyncio
+async def test_cloud_controller_schedule_frequencies(
+    aiohttp_client, monkeypatch
+) -> None:
+    """Test get_schedule maps custom, odd, even, and cyclic program frequencies."""
+
+    async def get_stations(request):
+        return web.json_response([{"id": 111, "stationNumber": 1, "name": "Zone 1"}])
+
+    async def get_programs(request):
+        return web.json_response(
+            [
+                {
+                    "id": 1001,
+                    "name": "Program A",
+                    "shortName": "PGM A",
+                    "type": 0,
+                    "weekDays": "1010100",
+                    "startTime": "2026-06-13T06:00:00Z",
+                },
+                {
+                    "id": 1002,
+                    "name": "Program B",
+                    "shortName": "PGM B",
+                    "type": 2,
+                    "startTime": "2026-06-13T07:00:00Z",
+                },
+                {
+                    "id": 1003,
+                    "name": "Program C",
+                    "shortName": "PGM C",
+                    "type": 4,
+                    "startTime": "2026-06-13T08:00:00Z",
+                },
+                {
+                    "id": 1004,
+                    "name": "Program D",
+                    "shortName": "PGM D",
+                    "type": 5,
+                    "skipDays": 3,
+                    "daysRemaining": 1,
+                    "startTime": "2026-06-13T09:00:00Z",
+                },
+            ]
+        )
+
+    async def get_programs_assigned(request):
+        return web.json_response(
+            [
+                {
+                    "stationId": 111,
+                    "runtimeProgramAssignedList": [
+                        {
+                            "programId": pid,
+                            "programShortName": f"PGM {chr(ord('A') + idx)}",
+                            "baseRunTime": "00:10:00",
+                            "adjustedRunTime": "00:10:00",
+                        }
+                        for idx, pid in enumerate((1001, 1002, 1003, 1004))
+                    ],
+                }
+            ]
+        )
+
+    async def get_satellite(request):
+        return web.json_response(
+            {"id": SATELLITE_ID, "siteId": 657314, "rainDelayLong": 0}
+        )
+
+    async def get_sensors(request):
+        return web.json_response([])
+
+    app = web.Application()
+    app.router.add_get("/coreapi/api/Station/GetStationListForSatellite", get_stations)
+    app.router.add_get("/coreapi/api/Program/GetProgramList", get_programs)
+    app.router.add_get(
+        "/coreapi/api/ProgramStep/GetProgramsAssignedAndRunTimeBySatelliteId",
+        get_programs_assigned,
+    )
+    app.router.add_get("/coreapi/api/Satellite/GetSatellite", get_satellite)
+    app.router.add_get("/coreapi/api/Sensor/GetSensorListBySatelliteId", get_sensors)
+
+    client_app = await aiohttp_client(app)
+    monkeypatch.setattr(
+        pyrainbird.cloud.client, "API_BASE", str(client_app.make_url("/coreapi/api"))
+    )
+
+    token_provider = mock.AsyncMock()
+    token_provider.async_get_token.return_value = "mock-token"
+
+    controller = create_cloud_controller(
+        client_app.session, SATELLITE_ID, token_provider=token_provider
+    )
+    schedule = await controller.get_schedule()
+
+    assert len(schedule.programs) == 4
+    prog_a, prog_b, prog_c, prog_d = schedule.programs
+
+    assert prog_a.frequency == ProgramFrequency.CUSTOM
+    assert prog_a.days_of_week == {
+        DayOfWeek.SUNDAY,
+        DayOfWeek.TUESDAY,
+        DayOfWeek.THURSDAY,
+    }
+    assert prog_a.period is None
+
+    assert prog_b.frequency == ProgramFrequency.ODD
+    assert prog_b.days_of_week == set()
+    assert prog_b.period is None
+
+    assert prog_c.frequency == ProgramFrequency.EVEN
+    assert prog_c.days_of_week == set()
+    assert prog_c.period is None
+
+    assert prog_d.frequency == ProgramFrequency.CYCLIC
+    assert prog_d.days_of_week == set()
+    assert prog_d.period == 3
+    assert prog_d.synchro == 1

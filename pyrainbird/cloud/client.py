@@ -18,7 +18,7 @@ from typing import Any
 import aiohttp
 
 from ..async_client import ControllerFeature, RainbirdController, RainbirdTokenProvider
-from ..const import DayOfWeek, ProgramFrequency
+from ..const import DayOfWeek
 from ..data import (
     CloudSatellite,
     ControllerInfo,
@@ -1033,8 +1033,10 @@ class AsyncRainbirdCloudController(RainbirdController):
 
             program = Program(
                 program=program_num,
-                frequency=ProgramFrequency.CUSTOM,
+                frequency=p.frequency,
                 days_of_week=days_of_week,
+                period=p.skip_days,
+                synchro=p.days_remaining,
                 starts=starts,
                 durations=durations_by_program.get(p.id, []),
                 controller_info=controller_info,
