@@ -184,10 +184,15 @@ class RainbirdCloudTokenProvider(RainbirdTokenProvider):
         else:
             await self._token_update_callback(self._token)  # type: ignore[call-arg]
 
-    async def async_get_token(self, force_refresh: bool = False) -> str:
+    async def async_get_token(
+        self, force_refresh: bool = False, refresh_token: str | None = None
+    ) -> str:
         """Return a valid Bearer token, refreshing if necessary or forced."""
         if not force_refresh and self._token:
             return self._token
+
+        if refresh_token and not self._refresh_token:
+            self._refresh_token = refresh_token
 
         refreshed = False
         if self._refresh_token:
@@ -502,65 +507,88 @@ class RainbirdCloudTokenProvider(RainbirdTokenProvider):
 
 
 class CachingTokenProvider(RainbirdTokenProvider):
-    """Token provider that persists the Bearer token in a JSON file cache."""
+    """Token provider that persists Bearer and refresh tokens in a JSON file cache."""
 
     def __init__(
         self,
         config_path: str,
-        auth_provider: RainbirdTokenProvider,
+        auth_provider: RainbirdCloudTokenProvider,
     ) -> None:
         """Initialize CachingTokenProvider."""
         self._config_path = config_path
         self._auth_provider = auth_provider
         self._token: str | None = None
+        self._refresh_token: str | None = None
 
     @property
     def token(self) -> str | None:
         """Return the active cached token."""
         return self._token
 
-    def _save_token_to_cache_sync(self, token: str) -> None:
-        """Save the token to the JSON config file synchronously."""
+    @property
+    def refresh_token(self) -> str | None:
+        """Return the active cached refresh token."""
+        return self._refresh_token
+
+    def _save_token_to_cache_sync(
+        self, token: str, refresh_token: str | None = None
+    ) -> None:
+        """Save the token and optional refresh token to the JSON config file synchronously."""
         try:
             os.makedirs(os.path.dirname(self._config_path), exist_ok=True)
+            data: dict[str, Any] = {"token": token}
+            if refresh_token:
+                data["refresh_token"] = refresh_token
             with open(self._config_path, "w", encoding="utf-8") as f:
-                json.dump({"token": token}, f, indent=2)
+                json.dump(data, f, indent=2)
             os.chmod(self._config_path, 0o600)
         except OSError as err:
             _LOGGER.warning("Failed to save token to cache: %s", err)
 
-    async def _save_token_to_cache(self, token: str) -> None:
+    async def _save_token_to_cache(
+        self, token: str, refresh_token: str | None = None
+    ) -> None:
         """Save the token to the JSON config file asynchronously."""
         loop = asyncio.get_running_loop()
-        await loop.run_in_executor(None, self._save_token_to_cache_sync, token)
+        await loop.run_in_executor(
+            None, self._save_token_to_cache_sync, token, refresh_token
+        )
 
-    def _load_token_from_cache_sync(self) -> str | None:
-        """Load the token from the JSON config file synchronously."""
+    def _load_token_from_cache_sync(self) -> tuple[str | None, str | None]:
+        """Load the token and refresh token from the JSON config file synchronously."""
         if not os.path.exists(self._config_path):
-            return None
+            return None, None
         try:
             with open(self._config_path, "r", encoding="utf-8") as f:
                 config = json.load(f)
-                return config.get("token")
+                return config.get("token"), config.get("refresh_token")
         except (OSError, json.JSONDecodeError) as err:
             _LOGGER.warning("Failed to read token from cache: %s", err)
-            return None
+            return None, None
 
     async def async_get_token(self, force_refresh: bool = False) -> str:
         """Return a valid token, reading from cache file or auth provider."""
         if not force_refresh and self._token:
             return self._token
 
-        if not force_refresh:
-            loop = asyncio.get_running_loop()
-            token = await loop.run_in_executor(None, self._load_token_from_cache_sync)
-            if token:
+        loop = asyncio.get_running_loop()
+        if not force_refresh or self._refresh_token is None:
+            token, refresh_token = await loop.run_in_executor(
+                None, self._load_token_from_cache_sync
+            )
+            if refresh_token and not self._refresh_token:
+                self._refresh_token = refresh_token
+            if not force_refresh and token:
                 self._token = token
                 return token
 
-        token = await self._auth_provider.async_get_token(force_refresh=force_refresh)
+        token = await self._auth_provider.async_get_token(
+            force_refresh=force_refresh,
+            refresh_token=self._refresh_token,
+        )
         self._token = token
-        await self._save_token_to_cache(token)
+        self._refresh_token = self._auth_provider.refresh_token
+        await self._save_token_to_cache(token, self._refresh_token)
         return token
 
 

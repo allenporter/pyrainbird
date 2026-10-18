@@ -496,7 +496,10 @@ async def test_caching_token_provider_non_blocking(
             assert token == "valid_access_token_abc123"
             # Assert _save_token_to_cache_sync was run in the executor
             mock_run.assert_any_call(
-                None, provider._save_token_to_cache_sync, "valid_access_token_abc123"
+                None,
+                provider._save_token_to_cache_sync,
+                "valid_access_token_abc123",
+                None,
             )
 
             # Clear token memory cache to force load from file
@@ -1152,3 +1155,52 @@ async def test_token_update_callback_supports_two_arguments(
         "refreshed_access_token_def456",
         "new_refresh_token_uvw123",
     )
+
+
+async def test_caching_token_provider_refresh_token_persistence(
+    mock_cloud_app: aiohttp.web.Application,
+    aiohttp_client: TestClient,
+    tmp_path: Any,
+) -> None:
+    """Test CachingTokenProvider persists and reloads refresh_token across instances."""
+    client_session = await aiohttp_client(mock_cloud_app)
+    config_file = tmp_path / "rainbird_refresh.json"
+
+    auth_provider = RainbirdCloudTokenProvider(
+        client_session,
+        "user@example.com",
+        "correct_password",
+        refresh_token="valid_refresh_token_xyz789",
+        auth_base="/coreidentityserver",
+    )
+    provider = CachingTokenProvider(str(config_file), auth_provider)
+
+    # 1. First fetch saves token and rotated refresh_token to cache file
+    token1 = await provider.async_get_token(force_refresh=True)
+    assert token1 == "refreshed_access_token_def456"
+    assert provider.refresh_token == "new_refresh_token_uvw123"
+    assert config_file.exists()
+
+    with open(config_file, "r") as f:
+        data = json.load(f)
+    assert data == {
+        "token": "refreshed_access_token_def456",
+        "refresh_token": "new_refresh_token_uvw123",
+    }
+
+    # 2. New instance reloads token and refresh_token from cache file
+    new_auth_provider = RainbirdCloudTokenProvider(
+        client_session,
+        "user@example.com",
+        "correct_password",
+        auth_base="/coreidentityserver",
+    )
+    new_provider = CachingTokenProvider(str(config_file), new_auth_provider)
+    token2 = await new_provider.async_get_token()
+    assert token2 == "refreshed_access_token_def456"
+    assert new_provider.refresh_token == "new_refresh_token_uvw123"
+
+    # 3. Forced refresh on new instance uses persisted refresh_token without hitting /Account/Login
+    token3 = await new_provider.async_get_token(force_refresh=True)
+    assert token3 == "refreshed_access_token_def456"
+    assert mock_cloud_app["login_attempts"] == 0
