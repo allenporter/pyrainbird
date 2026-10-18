@@ -109,6 +109,7 @@ class FakeRainbirdDevice:
             "02": self._handle_model_and_version,
             "03": self._handle_available_stations,
             "05": self._handle_serial_number,
+            "0C": self._handle_universal_message,
             "10": self._handle_current_time,
             "12": self._handle_current_date,
             "20": self._handle_retrieve_schedule,
@@ -150,15 +151,28 @@ class FakeRainbirdDevice:
             mask_str += f"{byte_val:02X}"
         return f"83{page:02X}{mask_str}"
 
+    def _handle_universal_message(self, data: str) -> str:
+        """Handle UniversalMessageRequest (0C)."""
+        if data not in self.schedule:
+            raise AssertionError(
+                f"FakeRainbirdDevice: UniversalMessageRequest "
+                f"'{data}' not found in fake_device.schedule. "
+                f"Populated keys: {list(self.schedule)}"
+            )
+        return self.schedule[data]
+
     def _handle_retrieve_schedule(self, data: str) -> str:
         """Handle RetrieveScheduleRequest (20).
 
         Tests must pre-populate fake_device.schedule with every subcommand
         the controller will request. A missing entry is a test setup error.
+        Universal controllers (ESP-ME3, RC2, ARC8, ESP-2WIRE) NACK 0x20 with 002001.
         """
         # Request data is '20SSSS' where SSSS is the 4-hex sub-command
         subcommand = data[2:6] if len(data) >= 6 else data[2:]
         if subcommand not in self.schedule:
+            if self.model_code in (0x0009, 0x0011, 0x0812, 0x0813):
+                return "002001"
             raise AssertionError(
                 f"FakeRainbirdDevice: RetrieveScheduleRequest subcommand "
                 f"'{subcommand}' not found in fake_device.schedule. "

@@ -24,7 +24,9 @@ ControllerCommands:
     command: '0B'
     response: '8B'
     length: 1
-  # UniversalMessageRequest
+  UniversalMessageRequest:
+    command: '0C'
+    response: '8C'
   CurrentTimeRequest:
     command: '10'
     response: '90'
@@ -262,7 +264,9 @@ ControllerResponses:
     patch:
       position: 6
       length: 4
-  # UniversalMessageTransportResponse 8C
+  UniversalMessageTransportResponse:
+    command: '8C'
+    decoder: decode_universal
   CurrentTimeResponse:
     command: '90'
     length: 4

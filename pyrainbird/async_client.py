@@ -50,6 +50,7 @@ from .data import (
     AvailableStations,
     ControllerFirmwareVersion,
     ControllerState,
+    Feature,
     FirmwareUpdateStatus,
     ModelAndVersion,
     NetworkStatus,
@@ -656,25 +657,35 @@ class AsyncRainbirdController(RainbirdController):
             # Fallback for unknown models
             max_stations = min(stations.stations.count, 22)
 
-        commands = ["00"]
-        if max_programs > 0:
-            # Legacy ESP-ME / TM2 Schedule Loop
-            # Program details
-            for program in range(max_programs):
-                commands.append("%04x" % (0x10 | program))
-            # Start times
-            for program in range(max_programs):
-                commands.append("%04x" % (0x60 | program))
-            # Run times per zone
-            _LOGGER.debug("Loading schedule for %d zones", max_stations)
-            for zone_page in range(math.ceil(max_stations / 2)):
-                commands.append("%04x" % (0x80 | zone_page))
+        use_universal = model.model_info.is_feature_supported(
+            Feature.UNIVERSAL_MESSAGES
+        )
+        if use_universal:
+            commands = rainbird.encode_universal_schedule_commands(
+                max_programs,
+                model.model_info.max_run_times,
+                max_stations,
+            )
         else:
-            # LCR Series (ESP-RZXe / ST8) Schedule Loop
-            _LOGGER.debug("Loading schedule for %d independent zones", max_stations)
-            for zone_page in range(1, max_stations + 1):
-                if zone_page in stations.stations.active_set:
-                    commands.append(f"{zone_page:04x}")
+            commands = ["00"]
+            if max_programs > 0:
+                # Legacy ESP-ME / TM2 Schedule Loop
+                # Program details
+                for program in range(max_programs):
+                    commands.append("%04x" % (0x10 | program))
+                # Start times
+                for program in range(max_programs):
+                    commands.append("%04x" % (0x60 | program))
+                # Run times per zone
+                _LOGGER.debug("Loading schedule for %d zones", max_stations)
+                for zone_page in range(math.ceil(max_stations / 2)):
+                    commands.append("%04x" % (0x80 | zone_page))
+            else:
+                # LCR Series (ESP-RZXe / ST8) Schedule Loop
+                _LOGGER.debug("Loading schedule for %d independent zones", max_stations)
+                for zone_page in range(1, max_stations + 1):
+                    if zone_page in stations.stations.active_set:
+                        commands.append(f"{zone_page:04x}")
 
         _LOGGER.debug("Sending schedule commands: %s", commands)
         # Run command serially to avoid overwhelming the controller
@@ -683,15 +694,24 @@ class AsyncRainbirdController(RainbirdController):
             "programInfo": [],
             "programStartInfo": [],
             "durations": [],
+            "programDurations": [],
             "zoneInfo": {},
         }
+        program_info_by_id: dict[int, dict[str, Any]] = {}
         for command in commands:
             try:
-                result = await self._process_command(
-                    lambda resp: resp,
-                    "RetrieveScheduleRequest",
-                    int(command, 16),
-                )
+                if use_universal:
+                    result = await self._process_command(
+                        lambda resp: resp,
+                        "UniversalMessageRequest",
+                        command,
+                    )
+                else:
+                    result = await self._process_command(
+                        lambda resp: resp,
+                        "RetrieveScheduleRequest",
+                        int(command, 16),
+                    )
             except RainbirdDeviceNackError as e:
                 _LOGGER.debug(
                     "Ignoring schedule request failed with NACK (not supported): %s", e
@@ -708,10 +728,33 @@ class AsyncRainbirdController(RainbirdController):
                             ) not in stations.stations.active_set:
                                 continue
                             target.append(entry)
+                    elif key == "programDurations":
+                        for entry in value:
+                            filtered = [
+                                d
+                                for d in entry.get("durations", [])
+                                if d.get("zone", 0) in stations.stations.active_set
+                            ]
+                            target.append(
+                                {"program": entry["program"], "durations": filtered}
+                            )
+                    elif key == "programInfo":
+                        items = value if isinstance(value, list) else [value]
+                        for item in items:
+                            prog_id = item.get("program")
+                            if prog_id is not None and prog_id in program_info_by_id:
+                                program_info_by_id[prog_id].update(item)
+                            else:
+                                if prog_id is not None:
+                                    program_info_by_id[prog_id] = item
+                                target.append(item)
+                    elif key == "programStartInfo":
+                        if isinstance(value, list):
+                            target.extend(value)
+                        else:
+                            target.append(value)
                     elif key == "controllerInfo" or key == "zoneInfo":
                         target.update(value)
-                    else:
-                        target.append(value)
         return Schedule.from_dict(schedule_data)
 
     async def get_schedule_command(self, command_code: str) -> dict[str, Any]:
@@ -787,7 +830,7 @@ class AsyncRainbirdController(RainbirdController):
         command_data = RAINBIRD_COMMANDS[command]
         decrypted_data = await self._tunnelSip(
             data,
-            command_data[LENGTH],
+            command_data.get(LENGTH, len(data) // 2),
         )
         _LOGGER.debug("Response from line: " + str(decrypted_data))
         decoded = rainbird.decode(decrypted_data)

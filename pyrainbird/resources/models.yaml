@@ -98,6 +98,7 @@
     - WATER_BUDGET
     - EVENT_TIMESTAMP
     - FLOW_SENSOR
+    - UNIVERSAL_MESSAGES
 
 - device_id: "0010"
   code: MOCK_ESP_ME2
@@ -258,6 +259,7 @@
     - PROGRAM_BASED
     - WATER_BUDGET
     - EVENT_TIMESTAMP
+    - UNIVERSAL_MESSAGES
 
 - device_id: "0813"
   code: ARC8
@@ -275,6 +277,7 @@
     - PROGRAM_BASED
     - WATER_BUDGET
     - EVENT_TIMESTAMP
+    - UNIVERSAL_MESSAGES
 
 - device_id: "0014"
   code: TM2R
@@ -413,6 +416,7 @@
     - WATER_BUDGET
     - EVENT_TIMESTAMP
     - FLOW_SENSOR
+    - UNIVERSAL_MESSAGES
 
 - device_id: "000c"
   code: LXME2

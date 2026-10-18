@@ -71,6 +71,9 @@ class Feature(Flag):
     FLOW_SENSOR = auto()
     """Controller supports flow sensor monitoring."""
 
+    UNIVERSAL_MESSAGES = auto()
+    """Controller uses universal message transport (0x0C / 0x8C) for schedules."""
+
 
 @dataclass
 class ModelLimits:
@@ -631,7 +634,7 @@ class TimeSerializationStrategy(SerializationStrategy):
         """Deserialize the device time fields."""
         result: list[datetime.time] = []
         for start in starts:
-            if start == 65535:
+            if start >= 1440:
                 continue
             result.append(datetime.time(hour=int(start / 60), minute=start % 60))
         return result
@@ -918,21 +921,22 @@ class Schedule(DataClassDictMixin):
     @classmethod
     def __pre_deserialize__(cls, values: dict[Any, Any]) -> dict[Any, Any]:
         """Parse the input values from the response into a usable format."""
+        program_info = values.get("programInfo", [])
+        for prog in program_info:
+            prog.setdefault("frequency", ProgramFrequency.CUSTOM)
+            prog.setdefault("durations", [])
+            prog.setdefault("controllerInfo", values.get("controllerInfo"))
         programs = values.get("programStartInfo", [])
         if not programs:
             return values
         for program_start_info in programs:
             program = program_start_info.get("program")
-            if program is None:
+            if program is None or program >= len(program_info):
                 continue
-            values["programInfo"][program]["starts"] = program_start_info.get(
-                "startTime", []
-            )
-            values["programInfo"][program]["controllerInfo"] = values.get(
-                "controllerInfo"
-            )
-        for program in range(len(programs)):
-            values["programInfo"][program]["durations"] = []
+            program_info[program]["starts"] = program_start_info.get("startTime", [])
+            program_info[program]["controllerInfo"] = values.get("controllerInfo")
+        for program in range(min(len(programs), len(program_info))):
+            program_info[program]["durations"] = []
         for zone_durations in values.get("durations", []):
             zone = zone_durations.get("zone")
             if zone is None:
@@ -950,12 +954,17 @@ class Schedule(DataClassDictMixin):
                 duration = duration_values[program]
                 if not duration:
                     continue
-                values["programInfo"][program]["durations"].append(
+                program_info[program]["durations"].append(
                     {
                         "zone": zone + 1,
                         "duration": duration,
                     }
                 )
+        for prog_durations in values.get("programDurations", []):
+            program = prog_durations.get("program")
+            if program is None or program >= len(program_info):
+                continue
+            program_info[program]["durations"] = prog_durations.get("durations", [])
         return values
 
 

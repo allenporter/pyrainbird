@@ -6,7 +6,12 @@ from pytest_golden.plugin import GoldenTestFixture
 
 from pyrainbird.const import DayOfWeek, ProgramFrequency
 from pyrainbird.exceptions import RainbirdCodingException
-from pyrainbird.rainbird import decode, encode, encode_zone_schedule
+from pyrainbird.rainbird import (
+    decode,
+    encode,
+    encode_universal_schedule_commands,
+    encode_zone_schedule,
+)
 from pyrainbird.resources import LENGTH, RAINBIRD_COMMANDS
 
 
@@ -154,3 +159,98 @@ def test_encode_zone_schedule_invalid(kwargs: dict, message: str) -> None:
     """Test values a zone schedule cannot hold."""
     with pytest.raises(RainbirdCodingException, match=message):
         encode_zone_schedule(**kwargs)
+
+
+def test_encode_universal_schedule_commands() -> None:
+    """Test generating Universal (0x0C) schedule commands for ESP-ME3 and ARC8/RC2."""
+    me3_cmds = encode_universal_schedule_commands(
+        max_programs=4, max_run_times=6, max_stations=22
+    )
+    assert me3_cmds == [
+        "0C200001000805000000000C0000000000050000001700070B041400000D00001800010000030013000100000300",
+        "0C200001000805000000000C0000000000050000001C00070B0312000100000300110001000003001000020000030000000600",
+        "0C200001000805000000000C0000000000050000001200070B011D0003000003000000000000000500",
+        "0C200001000805000000000C0000000000050000000E00070B011500020000000000001500",
+        "0C200001000805000000000C0000000000050000000E00070B011500020100010000001500",
+        "0C200001000805000000000C0000000000050000000E00070B011500020200020000001500",
+        "0C200001000805000000000C0000000000050000000E00070B011500020300030000001500",
+    ]
+
+    isk_cmds = encode_universal_schedule_commands(
+        max_programs=3, max_run_times=4, max_stations=8
+    )
+    assert isk_cmds == [
+        "0C200001000805000000000C0000000000050000001700070B041400000D00001800010000020013000100000200",
+        "0C200001000805000000000C0000000000050000001C00070B0312000100000200110001000002001000020000020000000600",
+        "0C200001000805000000000C0000000000050000001200070B011D0003000002000000000000000300",
+        "0C200001000805000000000C0000000000050000000E00070B011500020000000000000700",
+        "0C200001000805000000000C0000000000050000000E00070B011500020100010000000700",
+        "0C200001000805000000000C0000000000050000000E00070B011500020200020000000700",
+    ]
+
+
+def test_decode_universal() -> None:
+    """Test decoding Universal (0x8C) schedule responses."""
+    # Sensor, rain delay, seasonal adjust, and frequency
+    decoded_sensor = decode(
+        "8C200000000C00000000000805000000000500FFFF2900080B0414000001000D0000010018000100000300022D00320028003500130001000003000104040400"
+    )
+    assert decoded_sensor == {
+        "type": "UniversalMessageTransportResponse",
+        "controllerInfo": {"rainDelay": 0, "rainSensor": 0},
+        "programInfo": [
+            {"program": 0, "seasonalAdjust": 45, "frequency": ProgramFrequency.CYCLIC},
+            {"program": 1, "seasonalAdjust": 50, "frequency": ProgramFrequency.CYCLIC},
+            {"program": 2, "seasonalAdjust": 40, "frequency": ProgramFrequency.CYCLIC},
+            {"program": 3, "seasonalAdjust": 53, "frequency": ProgramFrequency.CUSTOM},
+        ],
+    }
+
+    # Cycle days, cycle count, and custom days of week
+    decoded_days = decode(
+        "8C200000000C00000000000805000000000500FFFF4300080B0312000100000300010404030311000100000300010100000210000200000300000006000100000000000000010101010101010000000000000001010101010101"
+    )
+    assert decoded_days == {
+        "type": "UniversalMessageTransportResponse",
+        "programInfo": [
+            {"program": 0, "period": 4, "synchro": 1, "daysOfWeekMask": 0},
+            {"program": 1, "period": 4, "synchro": 0, "daysOfWeekMask": 0x7F},
+            {"program": 2, "period": 3, "synchro": 0, "daysOfWeekMask": 0},
+            {"program": 3, "period": 3, "synchro": 2, "daysOfWeekMask": 0x7F},
+        ],
+    }
+
+    # Start times
+    decoded_starts = decode(
+        "8C200000000C00000000000805000000000500FFFF4300080B011D0003000003000000000000000500022C01A005A005A005A005A005B400A005A005A005A005A0056801A005A005A005A005A005A005A005A005A005A005A005"
+    )
+    assert decoded_starts == {
+        "type": "UniversalMessageTransportResponse",
+        "programStartInfo": [
+            {"program": 0, "startTime": [300, 1440, 1440, 1440, 1440, 1440]},
+            {"program": 1, "startTime": [180, 1440, 1440, 1440, 1440, 1440]},
+            {"program": 2, "startTime": [360, 1440, 1440, 1440, 1440, 1440]},
+            {"program": 3, "startTime": [1440, 1440, 1440, 1440, 1440, 1440]},
+        ],
+    }
+
+    # Program A runtimes
+    decoded_runtimes = decode(
+        "8C200000000C00000000000805000000000500FFFF6700080B0115000200000000000015000400000000100E000018150000201C000000000000302A000018150000282300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    )
+    assert decoded_runtimes == {
+        "type": "UniversalMessageTransportResponse",
+        "programDurations": [
+            {
+                "program": 0,
+                "durations": [
+                    {"zone": 2, "duration": 60},
+                    {"zone": 3, "duration": 90},
+                    {"zone": 4, "duration": 120},
+                    {"zone": 6, "duration": 180},
+                    {"zone": 7, "duration": 90},
+                    {"zone": 8, "duration": 150},
+                ],
+            }
+        ],
+    }

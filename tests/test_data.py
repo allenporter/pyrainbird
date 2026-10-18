@@ -216,6 +216,7 @@ def test_isk_series_capabilities() -> None:
         assert isk.limits.max_rain_delay_days == 14
         assert isk.limits.max_runtime_seconds == 21600
         assert isk.is_feature_supported(Feature.EVENT_TIMESTAMP)
+        assert isk.is_feature_supported(Feature.UNIVERSAL_MESSAGES)
         assert not isk.is_feature_supported(Feature.COMBINED_STATE)
         assert not isk.is_feature_supported(Feature.STACKED_WATERING)
         assert not isk.is_feature_supported(Feature.FLOW_SENSOR)
@@ -231,6 +232,7 @@ def test_me3_and_2wire_capabilities() -> None:
     assert me3.max_run_times == 6
     assert me3.is_feature_supported(Feature.FLOW_SENSOR)
     assert me3.is_feature_supported(Feature.EVENT_TIMESTAMP)
+    assert me3.is_feature_supported(Feature.UNIVERSAL_MESSAGES)
     assert not me3.is_feature_supported(Feature.STACKED_WATERING)
     assert not me3.is_feature_supported(Feature.COMBINED_STATE)
 
@@ -240,6 +242,7 @@ def test_me3_and_2wire_capabilities() -> None:
     assert esp2wire.limits.max_station_pages == 1
     assert esp2wire.is_feature_supported(Feature.FLOW_SENSOR)
     assert esp2wire.is_feature_supported(Feature.EVENT_TIMESTAMP)
+    assert esp2wire.is_feature_supported(Feature.UNIVERSAL_MESSAGES)
     assert not esp2wire.is_feature_supported(Feature.STACKED_WATERING)
 
 

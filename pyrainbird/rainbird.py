@@ -42,6 +42,28 @@ _LCR_START_RESOLUTION = 10
 # reported as 0x90 (1440 minutes) by the ESP-RZXe and as 0xFF by other devices.
 _MINUTES_PER_DAY = 24 * 60
 
+_UNIVERSAL_REQUEST_HEADER = bytes.fromhex("0C200001000805000000000C000000000005000000")
+_CDT_BUNCH_GET_REQUEST = b"\x07\x0b"
+_CDT_BUNCH_GET_RESPONSE = b"\x08\x0b"
+_UNIVERSAL_STATION_CHUNK_SIZE = 25
+
+_CDI_GLOBAL_SENSOR_BYPASS = 0x0D
+_CDI_PROGRAM_CUSTOM_DAYS = 0x10
+_CDI_PROGRAM_CYCLE_COUNT = 0x11
+_CDI_PROGRAM_CYCLE_DAYS = 0x12
+_CDI_PROGRAM_CYCLE_TYPE = 0x13
+_CDI_RAIN_DELAY = 0x14
+_CDI_RUN_TIMES = 0x15
+_CDI_SEASONAL_ADJUST_BY_PROGRAM = 0x18
+_CDI_START_TIMES = 0x1D
+
+_UNIVERSAL_FREQUENCY: dict[int, int] = {
+    0: ProgramFrequency.CUSTOM,
+    2: ProgramFrequency.ODD,
+    3: ProgramFrequency.EVEN,
+    4: ProgramFrequency.CYCLIC,
+}
+
 
 def decode_template(data: str, cmd_template: dict[str, Any]) -> dict[str, int]:
     """Decode the command from the template in yaml."""
@@ -262,12 +284,210 @@ def decode_queue(data: str, cmd_template: dict[str, Any]) -> dict[str, Any]:
     return {"data": data}
 
 
+def encode_universal_bunch_get_request(
+    blocks: list[tuple[int, list[tuple[int, int]]]],
+) -> str:
+    """Encode a Universal (0x0C) CDT bunch get request."""
+    block_bytes = bytearray()
+    for table_id, ranges in blocks:
+        block_bytes.extend(table_id.to_bytes(2, "little"))
+        block_bytes.append(len(ranges))
+        for start, end in ranges:
+            block_bytes.extend(start.to_bytes(2, "little"))
+            block_bytes.extend(end.to_bytes(2, "little"))
+    inner = _CDT_BUNCH_GET_REQUEST + bytes([len(blocks)]) + bytes(block_bytes)
+    frame = _UNIVERSAL_REQUEST_HEADER + len(inner).to_bytes(2, "little") + inner
+    return frame.hex().upper()
+
+
+def encode_universal_schedule_commands(
+    max_programs: int, max_run_times: int, max_stations: int
+) -> list[str]:
+    """Build the Universal (0x0C) schedule retrieval commands for a controller."""
+    if max_programs <= 0:
+        return []
+    p_end = max_programs - 1
+    s_end = max(max_run_times - 1, 0)
+    commands = [
+        encode_universal_bunch_get_request(
+            [
+                (_CDI_RAIN_DELAY, []),
+                (_CDI_GLOBAL_SENSOR_BYPASS, []),
+                (_CDI_SEASONAL_ADJUST_BY_PROGRAM, [(0, p_end)]),
+                (_CDI_PROGRAM_CYCLE_TYPE, [(0, p_end)]),
+            ]
+        ),
+        encode_universal_bunch_get_request(
+            [
+                (_CDI_PROGRAM_CYCLE_DAYS, [(0, p_end)]),
+                (_CDI_PROGRAM_CYCLE_COUNT, [(0, p_end)]),
+                (_CDI_PROGRAM_CUSTOM_DAYS, [(0, p_end), (0, 6)]),
+            ]
+        ),
+        encode_universal_bunch_get_request(
+            [
+                (_CDI_START_TIMES, [(0, p_end), (0, 0), (0, s_end)]),
+            ]
+        ),
+    ]
+    for program in range(max_programs):
+        for station_start in range(0, max_stations, _UNIVERSAL_STATION_CHUNK_SIZE):
+            station_end = min(
+                station_start + _UNIVERSAL_STATION_CHUNK_SIZE - 1, max_stations - 1
+            )
+            commands.append(
+                encode_universal_bunch_get_request(
+                    [
+                        (
+                            _CDI_RUN_TIMES,
+                            [(program, program), (station_start, station_end)],
+                        )
+                    ]
+                )
+            )
+    return commands
+
+
+def decode_universal(data: str, cmd_template: dict[str, Any]) -> dict[str, Any]:
+    """Decode a Universal (0x8C) CDT transport response."""
+    try:
+        raw = bytes.fromhex(data)
+    except ValueError:
+        return {"data": data}
+    if len(raw) < 26:
+        return {"data": data}
+    payload_len = int.from_bytes(raw[21:23], "little")
+    if len(raw) < 23 + payload_len:
+        return {"data": data}
+    payload = raw[23 : 23 + payload_len]
+    if payload[:2] != _CDT_BUNCH_GET_RESPONSE:
+        return {"data": data}
+
+    num_blocks = payload[2]
+    offset = 3
+    controller_info: dict[str, int] = {}
+    program_info_by_id: dict[int, dict[str, Any]] = {}
+    program_start_info: list[dict[str, Any]] = []
+    program_durations: list[dict[str, Any]] = []
+
+    for _ in range(num_blocks):
+        if offset + 3 > len(payload):
+            return {"data": data}
+        table_id = int.from_bytes(payload[offset : offset + 2], "little")
+        rank = payload[offset + 2]
+        offset += 3
+        ranges: list[tuple[int, int]] = []
+        count = 1
+        for _ in range(rank):
+            if offset + 4 > len(payload):
+                return {"data": data}
+            start = int.from_bytes(payload[offset : offset + 2], "little")
+            end = int.from_bytes(payload[offset + 2 : offset + 4], "little")
+            offset += 4
+            if end < start:
+                return {"data": data}
+            ranges.append((start, end))
+            count *= end - start + 1
+        if offset >= len(payload):
+            return {"data": data}
+        elem_size = payload[offset]
+        offset += 1
+        if elem_size <= 0 or offset + count * elem_size > len(payload):
+            return {"data": data}
+        values = [
+            int.from_bytes(
+                payload[offset + i * elem_size : offset + (i + 1) * elem_size],
+                "little",
+            )
+            for i in range(count)
+        ]
+        offset += count * elem_size
+
+        if table_id == _CDI_RAIN_DELAY and values:
+            controller_info["rainDelay"] = values[0]
+        elif table_id == _CDI_GLOBAL_SENSOR_BYPASS and values:
+            controller_info["rainSensor"] = values[0]
+        elif table_id == _CDI_SEASONAL_ADJUST_BY_PROGRAM and rank == 1:
+            p_start, _ = ranges[0]
+            for i, val in enumerate(values):
+                prog = program_info_by_id.setdefault(
+                    p_start + i, {"program": p_start + i}
+                )
+                prog["seasonalAdjust"] = val
+        elif table_id == _CDI_PROGRAM_CYCLE_TYPE and rank == 1:
+            p_start, _ = ranges[0]
+            for i, val in enumerate(values):
+                prog = program_info_by_id.setdefault(
+                    p_start + i, {"program": p_start + i}
+                )
+                prog["frequency"] = _UNIVERSAL_FREQUENCY.get(val, val)
+        elif table_id == _CDI_PROGRAM_CYCLE_DAYS and rank == 1:
+            p_start, _ = ranges[0]
+            for i, val in enumerate(values):
+                prog = program_info_by_id.setdefault(
+                    p_start + i, {"program": p_start + i}
+                )
+                prog["period"] = val
+        elif table_id == _CDI_PROGRAM_CYCLE_COUNT and rank == 1:
+            p_start, _ = ranges[0]
+            for i, val in enumerate(values):
+                prog = program_info_by_id.setdefault(
+                    p_start + i, {"program": p_start + i}
+                )
+                prog["synchro"] = val
+        elif table_id == _CDI_PROGRAM_CUSTOM_DAYS and rank == 2:
+            (p_start, p_end), (d_start, d_end) = ranges
+            num_days = d_end - d_start + 1
+            for p_idx, p in enumerate(range(p_start, p_end + 1)):
+                mask = 0
+                for d_idx, d in enumerate(range(d_start, d_end + 1)):
+                    if values[p_idx * num_days + d_idx]:
+                        mask |= 1 << d
+                prog = program_info_by_id.setdefault(p, {"program": p})
+                prog["daysOfWeekMask"] = mask
+        elif table_id == _CDI_START_TIMES and rank == 3:
+            (p_start, p_end), (m_start, m_end), (s_start, s_end) = ranges
+            num_m = m_end - m_start + 1
+            num_s = s_end - s_start + 1
+            stride = num_m * num_s
+            for p_idx, p in enumerate(range(p_start, p_end + 1)):
+                starts = values[p_idx * stride : p_idx * stride + num_s]
+                program_start_info.append({"program": p, "startTime": starts})
+        elif table_id == _CDI_RUN_TIMES and rank == 2:
+            (p_start, p_end), (z_start, z_end) = ranges
+            num_z = z_end - z_start + 1
+            for p_idx, p in enumerate(range(p_start, p_end + 1)):
+                durations = []
+                for z_idx, z in enumerate(range(z_start, z_end + 1)):
+                    seconds = values[p_idx * num_z + z_idx]
+                    duration = seconds // 60
+                    if duration > 0:
+                        durations.append({"zone": z + 1, "duration": duration})
+                program_durations.append({"program": p, "durations": durations})
+
+    result: dict[str, Any] = {}
+    if controller_info:
+        result["controllerInfo"] = controller_info
+    if program_info_by_id:
+        result["programInfo"] = [
+            program_info_by_id[p] for p in sorted(program_info_by_id)
+        ]
+    if program_start_info:
+        result["programStartInfo"] = program_start_info
+    if program_durations:
+        result["programDurations"] = program_durations
+    if not result:
+        return {"data": data}
+    return result
+
+
 DEFAULT_DECODER = "decode_template"
 
 DECODERS: dict[str, Callable[[str, dict[str, Any]], dict[str, Any]]] = {
     "decode_template": decode_template,
     "decode_schedule": decode_schedule,
     "decode_queue": decode_queue,
+    "decode_universal": decode_universal,
 }
 
 
@@ -295,6 +515,17 @@ def encode(command: str, *args) -> str:
 def encode_command(command_set: dict[str, Any], *args) -> str:
     """Encode a rainbird tunnelSip command request."""
     cmd_code = command_set["command"]
+    if cmd_code == "0C":
+        if len(args) != 1 or not isinstance(args[0], str):
+            raise RainbirdCodingException(
+                f"UniversalMessageRequest expects 1 hex string argument: {args}"
+            )
+        payload = args[0].upper()
+        if payload.startswith("0C"):
+            return payload
+        inner = bytes.fromhex(payload)
+        frame = _UNIVERSAL_REQUEST_HEADER + len(inner).to_bytes(2, "little") + inner
+        return frame.hex().upper()
     if not (length := command_set.get(LENGTH)):
         raise RainbirdCodingException(
             f"Unable to encode command missing length: {command_set}"
