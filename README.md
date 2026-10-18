@@ -42,12 +42,16 @@ This library interacts with Rain Bird controllers using either **LNK1** (legacy)
 - **LNK1 Modules:** Communicate over plaintext HTTP (port 80), with payloads encrypted using the device password.
 - **LNK2 Modules:** Communicate over HTTPS (port 443), with payloads encrypted using the device password.
 
-### Local Connection Resiliency
-Modern LNK2 modules (running firmware v4.x+) synchronize their state with the Rain Bird cloud shadow periodically (typically every 5 minutes). Because the ESP32 chip has highly constrained memory and runs a single serial Manchester line mutex, concurrent local polling during this cloud sync window can overload the hardware or cause watchdog crashes.
+### Local Connection Resiliency & Troubleshooting
+LNK1 and LNK2 modules run on a resource-constrained microcontroller communicating with the irrigation panel over a slow 19200-baud single-wire serial bus. On models known to return transient `503 Service Unavailable` responses when the serial line is busy (such as `ESP-ME`, `ESP-ME3`, and `ESP-RZXe`), this library automatically retries with exponential backoff.
 
-To smooth this over, this library implements:
-- **Inter-Request Pacing:** A default 100ms pacing delay (`LOCAL_MIN_DELAY`) between consecutive local requests to prevent stack exhaustion.
-- **Robust Retry & Backoff:** A 5-attempt exponential backoff retry wrapper to handle transient `503 Service Unavailable`, `Controller Busy` (`-32002`), and connection timeout states.
+On modern **LNK2** modules (firmware v4.x+), several firmware and hardware constraints cannot be bypassed in software and require network or setup adjustments if you experience local timeouts or disconnects:
+
+- **Single Socket & Cloud Sync Contention:** The LNK2 local HTTPS server accepts only **1 concurrent socket** (`max_open_sockets = 1`) and processes local `/stick` commands on the same single-threaded state machine that handles background cloud synchronization and a 1,000 ms serial polling loop whenever cloud connectivity is active.
+  - Avoid polling the controller from multiple local clients at the same time.
+  - If you only use local control (e.g., Home Assistant) and experience periodic connection timeouts on controllers like the ESP-TM2, blocking the LNK2 module's internet access at your router/firewall disables the background cloud sync loop and leaves the local API uncontested.
+- **2.4 GHz Wi-Fi & Dual-Band / Mesh APs:** The LNK2 2.4 GHz radio frequently drops connections or fails to roam when connected to combined 2.4/5 GHz SSIDs, band-steering networks, or multi-AP mesh systems. Placing the LNK2 on a dedicated **2.4 GHz-only SSID** (and pinning it to the closest access point) resolves most recurring Wi-Fi dropoffs.
+- **Authentication Lockout (`403 Forbidden` / `-32001`):** LNK2, ARC8, and RC2 modules enforce a strict lockout on `/stick` after **3 failed password attempts**, rejecting all local requests for **15 minutes** (and resetting the 15-minute timer if another failed attempt occurs during the window). If you encounter `403 Forbidden` or lockout errors, stop all clients from polling the device and wait at least 15 minutes before retrying with the correct password.
 
 ### Supported Controllers
 We attempt to support standard controllers compatible with LNK1/LNK2 modules. However, because we do not own every controller hardware configuration, compatibility is not fully guaranteed for all models. Below is a breakdown of our current hardware support status:
