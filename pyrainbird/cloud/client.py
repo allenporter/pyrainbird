@@ -899,7 +899,13 @@ class AsyncRainbirdCloudController(RainbirdController):
         await self._client.stop_all_irrigation(self._satellite_id)
 
     async def get_zone_states(self) -> States:
-        """Return which zones are currently active."""
+        """Return which zones are currently active.
+
+        Note this reflects the run status reported by the controller for
+        stations that belong to a program. A manual run of a station that is
+        not part of any program is not reported by this endpoint, so such a
+        zone always appears idle here.
+        """
         if not self._station_id_map:
             stations = await self._client.get_station_list(self._satellite_id)
             for s in stations:
@@ -929,8 +935,8 @@ class AsyncRainbirdCloudController(RainbirdController):
                 or status.get("status") == "running"
                 or status.get("state") == "active"
             ):
-                sid = status["stationId"]
-                if sid in reverse_map:
+                sid = status.get("stationId")
+                if sid is not None and sid in reverse_map:
                     active_zones.add(reverse_map[sid])
 
         mask_bytes = []
