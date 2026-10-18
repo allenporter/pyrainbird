@@ -17,6 +17,7 @@ from pyrainbird.cloud.client import (
     _parse_login_validation_error,
     async_authenticate_cloud,
 )
+from pyrainbird.cloud.models import CloudSatelliteDetails
 from pyrainbird.data import CloudSatellite
 from pyrainbird.exceptions import (
     RainbirdApiException,
@@ -1152,3 +1153,21 @@ async def test_token_update_callback_supports_two_arguments(
         "refreshed_access_token_def456",
         "new_refresh_token_uvw123",
     )
+
+
+def test_cloud_satellite_details_device_uuid() -> None:
+    """Test that CloudSatelliteDetails exposes asset.uuid as device_uuid."""
+    sat = CloudSatelliteDetails.from_dict(
+        {
+            "id": 527302,
+            "name": "Test Controller",
+            "type": 69,
+            "siteId": 657314,
+            "ioTGatewayUUID": "4c95c404-0000-7e21-903d-000000000000",
+            "asset": {"id": 1, "uuid": "9a95c404-0000-b508-90c7-000000000000"},
+            "rainDelayLong": 1728000000000,
+        }
+    )
+    assert sat.device_uuid == "9a95c404-0000-b508-90c7-000000000000"
+    assert sat.iot_gateway_uuid == "4c95c404-0000-7e21-903d-000000000000"
+    assert sat.rain_delay_long == 1728000000000

@@ -390,3 +390,149 @@ class CurrentFirmware(DataClassDictMixin):
 @dataclass
 class CloudFirmwareVersions(DataClassDictMixin):
     current: CurrentFirmware
+
+
+@dataclass
+class CloudSatelliteAsset(DataClassDictMixin):
+    """Asset metadata associated with a satellite controller."""
+
+    id: int
+    uuid: str | None = None
+
+
+@dataclass
+class CloudSatelliteDetails(DataClassDictMixin):
+    """Detailed satellite controller configuration returned by Satellite/GetSatellite."""
+
+    id: int
+    site_id: int | None = field(default=None, metadata=field_options(alias="siteId"))
+    name: str | None = None
+    type: int | None = None
+    description: str | None = None
+    rain_delay_long: int | None = field(
+        default=None, metadata=field_options(alias="rainDelayLong")
+    )
+    rain_delay_days_remaining: int | None = field(
+        default=None, metadata=field_options(alias="rainDelayDaysRemaining")
+    )
+    rain_delay: str | None = field(
+        default=None, metadata=field_options(alias="rainDelay")
+    )
+    iot_gateway_uuid: str | None = field(
+        default=None, metadata=field_options(alias="ioTGatewayUUID")
+    )
+    uuid: str | None = None
+    asset_id: int | None = field(default=None, metadata=field_options(alias="assetID"))
+    asset: CloudSatelliteAsset | None = None
+
+    @property
+    def device_uuid(self) -> str | None:
+        """Return the asset UUID used as the AppSync DeviceStateTable PK."""
+        return self.asset.uuid if self.asset else None
+
+
+_IDLE_RUN_STATUSES = {"-", "", "0", "none", "idle"}
+
+
+@dataclass
+class CloudRunStationStatus(DataClassDictMixin):
+    """Execution status for a single station step within a program."""
+
+    station_id: int = field(metadata=field_options(alias="stationId"))
+    program_step_id: int | None = field(
+        default=None, metadata=field_options(alias="programStepId")
+    )
+    station_terminal: int | None = field(
+        default=None, metadata=field_options(alias="stationTerminal")
+    )
+    status: str = "-"
+    base_run_time: datetime.timedelta = field(
+        default=datetime.timedelta(),
+        metadata=field_options(alias="baseRunTime", deserialize=deserialize_hhmmss),
+    )
+    adjusted_run_time: datetime.timedelta = field(
+        default=datetime.timedelta(),
+        metadata=field_options(alias="adjustedRunTime", deserialize=deserialize_hhmmss),
+    )
+
+    @property
+    def is_running(self) -> bool:
+        """Return True if the station step is currently running."""
+        return self.status.strip().lower() not in _IDLE_RUN_STATUSES
+
+
+@dataclass
+class CloudProgramRunStatus(DataClassDictMixin):
+    """Program execution status returned by ProgramStep/GetRunStationStatusForSatellite."""
+
+    program_id: int = field(metadata=field_options(alias="programId"))
+    satellite_id: int | None = field(
+        default=None, metadata=field_options(alias="satelliteId")
+    )
+    run_station_statuses: list[CloudRunStationStatus] = field(
+        default_factory=list,
+        metadata=field_options(alias="runStationStatuses"),
+    )
+
+
+@dataclass
+class CloudSensor(DataClassDictMixin):
+    """Sensor metadata and state returned by Sensor/GetSensorListBySatelliteId."""
+
+    id: int
+    name: str | None = None
+    satellite_id: int | None = field(
+        default=None, metadata=field_options(alias="satelliteId")
+    )
+    type: int | str | None = None
+    ordinal: int | None = None
+    on_off_state: int | None = field(
+        default=None, metadata=field_options(alias="onOffState")
+    )
+    sensor_type: int | None = field(
+        default=None, metadata=field_options(alias="sensorType")
+    )
+    weather_sensor_model: int | None = field(
+        default=None, metadata=field_options(alias="weatherSensorModel")
+    )
+    local_weather_sensor_type_id: int | None = field(
+        default=None, metadata=field_options(alias="localWeatherSensorTypeId")
+    )
+    settling_time: str | None = field(
+        default=None, metadata=field_options(alias="settlingTime")
+    )
+    state: bool | int | None = None
+
+    @property
+    def is_rain_sensor(self) -> bool:
+        """Return True if this sensor represents a rain sensor."""
+        return (
+            self.ordinal == 0
+            or self.type == "Rain"
+            or (self.name is not None and "rain" in self.name.lower())
+        )
+
+    @property
+    def is_active(self) -> bool:
+        """Return True if the sensor is currently active/triggered."""
+        if self.state is not None:
+            return bool(self.state)
+        return self.on_off_state == 1
+
+
+@dataclass
+class CloudConnectionStatus(DataClassDictMixin):
+    """Connection status for a single satellite controller."""
+
+    id: int
+    is_connected: bool = field(
+        default=False, metadata=field_options(alias="isConnected")
+    )
+    timestamp: str | None = None
+
+
+@dataclass
+class CloudConnectionStatusList(DataClassDictMixin):
+    """Response wrapper returned by Satellite/isConnected."""
+
+    satellites: list[CloudConnectionStatus] = field(default_factory=list)

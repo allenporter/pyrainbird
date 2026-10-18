@@ -27,7 +27,9 @@ Protocol Overview:
          TimeStamp
        }
      }
-   - `PK` represents the Partition Key (the satellite's `device_uuid`).
+   - `PK` represents the Partition Key (the satellite's `device_uuid`, i.e.
+     `deviceUUID` from `Satellite/GetSatelliteList` or `asset.uuid` from
+     `Satellite/GetSatellite`, not `ioTGatewayUUID`).
    - `SK` represents the Sort Key (indicating the type of status/update).
 
 4. Message Handling:
@@ -94,7 +96,14 @@ class AsyncRainbirdCloudStream:
         device_uuid: str,
         session: aiohttp.ClientSession,
     ) -> None:
-        """Initialize the real-time cloud stream manager."""
+        """Initialize the real-time cloud stream manager.
+
+        `device_uuid` is the AppSync `DeviceStateTable` partition key (`PK`),
+        which corresponds to `CloudSatellite.device_uuid` or
+        `CloudSatelliteDetails.device_uuid` (`deviceUUID` from
+        `Satellite/GetSatelliteList` or `asset.uuid` from
+        `Satellite/GetSatellite`, not `ioTGatewayUUID`).
+        """
         self._token_provider = token_provider
         self._satellite_id = satellite_id
         self._device_uuid = device_uuid

@@ -57,23 +57,40 @@ StationRunTimeResponse:
     programLetter:
       type: string
 
+RunStationStatusStepResponse:
+  type: object
+  properties:
+    programStepId:
+      type: integer
+      format: int64
+    stationId:
+      type: integer
+      format: int64
+    stationTerminal:
+      type: integer
+    status:
+      type: string
+      description: Step status string (e.g. "-" when idle, "Running" when active).
+    baseRunTime:
+      type: string
+      description: Base runtime in HH:MM:SS format.
+    adjustedRunTime:
+      type: string
+      description: Seasonal-adjusted runtime in HH:MM:SS format.
+
 RunStationStatusResponse:
   type: object
   properties:
-    stationId:
+    programId:
       type: integer
       format: int64
     satelliteId:
       type: integer
       format: int64
-    state:
-      type: string
-      enum: [Idle, Running, Paused, Waiting, Error]
-    remainingSeconds:
-      type: integer
-    activeProgramId:
-      type: integer
-      format: int64
+    runStationStatuses:
+      type: array
+      items:
+        $ref: "#/RunStationStatusStepResponse"
 
 StationPumpResponse:
   type: object
