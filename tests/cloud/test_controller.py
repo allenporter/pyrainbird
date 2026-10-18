@@ -9,9 +9,11 @@ from aiohttp import web
 import pyrainbird.cloud.client
 from pyrainbird.async_client import ControllerFeature
 from pyrainbird.cloud import (
+    AsyncRainbirdCloudController,
     RainbirdCloudTokenProvider,
     create_cloud_controller,
 )
+from pyrainbird.cloud.models import CloudStation
 from pyrainbird.const import DayOfWeek
 
 SATELLITE_ID = 12345
@@ -456,3 +458,94 @@ async def test_cloud_controller_is_connected(
     )
 
     assert await controller.is_connected() is expected
+
+
+class FakeCloudClient:
+    """Minimal stand-in exposing only what get_zone_states consumes."""
+
+    def __init__(self, run_station_status: list[dict]) -> None:
+        self._run_station_status = run_station_status
+
+    async def get_station_list(self, satellite_id: int) -> list[CloudStation]:
+        return [
+            CloudStation.from_dict({"id": 111, "stationNumber": 1, "name": "Zone 1"}),
+            CloudStation.from_dict({"id": 222, "stationNumber": 2, "name": "Zone 2"}),
+        ]
+
+    async def get_run_station_status(self, satellite_id: int) -> list[dict]:
+        return self._run_station_status
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("run_station_status", "expected_active"),
+    [
+        # Program shape: nested runStationStatuses with a running and an idle station
+        (
+            [
+                {
+                    "programId": 1922370,
+                    "satelliteId": SATELLITE_ID,
+                    "runStationStatuses": [
+                        {
+                            "programStepId": 9686771,
+                            "stationId": 111,
+                            "stationTerminal": 1,
+                            "status": "Running",
+                            "baseRunTime": "00:05:00",
+                            "adjustedRunTime": "00:05:00",
+                        },
+                        {
+                            "programStepId": 9686772,
+                            "stationId": 222,
+                            "stationTerminal": 2,
+                            "status": "-",
+                            "baseRunTime": "00:05:00",
+                            "adjustedRunTime": "00:05:00",
+                        },
+                    ],
+                }
+            ],
+            [1],
+        ),
+        # Legacy flat station entries are still understood
+        ([{"stationId": 111, "status": "running"}], [1]),
+        # A flat entry missing stationId must not raise KeyError
+        ([{"status": "running"}], []),
+        # Nested stations unknown to the satellite are ignored
+        (
+            [
+                {
+                    "programId": 1922370,
+                    "runStationStatuses": [
+                        {"stationId": 999999, "status": "Running"},
+                    ],
+                }
+            ],
+            [],
+        ),
+        # All documented idle spellings are treated as idle
+        (
+            [
+                {
+                    "runStationStatuses": [
+                        {"stationId": 111, "status": status}
+                        for status in ("-", "", "0", "none", "idle")
+                    ],
+                }
+            ],
+            [],
+        ),
+    ],
+)
+async def test_get_zone_states_response_shapes(
+    run_station_status: list[dict], expected_active: list[int]
+) -> None:
+    """Zone states must be derived from nested program run statuses."""
+    controller = AsyncRainbirdCloudController(
+        client=FakeCloudClient(run_station_status), satellite_id=SATELLITE_ID
+    )
+
+    states = await controller.get_zone_states()
+
+    assert sorted(states.active_set) == expected_active
