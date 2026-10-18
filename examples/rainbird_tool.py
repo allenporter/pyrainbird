@@ -16,6 +16,7 @@ import argparse
 import asyncio
 import datetime
 import inspect
+import json
 import logging
 import os
 from typing import Any
@@ -26,7 +27,6 @@ from pyrainbird import async_client
 from pyrainbird.cloud import (
     AsyncRainbirdCloudClient,
     AsyncRainbirdCloudStream,
-    CachingTokenProvider,
     ConnectionStatusEvent,
     GenericCloudStreamEvent,
     RainbirdCloudTokenProvider,
@@ -42,24 +42,66 @@ _LOGGER = logging.getLogger(__name__)
 
 def create_cloud_token_provider(
     session: aiohttp.ClientSession, config_file: str
-) -> CachingTokenProvider:
-    """Create a CachingTokenProvider wrapped around a RainbirdCloudTokenProvider."""
-    token = os.environ.get("RAINBIRD_CLOUD_TOKEN")
+) -> RainbirdCloudTokenProvider:
+    """Create a RainbirdCloudTokenProvider backed by a JSON token cache file."""
+    cached_token: str | None = None
+    cached_refresh_token: str | None = None
+    if os.path.exists(config_file):
+        try:
+            with open(config_file, encoding="utf-8") as f:
+                config = json.load(f)
+                cached_token = config.get("token")
+                cached_refresh_token = config.get("refresh_token")
+        except (OSError, json.JSONDecodeError) as err:
+            _LOGGER.warning("Failed to read token from cache: %s", err)
+
+    token = os.environ.get("RAINBIRD_CLOUD_TOKEN") or cached_token
+    refresh_token = (
+        os.environ.get("RAINBIRD_CLOUD_REFRESH_TOKEN") or cached_refresh_token
+    )
     username = os.environ.get("RAINBIRD_CLOUD_USERNAME") or os.environ.get(
         "RAINBIRD_USERNAME"
     )
     password = os.environ.get("RAINBIRD_CLOUD_PASSWORD") or os.environ.get(
         "RAINBIRD_PASSWORD"
     )
-    if not token and (not username or not password):
+    client_id = os.environ.get("RAINBIRD_CLOUD_CLIENT_ID") or os.environ.get(
+        "RAINBIRD_CLIENT_ID"
+    )
+    client_secret = os.environ.get("RAINBIRD_CLOUD_CLIENT_SECRET") or os.environ.get(
+        "RAINBIRD_CLIENT_SECRET"
+    )
+    if not token and not refresh_token and (not username or not password):
         raise ValueError(
             "Credentials required: set RAINBIRD_CLOUD_TOKEN or "
             "(RAINBIRD_CLOUD_USERNAME / RAINBIRD_CLOUD_PASSWORD) in environment."
         )
-    auth_provider = RainbirdCloudTokenProvider(
-        session, username or "", password or "", token=token
-    )
-    return CachingTokenProvider(config_file, auth_provider)
+
+    async def save_tokens(new_token: str, new_refresh_token: str | None = None) -> None:
+        def _save_sync() -> None:
+            try:
+                os.makedirs(os.path.dirname(config_file), exist_ok=True)
+                data: dict[str, Any] = {"token": new_token}
+                if new_refresh_token:
+                    data["refresh_token"] = new_refresh_token
+                with open(config_file, "w", encoding="utf-8") as f:
+                    json.dump(data, f, indent=2)
+                os.chmod(config_file, 0o600)
+            except OSError as err:
+                _LOGGER.warning("Failed to save token to cache: %s", err)
+
+        await asyncio.get_running_loop().run_in_executor(None, _save_sync)
+
+    kwargs: dict[str, Any] = {
+        "token": token,
+        "refresh_token": refresh_token,
+        "token_update_callback": save_tokens,
+        "client_secret": client_secret,
+    }
+    if client_id:
+        kwargs["client_id"] = client_id
+
+    return RainbirdCloudTokenProvider(session, username or "", password or "", **kwargs)
 
 
 async def discover_cloud(session: aiohttp.ClientSession, config_file: str) -> None:
@@ -291,21 +333,7 @@ async def main():
         satellite_id_str = os.environ.get("RAINBIRD_SATELLITE_ID")
         if satellite_id_str:
             satellite_id = int(satellite_id_str)
-            username = os.environ.get("RAINBIRD_CLOUD_USERNAME") or os.environ.get(
-                "RAINBIRD_USERNAME"
-            )
-            password = os.environ.get("RAINBIRD_CLOUD_PASSWORD") or os.environ.get(
-                "RAINBIRD_PASSWORD"
-            )
-            if not username or not password:
-                raise ValueError(
-                    "Username and password are required in environment variables "
-                    "(RAINBIRD_CLOUD_USERNAME / RAINBIRD_CLOUD_PASSWORD)."
-                )
-
-            auth_provider = RainbirdCloudTokenProvider(session, username, password)
-            token_provider = CachingTokenProvider(args.config_file, auth_provider)
-
+            token_provider = create_cloud_token_provider(session, args.config_file)
             controller = create_cloud_controller(
                 session, satellite_id, token_provider=token_provider
             )

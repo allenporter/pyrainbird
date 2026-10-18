@@ -51,6 +51,7 @@ AUTH_BASE = "https://iq4server.rainbird.com/coreidentityserver"
 API_BASE = "https://iq4server.rainbird.com/coreapi/api"
 CLIENT_ID = "C5A6F324-3CD3-4B22-9F78-B4835BA55D25"
 REDIRECT_URI = "https://iq4.rainbird.com/auth.html"
+PKCE_REDIRECT_URI = "com.rainbird.auth://authredirect"
 DEFAULT_USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
 WAF_RETRY_INITIAL_BACKOFF = 10.0
@@ -153,7 +154,7 @@ class RainbirdCloudTokenProvider(RainbirdTokenProvider):
         ) = None,
         client_id: str = CLIENT_ID,
         client_secret: str | None = None,
-        redirect_uri: str = REDIRECT_URI,
+        redirect_uri: str | None = None,
         auth_base: str | None = None,
     ) -> None:
         """Initialize RainbirdCloudTokenProvider."""
@@ -165,7 +166,9 @@ class RainbirdCloudTokenProvider(RainbirdTokenProvider):
         self._token_update_callback = token_update_callback
         self._client_id = client_id
         self._client_secret = client_secret
-        self._redirect_uri = redirect_uri
+        self._redirect_uri = redirect_uri or (
+            PKCE_REDIRECT_URI if client_secret else REDIRECT_URI
+        )
         self._auth_base = auth_base or AUTH_BASE
 
     @property
