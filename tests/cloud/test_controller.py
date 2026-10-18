@@ -73,8 +73,28 @@ async def mock_cloud_api(aiohttp_client) -> tuple:
         assert request.query.get("satelliteId") == str(SATELLITE_ID)
         return web.json_response(
             [
-                {"stationId": 111, "isIrrigating": True, "status": "running"},
-                {"stationId": 222, "isIrrigating": False, "status": "idle"},
+                {
+                    "programId": 1922370,
+                    "satelliteId": SATELLITE_ID,
+                    "runStationStatuses": [
+                        {
+                            "programStepId": 9686771,
+                            "stationId": 111,
+                            "stationTerminal": 1,
+                            "status": "Running",
+                            "baseRunTime": "00:05:00",
+                            "adjustedRunTime": "00:05:00",
+                        },
+                        {
+                            "programStepId": 9686772,
+                            "stationId": 222,
+                            "stationTerminal": 2,
+                            "status": "-",
+                            "baseRunTime": "00:05:00",
+                            "adjustedRunTime": "00:05:00",
+                        },
+                    ],
+                }
             ]
         )
 

@@ -911,8 +911,20 @@ class AsyncRainbirdCloudController(RainbirdController):
 
         running_statuses = await self._client.get_run_station_status(self._satellite_id)
         active_zones = set()
+        idle_statuses = {"-", "", "0", "none", "idle"}
         for status in running_statuses:
-            if (
+            if nested := status.get("runStationStatuses"):
+                for station_status in nested:
+                    raw_status = str(station_status.get("status", "-")).strip().lower()
+                    if (
+                        station_status.get("isIrrigating")
+                        or station_status.get("state") == "active"
+                        or raw_status not in idle_statuses
+                    ):
+                        sid = station_status.get("stationId")
+                        if sid in reverse_map:
+                            active_zones.add(reverse_map[sid])
+            elif (
                 status.get("isIrrigating")
                 or status.get("status") == "running"
                 or status.get("state") == "active"
