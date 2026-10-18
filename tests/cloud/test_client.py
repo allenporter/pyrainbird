@@ -90,7 +90,8 @@ def mock_cloud_app() -> aiohttp.web.Application:
         if app["invalid_redirect"]:
             location = f"{MOCK_REDIRECT_URI}#error=some_error"
         elif app["auth_code_flow"]:
-            location = f"{MOCK_REDIRECT_URI}?code=valid_auth_code_123"
+            redirect_uri = request.query.get("redirect_uri", MOCK_REDIRECT_URI)
+            location = f"{redirect_uri}?code=valid_auth_code_123"
         else:
             location = f"{MOCK_REDIRECT_URI}#access_token=valid_access_token_abc123&token_type=Bearer"
         return aiohttp.web.Response(status=302, headers={"Location": location})
@@ -1028,7 +1029,6 @@ async def test_oauth_auth_code_pkce_login(
         "user@example.com",
         "correct_password",
         client_secret="mock_secret",
-        redirect_uri=MOCK_REDIRECT_URI,
         auth_base="/coreidentityserver",
     )
     token = await provider.login()
