@@ -11,6 +11,8 @@ from typing import Any
 from mashumaro import DataClassDictMixin, field_options
 from mashumaro.config import BaseConfig
 
+from ..const import ProgramFrequency
+
 SUBSCRIBE_DEVICE_STATE_QUERY = """
 subscription onUpdateDeviceStateTable($PK : String!) {
   onUpdateDeviceStateTable(PK: $PK) {
@@ -299,15 +301,50 @@ def deserialize_hhmmss(val: str | None) -> datetime.timedelta:
     return datetime.timedelta()
 
 
+class CloudFrequencyType(enum.IntEnum):
+    """Frequency type codes returned by the Rain Bird cloud API."""
+
+    CUSTOM = 0
+    ODD = 2
+    ODD_31 = 3
+    EVEN = 4
+    CYCLIC = 5
+
+
 @dataclass
 class CloudProgram(DataClassDictMixin):
     id: int
     name: str
-    short_name: str = field(metadata=field_options(alias="shortName"))
-    is_enabled: bool = field(metadata=field_options(alias="isEnabled"))
-    start_time: str = field(metadata=field_options(alias="startTime"))
-    week_days: str = field(metadata=field_options(alias="weekDays"))
-    program_adjust: int = field(metadata=field_options(alias="programAdjust"))
+    short_name: str | None = field(
+        default=None, metadata=field_options(alias="shortName")
+    )
+    is_enabled: bool = field(default=True, metadata=field_options(alias="isEnabled"))
+    start_time: str | None = field(
+        default=None, metadata=field_options(alias="startTime")
+    )
+    week_days: str = field(default="", metadata=field_options(alias="weekDays"))
+    program_adjust: int = field(
+        default=100, metadata=field_options(alias="programAdjust")
+    )
+    type: int | None = None
+    skip_days: int | None = field(
+        default=None, metadata=field_options(alias="skipDays")
+    )
+    days_remaining: int | None = field(
+        default=None, metadata=field_options(alias="daysRemaining")
+    )
+    number: int | None = None
+
+    @property
+    def frequency(self) -> ProgramFrequency:
+        """Map cloud program type to unified ProgramFrequency."""
+        if self.type in (CloudFrequencyType.ODD, CloudFrequencyType.ODD_31):
+            return ProgramFrequency.ODD
+        if self.type == CloudFrequencyType.EVEN:
+            return ProgramFrequency.EVEN
+        if self.type == CloudFrequencyType.CYCLIC:
+            return ProgramFrequency.CYCLIC
+        return ProgramFrequency.CUSTOM
 
 
 @dataclass

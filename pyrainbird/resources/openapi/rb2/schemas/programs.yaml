@@ -9,34 +9,40 @@ ProgramListResponse:
     name:
       type: string
       description: Program letter or name (e.g. A, B, C, D).
+    shortName:
+      type: string
+      description: Short program identifier (e.g. PGM A).
     satelliteId:
       type: integer
       format: int64
-    programIndex:
+    number:
       type: integer
-      description: Index 0 to 3 corresponding to A, B, C, D.
+      description: Program number index.
     isEnabled:
       type: boolean
-    frequencyType:
+    type:
       type: integer
-      description: Scheduling mode (e.g. days of week, cyclical, odd/even).
-    daysOfWeek:
-      type: array
-      items:
-        type: integer
-      description: Active days of week (1=Sun, 7=Sat).
-    cyclicalDays:
+      description: Scheduling mode (0=Custom days of week, 2=Odd, 3=Odd31st, 4=Even, 5=Cyclic).
+    weekDays:
+      type: string
+      description: 7-character bitstring of active days of week (bit 0=Sun .. bit 6=Sat).
+    hybridWeekDays:
+      type: string
+      description: 7-character bitstring of permanent days off.
+    skipDays:
       type: integer
-      description: Interval days for cyclical scheduling.
-    oddEvenType:
+      description: Interval days for cyclic scheduling.
+    daysRemaining:
       type: integer
-      description: 0=None, 1=Odd, 2=Even, 3=Odd31st.
+      description: Days remaining until next cyclic run.
     programAdjust:
       type: integer
       description: Seasonal adjustment percentage (0 to 300).
     etAdjustType:
       type: integer
       description: Evapotranspiration weather adjust mode.
+    applySeasonalAdjustByMonth:
+      type: boolean
 
 ProgramResponse:
   type: object
@@ -49,21 +55,31 @@ ProgramResponse:
     satelliteId:
       type: integer
       format: int64
+    number:
+      type: integer
     isEnabled:
       type: boolean
-    frequencyType:
+    type:
       type: integer
-    daysOfWeek:
-      type: array
-      items:
-        type: integer
+      description: Scheduling mode (0=Custom days of week, 2=Odd, 3=Odd31st, 4=Even, 5=Cyclic).
+    weekDays:
+      type: string
+      description: 7-character bitstring of active days of week (bit 0=Sun .. bit 6=Sat).
+    hybridWeekDays:
+      type: string
+    skipDays:
+      type: integer
+    daysRemaining:
+      type: integer
     programAdjust:
       type: integer
     useProgramAdjust:
       type: boolean
+    applySeasonalAdjustByMonth:
+      type: boolean
     etAdjustType:
       type: integer
-    startTimes:
+    startTime:
       type: array
       items:
         $ref: "#/StartTimeResponse"
