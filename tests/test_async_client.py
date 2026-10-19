@@ -573,12 +573,45 @@ async def test_set_zone_schedule(
         [datetime.time(4, 0)],
         frequency=ProgramFrequency.EVEN,
         days_of_week={DayOfWeek.MONDAY, DayOfWeek.THURSDAY},
+        period=3,
+        synchro=0,
     )
 
     requests = [
         r for r in fake_device.request_log if type(r).__name__ == "RequestLogEntry"
     ]
-    assert requests[-1].raw_data == "2100010A18909090909002120000"
+    assert requests[-1].raw_data == "2100010A18909090909002120300"
+    # Both values were given so the zone is not read first
+    assert not any(r.raw_data.startswith("20") for r in requests)
+
+
+async def test_set_zone_schedule_keeps_period(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    fake_device: FakeRainbirdDevice,
+) -> None:
+    """Test that a CUSTOM zone schedule keeps the period stored on the zone.
+
+    An ESP-RZXe NACKs a schedule with a period of 0 and stores a period of 2
+    on its zones, even for a CUSTOM frequency.
+    """
+    fake_device.set_model("ESP_RZXe")
+    fake_device.schedule["0006"] = "A000060090909090909000150200"
+    controller = await rainbird_controller()
+
+    await controller.set_zone_schedule(
+        6,
+        datetime.timedelta(minutes=20),
+        [datetime.time(4, 0)],
+        days_of_week={DayOfWeek.SUNDAY, DayOfWeek.TUESDAY, DayOfWeek.THURSDAY},
+    )
+
+    requests = [
+        r for r in fake_device.request_log if type(r).__name__ == "RequestLogEntry"
+    ]
+    assert [r.raw_data for r in requests[-2:]] == [
+        "200006",
+        "2100061418909090909000150200",
+    ]
 
 
 async def test_set_water_budget(
