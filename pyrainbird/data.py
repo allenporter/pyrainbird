@@ -547,7 +547,7 @@ class DeviceTime(SerializationStrategy):
         for f in ("year", "month", "day", "hour", "minute", "second"):
             if f not in values:
                 raise ValueError(f"Missing field '{f}' in values")
-        return datetime.datetime(  # noqa: DTZ001
+        return datetime.datetime(
             int(values["year"]),
             int(values["month"]),
             int(values["day"]),
@@ -710,7 +710,7 @@ class Program(DataClassDictMixin):
     @property
     def timeline(self) -> ProgramTimeline:
         """Return a timeline of events for the program."""
-        return self.timeline_tz(datetime.datetime.now().tzinfo)  # noqa: DTZ005
+        return self.timeline_tz(datetime.datetime.now().tzinfo)
 
     def timeline_tz(self, tzinfo: datetime.tzinfo | None) -> ProgramTimeline:
         """Return a timeline of events for the program."""
@@ -736,7 +736,7 @@ class Program(DataClassDictMixin):
     def zone_timeline(self) -> ProgramTimeline:
         """Return a timeline of events for the program."""
         iters: list[Iterable[SortableItem[Timespan, ProgramEvent]]] = []
-        now = datetime.datetime.now()  # noqa: DTZ005
+        now = datetime.datetime.now()
         for start in self.starts:
             dtstart = now.replace(hour=start.hour, minute=start.minute, second=0)
             for zone_duration in self.durations:
@@ -826,7 +826,7 @@ class ZoneSchedule(DataClassDictMixin):
     @property
     def timeline(self) -> ProgramTimeline:
         """Return a timeline of events for the zone."""
-        return self.timeline_tz(datetime.datetime.now().tzinfo)  # noqa: DTZ005
+        return self.timeline_tz(datetime.datetime.now().tzinfo)
 
     def timeline_tz(self, tzinfo: datetime.tzinfo | None) -> ProgramTimeline:
         """Return a timeline of events for the zone."""
@@ -888,7 +888,7 @@ class Schedule(DataClassDictMixin):
     @property
     def timeline(self) -> ProgramTimeline:
         """Return a timeline of all programs."""
-        return self.timeline_tz(datetime.datetime.now().tzinfo)  # noqa: DTZ005
+        return self.timeline_tz(datetime.datetime.now().tzinfo)
 
     def timeline_tz(self, tzinfo: datetime.tzinfo | None) -> ProgramTimeline:
         """Return a timeline of all programs and zones."""
