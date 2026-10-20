@@ -34,9 +34,7 @@ Protocol Overview:
 
 4. Message Handling:
    - `ka`: Keep-alive message sent periodically by the server to maintain the connection.
-   - `data`: Pushed event update payload. The nested `Data` field contains a JSON-serialized
-     string detailing the active station status:
-       {"activeStation": <int|null>, "remainSec": <int>, "rainDelay": <int>}
+   - `data`: Pushed event update payload (`PK`, `SK`, `Data`, `TimeStamp`).
 """
 
 import asyncio
@@ -62,6 +60,7 @@ from .models import (
     GenericCloudStreamEvent,
     RainSensorStateData,
     RainSensorStateEvent,
+    RssiData,
     RssiStateEvent,
     StationStateData,
     StationStateEvent,
@@ -143,17 +142,15 @@ class AsyncRainbirdCloudStream:
         # Route parsing based on Sort Key (SK) type
         match record.sk:
             case CloudStreamSortKey.RSSI:
-                if not record.data:
-                    return None
                 try:
-                    rssi_val = int(record.data)
-                except ValueError:
+                    rssi_data = RssiData.parse_record(record)
+                except (ValueError, TypeError, KeyError):
                     return None
                 return RssiStateEvent(
                     satellite_id=self._satellite_id,
                     device_uuid=record.pk,
                     updated_at=updated_at,
-                    rssi=rssi_val,
+                    rssi=rssi_data.value,
                 )
 
             case CloudStreamSortKey.RAIN_SENSOR:
@@ -180,7 +177,7 @@ class AsyncRainbirdCloudStream:
 
                 try:
                     station_data = StationStateData.parse_record(record)
-                except ValueError:
+                except (ValueError, TypeError, KeyError):
                     return None
 
                 return StationStateEvent(
@@ -191,12 +188,10 @@ class AsyncRainbirdCloudStream:
                     data=station_data,
                 )
 
-            case CloudStreamSortKey.CONNECTED:
-                if not record.data:
-                    return None
+            case CloudStreamSortKey.DEVICE_PRESENCE:
                 try:
                     conn_data = ConnectedData.parse_record(record)
-                except ValueError:
+                except (ValueError, TypeError, KeyError):
                     return None
 
                 return ConnectionStatusEvent(

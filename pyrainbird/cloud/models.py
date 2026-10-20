@@ -73,7 +73,7 @@ class CloudStreamSortKey(enum.StrEnum):
 
     RSSI = "RSSI"
     RAIN_SENSOR = "Event#RainSensorState"
-    CONNECTED = "Connected"
+    DEVICE_PRESENCE = "DevicePresence"
     STATION_PREFIX = "Station"
 
 
@@ -159,18 +159,9 @@ class StationStateData(DataClassDictMixin):
 
 @dataclass
 class ConnectedData(DataClassDictMixin):
-    """Represents the inner Data payload for Connected."""
+    """Represents the inner Data payload for DevicePresence."""
 
-    state: str | int | None = None
-    active_station: int | None = field(
-        default=None, metadata=field_options(alias="activeStation")
-    )
-    remain_sec: int | None = field(
-        default=None, metadata=field_options(alias="remainSec")
-    )
-    rain_delay: int | None = field(
-        default=None, metadata=field_options(alias="rainDelay")
-    )
+    is_connected: bool = field(metadata=field_options(alias="isConnected"))
 
     @classmethod
     def parse_record(cls, record: DeviceStateRecord) -> ConnectedData:
@@ -180,25 +171,32 @@ class ConnectedData(DataClassDictMixin):
         try:
             record_data = json.loads(record.data)
         except json.JSONDecodeError as err:
-            raise ValueError(f"Failed to parse record data: {err}")
+            raise ValueError(f"Failed to parse record data: {err}") from err
+        if not isinstance(record_data, dict):
+            raise TypeError(f"Expected JSON object for DevicePresence: {record.data}")
+        return cls.from_dict(record_data)
 
+
+@dataclass
+class RssiData(DataClassDictMixin):
+    """Represents the inner Data payload for RSSI."""
+
+    value: int
+
+    @classmethod
+    def parse_record(cls, record: DeviceStateRecord) -> RssiData:
+        """Parse an RssiData from a DeviceStateRecord (JSON object or raw integer)."""
+        if not record.data:
+            raise ValueError("No data found in record")
+        try:
+            record_data = json.loads(record.data)
+        except json.JSONDecodeError as err:
+            raise ValueError(f"Failed to parse record data: {err}") from err
         if isinstance(record_data, dict):
-            if (
-                (remain_sec := record_data.get("remainSec")) is not None
-                and remain_sec > 1000000000
-                and record.timestamp
-                and remain_sec >= record.timestamp
-            ):
-                record_data["remainSec"] = remain_sec - record.timestamp
             return cls.from_dict(record_data)
-
-        # Handle scalar (e.g. 0, "offline")
-        return cls(state=record_data)
-
-    @property
-    def is_connected(self) -> bool:
-        """Return True if the state indicates a connected status."""
-        return str(self.state) not in ("0", "offline")
+        if not isinstance(record_data, bool) and isinstance(record_data, int | str):
+            return cls(value=int(record_data))
+        raise ValueError(f"Invalid RSSI data: {record.data}")
 
 
 @dataclass
@@ -247,29 +245,14 @@ class RainSensorStateEvent(CloudStreamEvent):
 
 @dataclass
 class ConnectionStatusEvent(CloudStreamEvent):
-    """Fired with overall connection and active status details."""
+    """Fired when device presence/connection status changes."""
 
     data: ConnectedData
 
     @property
     def is_connected(self) -> bool:
-        """Return True if the state indicates a connected status."""
+        """Return True if the device is connected."""
         return self.data.is_connected
-
-    @property
-    def active_station(self) -> int | None:
-        """Return the currently active watering station, if any."""
-        return self.data.active_station
-
-    @property
-    def remaining_seconds(self) -> int | None:
-        """Return the remaining duration for the active station."""
-        return self.data.remain_sec
-
-    @property
-    def rain_delay(self) -> int | None:
-        """Return the active rain delay duration."""
-        return self.data.rain_delay
 
 
 @dataclass
