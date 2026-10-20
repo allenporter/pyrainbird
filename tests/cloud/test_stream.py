@@ -146,8 +146,8 @@ def mock_ws_app() -> aiohttp.web.Application:
                                 "data": {
                                     "onUpdateDeviceStateTable": {
                                         "PK": "7b1ad1ef-91df-4e50-9004-269c139c681c",
-                                        "SK": "Connected",
-                                        "Data": '{"activeStation":2,"remainSec":300,"rainDelay":1}',
+                                        "SK": "DevicePresence",
+                                        "Data": '{"isConnected":true}',
                                         "TimeStamp": 1781392680,
                                     }
                                 }
@@ -170,8 +170,8 @@ def mock_ws_app() -> aiohttp.web.Application:
                                     "data": {
                                         "onUpdateDeviceStateTable": {
                                             "PK": "7b1ad1ef-91df-4e50-9004-269c139c681c",
-                                            "SK": "Connected",
-                                            "Data": '{"activeStation":null,"remainSec":0,"rainDelay":0}',
+                                            "SK": "DevicePresence",
+                                            "Data": '{"isConnected":false}',
                                             "TimeStamp": 1781392740,
                                         }
                                     }
@@ -251,9 +251,6 @@ async def test_stream_success(
         assert ev1.satellite_id == 527302
         assert ev1.device_uuid == "7b1ad1ef-91df-4e50-9004-269c139c681c"
         assert ev1.is_connected is True
-        assert ev1.active_station == 2
-        assert ev1.remaining_seconds == 300
-        assert ev1.rain_delay == 1
         assert ev1.updated_at == datetime.datetime(
             2026, 6, 13, 23, 18, tzinfo=datetime.UTC
         )
@@ -262,10 +259,7 @@ async def test_stream_success(
         ev2 = events[1]
         assert isinstance(ev2, ConnectionStatusEvent)
         assert ev2.device_uuid == "7b1ad1ef-91df-4e50-9004-269c139c681c"
-        assert ev2.is_connected is True
-        assert ev2.active_station is None
-        assert ev2.remaining_seconds == 0
-        assert ev2.rain_delay == 0
+        assert ev2.is_connected is False
 
 
 @pytest.mark.asyncio
@@ -402,10 +396,26 @@ def test_parse_event_snapshot(json_path: str, snapshot: Any) -> None:
 
 
 def test_parse_event_rssi() -> None:
-    """Test that _parse_event correctly parses RSSI status events."""
+    """Test that _parse_event correctly parses RSSI status events (JSON object and raw integer)."""
     stream = AsyncRainbirdCloudStream(
         MockTokenProvider(), 527302, "7b1ad1ef-91df-4e50-9004-269c139c681c", None
     )  # type: ignore
+
+    rssi_json = {
+        "payload": {
+            "data": {
+                "onUpdateDeviceStateTable": {
+                    "PK": "7b1ad1ef-91df-4e50-9004-269c139c681c",
+                    "SK": "RSSI",
+                    "Data": '{"value":-55}',
+                    "TimeStamp": 1781392680,
+                }
+            }
+        }
+    }
+    ev_json = stream._parse_event(rssi_json)
+    assert isinstance(ev_json, RssiStateEvent)
+    assert ev_json.rssi == -55
 
     rssi_raw = {
         "payload": {
@@ -666,6 +676,20 @@ def test_parse_event_invalid_payloads() -> None:
         }
     }
     assert stream._parse_event(station_bad_parse) is None
+
+    presence_bad_parse = {
+        "payload": {
+            "data": {
+                "onUpdateDeviceStateTable": {
+                    "PK": "uuid",
+                    "SK": "DevicePresence",
+                    "Data": "{bad_json",
+                    "TimeStamp": 100,
+                }
+            }
+        }
+    }
+    assert stream._parse_event(presence_bad_parse) is None
 
 
 @pytest.mark.asyncio

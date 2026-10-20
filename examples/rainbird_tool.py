@@ -162,11 +162,7 @@ async def stream_cloud(
             elif isinstance(event, RainSensorStateEvent):
                 print(f"{prefix} Rain Sensor - Wet: {event.is_wet}")
             elif isinstance(event, ConnectionStatusEvent):
-                print(
-                    f"{prefix} Connection - Connected: {event.is_connected}, "
-                    f"Active Station: {event.active_station}, "
-                    f"Remaining: {event.remaining_seconds}s, Rain Delay: {event.rain_delay}"
-                )
+                print(f"{prefix} Connection - Connected: {event.is_connected}")
             elif isinstance(event, RssiStateEvent):
                 print(f"{prefix} Signal - RSSI: {event.rssi}")
             elif isinstance(event, GenericCloudStreamEvent):

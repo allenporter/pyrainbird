@@ -7,6 +7,7 @@ import pytest
 from pyrainbird.cloud.models import (
     ConnectedData,
     DeviceStateRecord,
+    RssiData,
     StationStateData,
 )
 
@@ -98,51 +99,45 @@ def test_station_state_data_parse_record_epoch_calculation() -> None:
 
 
 def test_connected_data_parse_record_success() -> None:
-    """Test parsing a valid connected state record."""
+    """Test parsing a valid DevicePresence state record."""
     record = DeviceStateRecord(
         pk="test-pk",
-        sk="Connected",
-        data='{"state": "online", "activeStation": 3, "remainSec": 45, "rainDelay": 0}',
+        sk="DevicePresence",
+        data='{"isConnected": true}',
         timestamp=1686700000,
     )
     parsed = ConnectedData.parse_record(record)
-    assert parsed.state == "online"
-    assert parsed.active_station == 3
-    assert parsed.remain_sec == 45
-    assert parsed.rain_delay == 0
     assert parsed.is_connected is True
 
 
-def test_connected_data_parse_record_scalar_offline() -> None:
-    """Test parsing a scalar string connected state record."""
+def test_connected_data_parse_record_disconnected() -> None:
+    """Test parsing a disconnected DevicePresence state record."""
     record = DeviceStateRecord(
         pk="test-pk",
-        sk="Connected",
-        data='"offline"',
+        sk="DevicePresence",
+        data='{"isConnected": false}',
         timestamp=1686700000,
     )
     parsed = ConnectedData.parse_record(record)
-    assert parsed.state == "offline"
     assert parsed.is_connected is False
 
 
-def test_connected_data_parse_record_scalar_zero() -> None:
-    """Test parsing a scalar integer connected state record."""
+def test_connected_data_parse_record_non_dict_error() -> None:
+    """Test ConnectedData.parse_record raises TypeError when record data is not a JSON object."""
     record = DeviceStateRecord(
         pk="test-pk",
-        sk="Connected",
+        sk="DevicePresence",
         data="0",
         timestamp=1686700000,
     )
-    parsed = ConnectedData.parse_record(record)
-    assert parsed.state == 0
-    assert parsed.is_connected is False
+    with pytest.raises(TypeError, match="Expected JSON object for DevicePresence"):
+        ConnectedData.parse_record(record)
 
 
 def test_connected_data_parse_record_no_data_error() -> None:
     """Test ConnectedData.parse_record raises ValueError when record data is missing."""
     record = DeviceStateRecord(
-        pk="test-pk", sk="Connected", data=None, timestamp=1686700000
+        pk="test-pk", sk="DevicePresence", data=None, timestamp=1686700000
     )
     with pytest.raises(ValueError, match="No data found in record"):
         ConnectedData.parse_record(record)
@@ -151,57 +146,43 @@ def test_connected_data_parse_record_no_data_error() -> None:
 def test_connected_data_parse_record_malformed_json_error() -> None:
     """Test ConnectedData.parse_record raises ValueError when record data is malformed JSON."""
     record = DeviceStateRecord(
-        pk="test-pk", sk="Connected", data="{invalid_json", timestamp=1686700000
+        pk="test-pk", sk="DevicePresence", data="{invalid_json", timestamp=1686700000
     )
     with pytest.raises(ValueError, match="Failed to parse record data"):
         ConnectedData.parse_record(record)
 
 
-def test_connected_data_parse_record_epoch_calculation_standard() -> None:
-    """Test relative offset subtraction for ConnectedData.remain_sec under normal conditions."""
+def test_rssi_data_parse_record_json_object() -> None:
+    """Test parsing RssiData from a JSON object payload."""
     record = DeviceStateRecord(
         pk="test-pk",
-        sk="Connected",
-        data='{"state": "online", "remainSec": 1686700080}',
+        sk="RSSI",
+        data='{"value": -55}',
         timestamp=1686700000,
     )
-    parsed = ConnectedData.parse_record(record)
-    assert parsed.remain_sec == 80  # 1686700080 - 1686700000 = 80
+    parsed = RssiData.parse_record(record)
+    assert parsed.value == -55
 
 
-def test_connected_data_parse_record_epoch_calculation_no_timestamp() -> None:
-    """Test that relative offset subtraction is skipped when timestamp is missing."""
+def test_rssi_data_parse_record_scalar_int() -> None:
+    """Test parsing RssiData from a raw integer payload."""
     record = DeviceStateRecord(
         pk="test-pk",
-        sk="Connected",
-        data='{"state": "online", "remainSec": 1686700080}',
-        timestamp=None,
-    )
-    parsed = ConnectedData.parse_record(record)
-    assert parsed.remain_sec == 1686700080
-
-
-def test_connected_data_parse_record_epoch_calculation_below_threshold() -> None:
-    """Test that relative offset subtraction is skipped when remainSec is below the threshold."""
-    record = DeviceStateRecord(
-        pk="test-pk",
-        sk="Connected",
-        data='{"state": "online", "remainSec": 500}',
+        sk="RSSI",
+        data="-82",
         timestamp=1686700000,
     )
-    parsed = ConnectedData.parse_record(record)
-    assert parsed.remain_sec == 500
+    parsed = RssiData.parse_record(record)
+    assert parsed.value == -82
 
 
-def test_connected_data_parse_record_epoch_calculation_remain_less_than_timestamp() -> (
-    None
-):
-    """Test that offset subtraction is skipped when remainSec is less than the timestamp."""
-    record = DeviceStateRecord(
-        pk="test-pk",
-        sk="Connected",
-        data='{"state": "online", "remainSec": 1686700080}',
-        timestamp=1686700100,
-    )
-    parsed = ConnectedData.parse_record(record)
-    assert parsed.remain_sec == 1686700080
+def test_rssi_data_parse_record_errors() -> None:
+    """Test RssiData.parse_record error handling."""
+    with pytest.raises(ValueError, match="No data found in record"):
+        RssiData.parse_record(DeviceStateRecord(pk="pk", sk="RSSI", data=None))
+
+    with pytest.raises(ValueError, match="Failed to parse record data"):
+        RssiData.parse_record(DeviceStateRecord(pk="pk", sk="RSSI", data="not_json"))
+
+    with pytest.raises(ValueError, match="Invalid RSSI data"):
+        RssiData.parse_record(DeviceStateRecord(pk="pk", sk="RSSI", data="true"))

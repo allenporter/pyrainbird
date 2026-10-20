@@ -1,28 +1,28 @@
 # serializer version: 1
-# name: test_parse_event_snapshot[scalar_int]
+# name: test_parse_event_snapshot[device_presence]
   ConnectionStatusEvent(
     data=ConnectedData(
-      active_station=None,
-      rain_delay=None,
-      remain_sec=None,
-      state=0,
+      is_connected=True,
     ),
-    device_uuid='7b1ad1ef-91df-4e50-9004-269c139c681c',
+    device_uuid='8c756129-0000-8da0-9049-8e44b2deb091',
     satellite_id=527302,
-    updated_at=datetime.datetime(2026, 6, 13, 23, 18, tzinfo=datetime.timezone.utc),
+    updated_at=datetime.datetime(2026, 6, 14, 20, 22, 12, tzinfo=datetime.timezone.utc),
   )
 # ---
-# name: test_parse_event_snapshot[scalar_str]
-  ConnectionStatusEvent(
-    data=ConnectedData(
-      active_station=None,
-      rain_delay=None,
-      remain_sec=None,
-      state='offline',
-    ),
-    device_uuid='7b1ad1ef-91df-4e50-9004-269c139c681c',
+# name: test_parse_event_snapshot[rssi_object]
+  RssiStateEvent(
+    device_uuid='8c756129-0000-8da0-9049-8e44b2deb091',
+    rssi=-55,
     satellite_id=527302,
-    updated_at=datetime.datetime(2026, 6, 13, 23, 18, tzinfo=datetime.timezone.utc),
+    updated_at=datetime.datetime(2026, 6, 14, 20, 22, 12, tzinfo=datetime.timezone.utc),
+  )
+# ---
+# name: test_parse_event_snapshot[rssi_scalar]
+  RssiStateEvent(
+    device_uuid='8c756129-0000-8da0-9049-8e44b2deb091',
+    rssi=-82,
+    satellite_id=527302,
+    updated_at=datetime.datetime(2026, 6, 14, 20, 22, 12, tzinfo=datetime.timezone.utc),
   )
 # ---
 # name: test_parse_event_snapshot[station_epoch_timestamp]
