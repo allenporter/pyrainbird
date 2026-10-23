@@ -9573,13 +9573,13 @@
 # name: test_set_zone_schedule
   '''
   [client >]
-  Intent: SetScheduleRequest (2100010A18909090909002120000)
+  Intent: SetScheduleRequest (2100010A18909090909002120300)
   Payload: {
     "id": 1,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "2100010A18909090909002120000",
+      "data": "2100010A18909090909002120300",
       "length": 14
     }
   }
@@ -9591,6 +9591,51 @@
       "data": "0121"
     },
     "id": 1
+  }
+  '''
+# ---
+# name: test_set_zone_schedule_keeps_period
+  '''
+  [client >]
+  Intent: RetrieveScheduleRequest (200006)
+  Payload: {
+    "id": 1,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "200006",
+      "length": 3
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "A000060090909090909000150200"
+    },
+    "id": 1
+  }
+  
+  [client >]
+  Intent: SetScheduleRequest (2100061418909090909000150200)
+  Payload: {
+    "id": 2,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "2100061418909090909000150200",
+      "length": 14
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "0121"
+    },
+    "id": 2
   }
   '''
 # ---
