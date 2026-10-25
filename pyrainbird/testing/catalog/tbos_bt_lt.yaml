@@ -26,4 +26,3 @@ global_seasonal_adjustment: true
 controller_state_set: true
 combined_controller_state: true
 stack_manual_run_station: true
-is_battery_based: true

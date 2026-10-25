@@ -161,13 +161,9 @@ MODEL_ALIASES: dict[str, str] = {
     "LX-IVM": "LX_IVM",
     "LX-IVM Pro": "LX_IVM_PRO",
     "BAT-BT": "ESP_BAT_BT",
-    "TBOS-BT": "TBOS_BT",
     "BAT-PRO": "ESP_BAT_PRO",
     "BAT-PRO Flow": "ESP_BAT_PRO_FLOW",
     "IQ Gateway": "IQ_GATEWAY",
-    "0099": "TBOS_BT",
-    "0100": "TBOS_BT_LT",
-    "0107": "ESP_MEv2",
 }
 
 
@@ -176,11 +172,9 @@ def resolve_controller_type_from_model_id(
 ) -> str | None:
     """Resolve controller model identifier from 4-char SIP model hex or manufacturing fallback."""
     if isinstance(model_id_hex, int):
-        normalized = "-0001" if model_id_hex in (-1, 0xFFFF) else f"{model_id_hex:04X}"
+        normalized = f"{model_id_hex & 0xFFFF:04X}"
     else:
         normalized = model_id_hex.strip().upper()
-    if normalized == "FFFF":
-        normalized = "-0001"
     for enum_name in CONTROLLER_TYPE_ORDINAL_ORDER:
         prof = DEVICE_PROFILES[enum_name]
         if prof.sip_model_hex.upper() == normalized:
@@ -193,8 +187,7 @@ def resolve_controller_type_from_model_id(
 def get_controller_profile(model_or_code: str | int) -> ControllerProfile:
     """Lookup a ControllerProfile by model identifier, display name, or SIP model code."""
     if isinstance(model_or_code, int):
-        hex_code = "-0001" if model_or_code in (-1, 0xFFFF) else f"{model_or_code:04X}"
-        resolved = resolve_controller_type_from_model_id(hex_code)
+        resolved = resolve_controller_type_from_model_id(model_or_code)
         if resolved:
             return DEVICE_PROFILES[resolved]
         raise ValueError(f"Unknown model code: {model_or_code:#x}")
@@ -206,7 +199,7 @@ def get_controller_profile(model_or_code: str | int) -> ControllerProfile:
         return DEVICE_PROFILES[MODEL_ALIASES[key]]
     upper = key.upper().removeprefix("0X")
     if len(upper) <= 4 and all(c in "0123456789ABCDEF" for c in upper.lstrip("-")):
-        padded = "-0001" if upper in ("-1", "-0001", "FFFF") else upper.zfill(4)
+        padded = "-0001" if upper in ("-1", "-0001") else upper.zfill(4)
         resolved = resolve_controller_type_from_model_id(padded)
         if resolved:
             return DEVICE_PROFILES[resolved]

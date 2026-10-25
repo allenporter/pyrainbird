@@ -9,7 +9,7 @@ program_based: true
 seconds_based: true
 serial_number: true
 maximum_programs: 4
-maximum_stations: 6
+maximum_stations: 1
 maximum_start_times: 8
 maximum_sensors: 0
 maximum_available_stations_pages: 0
