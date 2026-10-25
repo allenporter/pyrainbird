@@ -33,6 +33,7 @@ include = ["pyrainbird*"]
 
 [tool.setuptools.package-data]
 "pyrainbird.resources" = ["*.yaml", "**/*.yaml"]
+"pyrainbird.testing" = ["catalog/*.yaml"]
 
 [tool.mypy]
 exclude = [

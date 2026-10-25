@@ -1,0 +1,30 @@
+---
+controller_type: LX_IVM_PRO
+controller_name: LX-IVM Pro
+sip_model: 14
+sip_model_hex: "000E"
+wire_model_hex: "000E"
+protocol_family: UNIVERSAL_CDT
+program_based: true
+seconds_based: false
+serial_number: true
+maximum_programs: 40
+maximum_stations: 240
+maximum_start_times: 8
+maximum_sensors: 7
+maximum_available_stations_pages: 7
+maximum_rain_delay_days: 30
+maximum_manual_run_seconds: 6000
+maximum_run_time_seconds: 345600
+maximum_seasonal_adjust: 300
+minimum_seasonal_adjust: 0
+schedule_timestamp: false
+universal_messages: true
+cycle_and_soak: true
+posix_time_zone: false
+global_seasonal_adjustment: false
+controller_state_set: false
+combined_controller_state: false
+stack_manual_run_station: true
+master_valves_settings: true
+is_lx_controller: true
