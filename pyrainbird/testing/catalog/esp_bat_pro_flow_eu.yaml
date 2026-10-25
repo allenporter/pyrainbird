@@ -1,0 +1,30 @@
+---
+controller_type: ESP_BAT_PRO_FLOW_EU
+controller_name: BAT-PRO Flow
+sip_model: 25
+sip_model_hex: "0019"
+wire_model_hex: "0019"
+protocol_family: BLE_CBOS
+program_based: true
+seconds_based: true
+serial_number: true
+maximum_programs: 12
+maximum_stations: 6
+maximum_start_times: 8
+maximum_sensors: 0
+maximum_available_stations_pages: 0
+maximum_rain_delay_days: 30
+maximum_manual_run_seconds: 32400
+maximum_run_time_seconds: 32400
+maximum_seasonal_adjust: 200
+minimum_seasonal_adjust: 0
+schedule_timestamp: true
+universal_messages: false
+cycle_and_soak: true
+posix_time_zone: false
+global_seasonal_adjustment: true
+controller_state_set: true
+combined_controller_state: true
+stack_manual_run_station: true
+is_battery_based: true
+is_cbos_series: true
