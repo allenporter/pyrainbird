@@ -1,0 +1,200 @@
+"""Protocol constants, BLE GATT UUIDs, CDT schema, and Universal enum tables."""
+
+from __future__ import annotations
+
+from typing import Any
+
+# BLE GATT UUID Constants
+BLE_CBOS_SIP_WRITE_UUID = "0000fe46-8e22-4541-9d4c-21edae82ed19"
+BLE_CBOS_SIP_NOTIFY_UUID = "0000fe47-8e22-4541-9d4c-21edae82ed19"
+BLE_CBOS_OTA_WRITE_UUID = "0000fe44-8e22-4541-9d4c-21edae82ed19"
+BLE_CBOS_OTA_NOTIFY_UUID = "0000fe45-8e22-4541-9d4c-21edae82ed19"
+BLE_CBOS_AUX_NOTIFY_UUID = "0000fe42-8e22-4541-9d4c-21edae82ed19"
+BLE_CCCD_UUID = "00002902-0000-1000-8000-00805F9B34FB"
+
+TBOS_BT_SERVICE_UUID = "F4780001-F54B-4C45-B4BE-6DB9FFB0703F"
+TBOS_BT_NOTIFY_UUID = "F4780002-F54B-4C45-B4BE-6DB9FFB0703F"
+TBOS_BT_WRITE_UUID = "F4780003-F54B-4C45-B4BE-6DB9FFB0703F"
+
+TBOS_BT_LT_SERVICE_UUID = "863A0001-008C-4AEE-92CF-0B6F98FEE25D"
+TBOS_BT_LT_NOTIFY_UUID = "863A0002-008C-4AEE-92CF-0B6F98FEE25D"
+TBOS_BT_LT_WRITE_UUID = "863A0003-008C-4AEE-92CF-0B6F98FEE25D"
+
+# Universal Alarm Bitmask Constants
+ALARM_STATUS_MASKS: dict[str, int] = {
+    "NO_WATER_DAYS": 1 << 8,
+    "NO_RUN_TIME": 1 << 9,
+    "NO_START_TIME": 1 << 10,
+    "NO_PROGRAM_AUTO_RUN": 1 << 11,
+    "MAX_PROGRAM_QUEUED_EXCEEDED": 1 << 12,
+    "FLOW_ALARM": 1 << 13,
+    "ZERO_LEARNED_FLOW": 1 << 14,
+    "LOW_FLO_ZONE_RATE": 1 << 15,
+    "TWO_WIRE_PATH_OFF": 1 << 32,
+    "NO_TWO_WIRE_MODULE": 1 << 33,
+    "INVALID_MODULE_INSTALL": 1 << 34,
+    "ALL_ADDRESS_ZERO": 1 << 36,
+    "DUPLICATE_ADDRESS": 1 << 37,
+    "SHORT_FINDING": 1 << 38,
+    "SHORT_TWO_WIRE_SEGMENTS": 1 << 39,
+    "NOT_RESPONDING": 1 << 40,
+    "TWO_WIRE_MAPPING": 1 << 41,
+    "IRRIGATION_NOT_READY": 1 << 43,
+    "MV_SHORT": 1 << 48,
+    "STATION_SHORT": 1 << 49,
+    "VALVE_SHORTS": 1 << 50,
+}
+
+WEATHER_SENSOR_STATUS_CODES: dict[str, int] = {
+    "ByPassed": 0,
+    "Monitoring": 1,
+    "Prevent": 2,
+    "Pause": 3,
+    "Inactive": 4,
+    "Unknown": 0xFF,
+}
+
+DISCOVERY_PROGRESS_STATUS_CODES: dict[str, int] = {
+    "NOT_STARTED": 0,
+    "DISCOVERY_NOT_STARTED": 0,
+    "IN_PROGRESS": 1,
+    "DISCOVERY_IN_PROGRESS": 1,
+    "COMPLETED": 2,
+    "DISCOVERY_COMPLETED": 2,
+    "ABORTED": 3,
+    "DISCOVERY_ABORTED": 3,
+    "ABORTED_BY_SHORT": 4,
+    "ASSIGNING": 5,
+    "ASSIGN_FAILED": 6,
+}
+
+STATION_STATE_CODES: dict[str, int] = {
+    "Idle": 0,
+    "Pending": 1,
+    "Cycling": 2,
+    "Soaking": 3,
+    "InterStationDelay": 4,
+    "DisableBySensor": 5,
+    "PreventedBySensor": 6,
+    "PauseBySensor": 7,
+}
+
+PROGRAM_SOURCE_CODES: dict[str, int] = {
+    "Unknown": 0,
+    "ManualTest": 1,
+    "RemoteTest": 2,
+    "ManualValve": 3,
+    "RemoteValve": 4,
+    "ManualProgram": 5,
+    "RemoteProgram": 6,
+    "AutoProgram": 7,
+    "CentralTest": 8,
+    "CentralValve": 9,
+    "CentralProgram": 10,
+}
+
+MANUAL_RUN_SOURCE_NAMES: dict[int, str] = {
+    0: "FROM_UNKNOWN",
+    1: "FROM_GUI",
+    2: "FROM_REMOTE",
+    3: "FROM_CIC",
+    4: "FROM_AUTO",
+    5: "FROM_UBUS",
+}
+
+# CDT Metadata: data_id -> (rank, value_width, is_float, default_value)
+CDT_SCHEMA: dict[str, tuple[int, int, bool, Any]] = {
+    "0100": (0, 2, False, 0),
+    "0200": (0, 1, False, 0),
+    "0300": (0, 1, False, 0),
+    "0400": (0, 1, False, 0),
+    "0500": (0, 1, False, 0),
+    "0600": (0, 1, False, 0),
+    "0700": (1, 1, False, 255),
+    "0800": (1, 1, False, 255),
+    "0900": (1, 2, False, 255),
+    "0A00": (1, 2, False, 0),
+    "0B00": (1, 2, False, 0),
+    "0C00": (1, 2, False, 0),
+    "0D00": (0, 1, False, 0),
+    "0F00": (2, 1, False, 0),
+    "1000": (2, 1, False, 0),
+    "1100": (1, 1, False, 0),
+    "1200": (1, 1, False, 1),
+    "1300": (1, 1, False, 0),
+    "1400": (0, 2, False, 0),
+    "1500": (2, 4, False, 0),
+    "1600": (1, 2, False, 100),
+    "1700": (1, 1, False, 0),
+    "1800": (1, 2, False, 100),
+    "1900": (1, 255, False, 0),
+    "1A00": (1, 1, False, 0),
+    "1B00": (0, 1, False, 1),
+    "1C00": (0, 1, False, 1),
+    "1D00": (3, 2, False, 1440),
+    "1E00": (1, 2, False, 1),
+    "1F00": (0, 1, False, 0),
+    "2100": (1, 1, False, 1),
+    "2200": (1, 2, False, 1440),
+    "2300": (1, 2, False, 1440),
+    "2400": (0, 1, False, 0),
+    "2500": (0, 1, False, 0),
+    "2600": (0, 2, False, 0),
+    "2700": (0, 2, False, 0),
+    "2800": (0, 2, False, 130),
+    "2900": (0, 2, False, 0),
+    "2A00": (0, 2, False, 0),
+    "2B00": (0, 2, False, 70),
+    "2E00": (1, 4, True, 0.0),
+    "2F00": (1, 4, False, 0),
+    "3000": (1, 255, False, 0),
+    "3100": (1, 255, False, 0),
+    "3200": (1, 1, False, 0),
+    "3A00": (1, 4, True, 0.0),
+    "3B00": (1, 4, False, 0),
+    "3C00": (1, 1, False, 0),
+    "3D00": (1, 4, True, 0.0),
+    "3E00": (1, 255, False, 0),
+    "3F00": (1, 4, True, 0.0),
+    "4100": (1, 2, False, 0),
+    "4300": (1, 2, False, 0),
+    "4700": (0, 4, True, 0.0),
+    "4800": (1, 1, False, 1),
+    "4900": (1, 255, False, 0),
+    "4A00": (0, 2, False, 1440),
+    "4B00": (0, 2, False, 1440),
+    "4C00": (1, 1, False, 0),
+    "4D00": (1, 2, False, 0),
+    "4E00": (1, 4, True, 0.0),
+    "4F00": (1, 4, True, 0.0),
+    "5000": (1, 4, True, 0.0),
+    "5100": (1, 2, False, 0),
+    "5200": (1, 1, False, 0),
+    "5300": (1, 1, False, 0),
+    "5400": (1, 2, False, 0),
+    "5500": (1, 1, False, 0),
+    "5600": (1, 2, False, 0),
+    "5700": (1, 1, False, 0),
+    "5800": (1, 1, False, 0),
+    "5900": (1, 1, False, 0),
+    "5A00": (1, 1, False, 0),
+    "5B00": (1, 2, False, 0),
+    "5C00": (1, 2, False, 0),
+    "5D00": (1, 1, False, 0),
+    "5E00": (1, 1, False, 0),
+    "5F00": (1, 1, False, 0),
+    "6000": (0, 1, False, 0),
+    "6100": (0, 1, False, 0),
+    "6200": (0, 1, False, 0),
+    "6300": (0, 1, False, 1),
+    "6A00": (0, 1, False, 1),
+    "7C00": (1, 2, False, 0),
+    "8000": (1, 255, False, 0),
+    "8100": (1, 255, False, 0),
+    "8300": (1, 2, False, 0),
+    "8400": (1, 1, False, 0),
+    "8500": (1, 2, False, 0),
+    "8600": (2, 255, False, 0),
+    "8700": (1, 255, False, 0),
+    "8B00": (1, 1, False, 0),
+}
