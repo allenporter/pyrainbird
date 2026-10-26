@@ -84,6 +84,29 @@ class LCRZoneDevice(BaseControllerDevice):
             self.seasonal_adjust = vals[0]
         return self._ack(data)
 
+    def _handle_current_queue(self, page: int) -> str:
+        """Format LCR/ST8 10-byte queue page 0 response and 4-byte entry pages (0x3B -> 0xBB)."""
+        if page == 0:
+            queued = self.manual_queue_count + self.auto_queue_count
+            active_flag = 1 if self.active_station > 0 else 0
+            return (
+                f"BB00{queued & 0xFF:02X}{active_flag:02X}0000"
+                f"{self.active_station & 0xFF:02X}01"
+                f"{self.remaining_runtime_sec & 0xFFFF:04X}"
+            )
+        entries_hex = ""
+        count = max(2, len(self.queued_entries))
+        for idx in range(count):
+            if idx < len(self.queued_entries):
+                ent = self.queued_entries[idx]
+                irrig_type = int(ent.get("irrigation_type", 1)) & 0xFF
+                stn = int(ent.get("station_id", 0)) & 0xFF
+                rem = int(ent.get("remaining_seconds", 0)) & 0xFFFF
+                entries_hex += f"{irrig_type:02X}{stn:02X}{rem:04X}"
+            else:
+                entries_hex += "00000000"
+        return f"BB{page & 0xFF:02X}{entries_hex}"
+
 
 class ST8ZoneDevice(LCRZoneDevice):
     """ST8x-WiFi / ST8x-WiFi2 zone-centric controller with bit-7 sensor polarity and 10-byte queue."""
@@ -93,15 +116,3 @@ class ST8ZoneDevice(LCRZoneDevice):
 
     def _parse_page0_sensor_byte(self, raw_byte: int) -> bool:
         return (raw_byte & 0x80) != 0
-
-    def _handle_current_queue(self, page: int) -> str:
-        """Format ST8 10-byte queue page 0 response (0x3B -> 0xBB)."""
-        if page == 0:
-            queued = self.manual_queue_count + self.auto_queue_count
-            active_flag = 1 if self.active_station > 0 else 0
-            return (
-                f"BB00{queued & 0xFF:02X}{active_flag:02X}0000"
-                f"{self.active_station & 0xFF:02X}01"
-                f"{self.remaining_runtime_sec & 0xFFFF:04X}"
-            )
-        return super()._handle_current_queue(page)

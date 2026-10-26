@@ -21,16 +21,28 @@ def test_lcr_zone_schedule_and_st8_rain_sensor() -> None:
     assert rzxe.handle_sip("33FF00780064006400640064006400640064") == "0133"
     assert rzxe.handle_sip("32FF") == "B2FF00780064006400640064006400640064"
 
+    # LCR queue page 0 (10B) and page 1 (4B station entries) + ManuallyRunProgram (0x38)
+    assert rzxe.handle_sip("3800") == "0138"
+    assert rzxe.active_station == 2
+    assert rzxe.remaining_runtime_sec == 1200
+    rzxe_q0 = rzxe.handle_sip("3B00")
+    assert rzxe_q0 == "BB0001010000020104B0"
+    rzxe_q1 = rzxe.handle_sip("3B01")
+    assert rzxe_q1.startswith("BB01010204B0")
+    assert len(rzxe_q1) >= 20
+
     st8 = ST8ZoneDevice("ST8X_WF2")
     assert st8.handle_sip("21000080") == "0121"
     assert st8.rain_sensor_bypassed is True
     assert st8.handle_sip("200000") == "A0000080"
 
-    # ST8 10-byte queue page 0 response (0x3B00 -> 0xBB00...)
-    st8.handle_sip("39000305")
+    # ST8 10-byte queue page 0 response (0x3B00 -> 0xBB00...) and page 1 entries
+    st8.handle_sip("4B000305")
+    st8.handle_sip("4B00040A")
     q_resp = st8.handle_sip("3B00")
-    assert q_resp.startswith("BB00")
-    assert len(q_resp) == 20
+    assert q_resp == "BB00020100000301012C"
+    q_page1 = st8.handle_sip("3B01")
+    assert q_page1 == "BB010103012C01040258"
 
 
 def test_program_centric_schedules_and_current_queue() -> None:
@@ -48,6 +60,17 @@ def test_program_centric_schedules_and_current_queue() -> None:
     assert tm2v3.handle_sip("200040") == "A0004000010001"
     assert tm2v3.handle_sip("210080000A0014001E0005000F0000") == "0121"
     assert tm2v3.handle_sip("200080") == "A00080000A0014001E0005000F0000"
+
+    # ManuallyRunProgram (0x38) expands configured station runtimes with water budget scaling
+    assert tm2v3.handle_sip("31000078") == "0131"  # 120% water budget on Program A
+    assert tm2v3.handle_sip("3800") == "0138"
+    assert tm2v3.active_station == 1
+    assert tm2v3.remaining_runtime_sec == 720  # 10 min * 60 * 120% = 720s
+    assert tm2v3.auto_queue_count == 2
+    assert tm2v3.handle_sip("4200") == "0142"
+    assert tm2v3.active_station == 2
+    assert tm2v3.remaining_runtime_sec == 360  # 5 min * 60 * 120% = 360s
+    assert tm2v3.handle_sip("40") == "0140"
 
     # Stack run station 1 (10m) and station 2 (10m), then check queue pages 0 and 1, advance and stop
     assert tm2v3.handle_sip("4B00010A") == "014B"

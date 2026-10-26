@@ -259,10 +259,9 @@ class LegacyProgramDevice(BaseControllerDevice):
         return "0121"
 
     def _handle_current_queue(self, page: int) -> str:
-        """Format 0xBB queue response across standard SIP (12B), BLE/ISK (14B), and page >= 1 (35B)."""
+        """Format 0xBB queue response across standard SIP (12B), BLE (14B), and page >= 1 (35B)."""
         is_14b_queue = (
             self.profile.is_battery_based
-            or self.profile.is_isk_controller
             or self.profile.protocol_family == ProtocolFamily.BLE_CBOS
         )
         if page == 0:

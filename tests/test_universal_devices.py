@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pyrainbird import rainbird
 from pyrainbird.testing.devices.cdt_store import CDTStore
 from pyrainbird.testing.devices.universal import UniversalCDTDevice
 
@@ -101,3 +102,48 @@ def test_universal_cdt_batch_and_subsystems() -> None:
     assert esp2w.handle_sip(_uni_pkt("05", "2150")).startswith("0C20")
     assert esp2w.handle_sip(_uni_pkt("0D", "240B")).endswith("250B000000000100")
     assert esp2w.handle_sip(_uni_pkt("0D", "220B")).startswith("0C20")
+
+
+def test_universal_sip_and_cdt_state_synchronization() -> None:
+    """Verify state synchronization between core SIP opcodes and Universal 0x0C CDT blocks."""
+    rc2 = UniversalCDTDevice("RC2")
+
+    # 1. RC2 / ARC8 queue page 0 (3B00) returns standard 12-byte SIP frame (24 hex chars)
+    q0_hex = rc2.handle_sip("3B00")
+    assert len(q0_hex) == 24
+    decoded_q0 = rainbird.decode(q0_hex)
+    assert decoded_q0["type"] == "CurrentQueueResponse"
+
+    # 2. Setting rain delay, water budget, and monthly budget via SIP reflects in CDT 070B reads
+    assert rc2.handle_sip("370005") == "0137"
+    assert rc2.handle_sip(_uni_pkt("0C", "070B", "01140000")).endswith(
+        "080B01140000020500"
+    )
+    assert rc2.handle_sip("31000082") == "0131"  # 130% (0x82) on Program A
+    assert rc2.handle_sip(_uni_pkt("0C", "070B", "0118000100000000")).endswith(
+        "080B0118000100000000028200"
+    )
+    assert rc2.handle_sip("33000096") == "0133"  # 150% (0x96) on Month 0
+    assert rc2.handle_sip(_uni_pkt("0C", "070B", "0116000100000000")).endswith(
+        "080B0116000100000000029600"
+    )
+
+    # 3. Writing CDT blocks (1400, 0D00, 0C00, 1800, 1500, 1D00) reflects in SIP reads & 0x38
+    assert rc2.handle_sip(_uni_pkt("0C", "050B", "021400000207000D00000101")).endswith(
+        "060B00"
+    )
+    assert rc2.handle_sip("36") == "B60007"
+    assert rc2.rain_sensor_bypassed is True
+    assert rc2.handle_sip("200000") == "A0000000000701"
+
+    # Set CDT 1500 (Program A Station 1 = 600s = 10m) and CDT 1800 (Program A = 100%)
+    assert rc2.handle_sip(_uni_pkt("0C", "050B", "0118000100000000026400")).endswith(
+        "060B00"
+    )
+    assert rc2.handle_sip(
+        _uni_pkt("0C", "050B", "0115000200000000000000000458020000")
+    ).endswith("060B00")
+    assert rc2.handle_sip("3000") == "B0000064"
+    assert rc2.handle_sip("3800") == "0138"
+    assert rc2.active_station == 1
+    assert rc2.remaining_runtime_sec == 600

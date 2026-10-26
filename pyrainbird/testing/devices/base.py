@@ -149,22 +149,24 @@ class BaseControllerDevice:
             return f"83{page:02X}{self.available_stations_page_overrides[page]}"
         mask_hex = ""
         for b_idx in range(4):
-            b_val = 0
-            for bit_idx in range(8):
-                if (page * 32 + b_idx * 8 + bit_idx + 1) in self.available_stations:
-                    b_val |= 1 << bit_idx
+            b_val = sum(
+                1 << bit
+                for bit in range(8)
+                if (page * 32 + b_idx * 8 + bit + 1) in self.available_stations
+            )
             mask_hex += f"{b_val:02X}"
         return f"83{page:02X}{mask_hex}"
 
     def _op_command_support(self, d: str, bl: int, _t: str | None) -> str:
         if bl != 2:
             return self._nak(d, 2)
-        target_cmd = d[2:4]
-        if self.supported_commands is not None:
-            ok = target_cmd in self.supported_commands
-        else:
-            ok = self._is_command_supported_by_default(target_cmd)
-        return f"84{target_cmd}{'01' if ok else '00'}"
+        cmd = d[2:4]
+        ok = (
+            cmd in self.supported_commands
+            if self.supported_commands is not None
+            else self._is_command_supported_by_default(cmd)
+        )
+        return f"84{cmd}{'01' if ok else '00'}"
 
     def _is_command_supported_by_default(self, cmd: str) -> bool:
         cap_map = {
@@ -327,9 +329,38 @@ class BaseControllerDevice:
             first = self.program_0_stations[0]
             self.active_station = int(first["station"])
             self.remaining_runtime_sec = int(first.get("minutes", 0)) * 60
-        elif self.active_station == 0:
+        elif not self._expand_program_schedule(prog) and self.active_station == 0:
             self.active_station = 1
         return self._ack(d)
+
+    def _expand_program_schedule(self, prog: int) -> bool:
+        runnable: list[tuple[int, int]] = []
+        pct = self.water_budget.get(prog, 100)
+        scale = 1 if self.profile.is_battery_based else 60
+        for stn, runs in sorted(getattr(self, "station_run_times", {}).items()):
+            if 0 <= prog < len(runs) and runs[prog] > 0:
+                runnable.append((stn, max(1, round(runs[prog] * scale * pct / 100.0))))
+        lcr_zones = getattr(self, "lcr_zones", {}) if not runnable else {}
+        for z_id, z in sorted(lcr_zones.items()):
+            if z.run_time_minutes > 0 and prog in (0, z_id):
+                z_pct = (
+                    self.zone_seasonal_adjust[z_id - 1]
+                    if z_id - 1 < len(self.zone_seasonal_adjust)
+                    else 100
+                )
+                runnable.append(
+                    (z_id, max(1, round(z.run_time_minutes * 60 * z_pct / 100.0)))
+                )
+        if not runnable:
+            return False
+        self.active_station, self.remaining_runtime_sec = runnable[0]
+        self.queued_entries = [
+            {"station_id": s, "program_id": prog, "remaining_seconds": sec}
+            for s, sec in runnable
+        ]
+        self.auto_queue_count = len(runnable)
+        self.queue = [{"station": s, "seconds": sec} for s, sec in runnable[1:]]
+        return True
 
     def _op_manually_run_station(self, d: str, bl: int, _t: str | None) -> str:
         if bl != 4:

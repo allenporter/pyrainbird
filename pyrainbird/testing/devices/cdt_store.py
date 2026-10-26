@@ -129,6 +129,25 @@ class CDTStore:
             stored, ranges[0], ranges[2], val_width, is_float, default_val
         )
 
+    def sync_from_device(self) -> None:
+        """Synchronize canonical device state into cdt_store after legacy SIP writes."""
+        dev = self.device
+        n_prog = max(1, dev.profile.maximum_programs)
+        dev.cdt_store.update(
+            {
+                "1400": dev.rain_delay_days,
+                "0D00": 1 if dev.rain_sensor_bypassed else 0,
+                "0C00": [dev.inter_station_delay_seconds] * n_prog,
+                "1600": [dev.monthly_water_budget.get(m, 100) for m in range(12)],
+                "1800": [dev.water_budget.get(p, 100) for p in range(n_prog)],
+            }
+        )
+        for p_num, prog in dev.programs.items():
+            if any(0 <= s < 1440 for s in prog.start_times_minutes):
+                dev.cdt_store.setdefault("1D00", {})[str(p_num - 1)] = [
+                    s if 0 <= s < 1440 else 1440 for s in prog.start_times_minutes
+                ]
+
     @staticmethod
     def _read_rank1(
         stored: Any, r0: RangePair, val_width: int, is_float: bool, default_val: Any
@@ -220,8 +239,52 @@ class CDTStore:
             offset = self._write_block_payload(
                 req_body, offset, data_id, rank, ranges, val_width, schema[2]
             )
+            self._sync_from_cdt(data_id)
 
         return "00"
+
+    def _sync_from_cdt(self, data_id: str) -> None:
+        stored = self.device.cdt_store.get(data_id)
+        if stored is None:
+            return
+        if data_id == "1400":
+            self.device.rain_delay_days = int(stored)
+        elif data_id == "0D00":
+            self.device.rain_sensor_bypassed = int(stored) != 0
+        elif data_id == "0C00" and isinstance(stored, list) and stored:
+            self.device.inter_station_delay_seconds = int(stored[0])
+        elif data_id == "1600" and isinstance(stored, list):
+            for idx, val in enumerate(stored):
+                self.device.monthly_water_budget[idx] = int(val)
+        elif data_id == "1800" and isinstance(stored, list):
+            for idx, val in enumerate(stored):
+                self.device.water_budget[idx] = int(val)
+                if idx == 0:
+                    self.device.seasonal_adjust = int(val)
+                if (idx + 1) in self.device.programs:
+                    self.device.programs[idx + 1].seasonal_adjust = int(val)
+        elif data_id == "1500" and isinstance(stored, dict):
+            for p_str, row in stored.items():
+                p_idx = int(p_str)
+                for s_idx, sec in enumerate(row):
+                    stn = s_idx + 1
+                    runs = self.device.station_run_times.setdefault(
+                        stn, [0] * max(p_idx + 1, self.device.profile.maximum_programs)
+                    )
+                    while len(runs) <= p_idx:
+                        runs.append(0)
+                    runs[p_idx] = (
+                        int(sec)
+                        if self.device.profile.is_battery_based
+                        else int(sec) // 60
+                    )
+        elif data_id == "1D00" and isinstance(stored, dict):
+            for p_str, row in stored.items():
+                p_num = int(p_str) + 1
+                if p_num in self.device.programs:
+                    self.device.programs[p_num].start_times_minutes = [
+                        int(v) if 0 <= int(v) < 1440 else 0xFFFF for v in row
+                    ]
 
     def _write_block_payload(
         self,
