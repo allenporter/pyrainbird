@@ -28,6 +28,11 @@
       automergeType: 'branch',
       assignees: [],
     },
+    {
+      description: 'Manage .python-version via cookiecutter/cruft template instead of Renovate',
+      matchManagers: ['pyenv'],
+      enabled: false,
+    },
   ],
   pip_requirements: {
     fileMatch: [
