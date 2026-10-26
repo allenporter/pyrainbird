@@ -228,7 +228,7 @@ class UniversalCDTDevice(UpgradedTM2Device):
     def _uni_get_mv_open_duration(self, _op: str, _body: bytes) -> UniRes:
         if (
             not self.profile.master_valves_settings
-            and "mv_manual_open_duration_minutes" not in self._applied_state
+            and self.mv_manual_open_duration_minutes == 0
         ):
             return "0100", "03"
         dur_le = (

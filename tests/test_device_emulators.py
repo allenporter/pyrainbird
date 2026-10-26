@@ -31,20 +31,15 @@ from pyrainbird.testing.stick import LNK2StickEmulator
 
 def test_ble_gatt_battery_ota_flow_and_solem() -> None:
     """Verify BLE GATT routing, battery/radio status (0x5C), OTA (0x5D / fe44), flow (0x60..0x65), and Solem."""
-    bat = RainbirdDeviceEmulator.for_model(
-        "ESP_BAT_PRO_FLOW",
-        initial_state={
-            "battery_percent": 85,
-            "battery_voltage_mv": 9100,
-            "battery_source_type": "01",
-            "ble_snr": 12,
-            "ble_rssi": -65,
-            "lora_snr": 0,
-            "lora_rssi": 0,
-            "ota_total_fragments": 0x1234,
-            "current_flow_rate_milli": 1500,
-        },
-    )
+    bat = BLEBatteryDevice("ESP_BAT_PRO_FLOW")
+    bat.battery_voltage_mv = 9100
+    bat.battery_source_type = "01"
+    bat.ble_snr = 12
+    bat.ble_rssi = -65
+    bat.lora_snr = 0
+    bat.lora_rssi = 0
+    bat.ota_total_fragments = 0x1234
+    bat.current_flow_rate_milli = 1500
 
     notify_uuid, resp_hex = bat.handle_gatt_write(BLE_CBOS_SIP_WRITE_UUID, "5C")
     assert notify_uuid == BLE_CBOS_SIP_NOTIFY_UUID
@@ -85,9 +80,8 @@ def test_ble_gatt_battery_ota_flow_and_solem() -> None:
     assert bat.handle_sip("6500", transport="STICK_TUNNEL_SIP") == "E500DC05"
 
     # Solem TBOS-BT frame authentication
-    tbos = RainbirdDeviceEmulator.for_model(
-        "TBOS_BT", initial_state={"solem_install_code": "01020304"}
-    )
+    tbos = SolemTBOSDevice("TBOS_BT")
+    tbos.solem_install_code = "01020304"
     solem_notify, solem_resp = tbos.handle_gatt_write(
         TBOS_BT_WRITE_UUID, "190600010203042700"
     )

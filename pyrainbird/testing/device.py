@@ -92,11 +92,11 @@ class FakeRainbirdDevice(RainbirdDeviceEmulator):
             version_minor=version_minor,
             password=password,
         )
-        object.__setattr__(self, "request_log", CapturedRequestLog())
-        object.__setattr__(self, "output_dir", output_dir)
-        object.__setattr__(self, "schedule", {})
-        object.__setattr__(self, "zone_states", {})
-        object.__setattr__(self, "_update_task", None)
+        self.request_log: CapturedRequestLog = CapturedRequestLog()
+        self.output_dir: str = output_dir
+        self.schedule: dict[str, str] = {}
+        self.zone_states: dict[str, str] = {}
+        self._update_task: asyncio.Task[None] | None = None
         self.serial_number = 0x12635436566
         self.time = time(12, 34, 56)
         self.date = date(2023, 1, 1)
@@ -225,8 +225,8 @@ class FakeRainbirdDevice(RainbirdDeviceEmulator):
             else:
                 raise
         new_dev.serial_number_hex = prev.serial_number_hex
-        object.__setattr__(self, "device", new_dev)
-        object.__setattr__(self, "stick", new_dev.stick)
+        self.device = new_dev
+        self.stick = new_dev.stick
 
     def process_request(self, body: bytes, pwd: str | None) -> dict[str, Any] | None:
         """Decode and log a request, returning the decoded JSON."""
@@ -318,10 +318,8 @@ class FakeRainbirdDevice(RainbirdDeviceEmulator):
         """Trigger an asynchronous firmware update download task."""
         if self._update_task and not self._update_task.done():
             self._update_task.cancel()
-        object.__setattr__(
-            self,
-            "_update_task",
-            asyncio.create_task(self._firmware_update_runner(update_url)),
+        self._update_task = asyncio.create_task(
+            self._firmware_update_runner(update_url)
         )
 
     async def _firmware_update_runner(self, update_url: str) -> None:

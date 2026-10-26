@@ -65,30 +65,14 @@ class RainbirdDeviceEmulator:
         version_major: int = 1,
         version_minor: int = 0,
         password: str | None = None,
-        initial_state: dict[str, Any] | None = None,
     ) -> None:
-        dev = create_device_for_model(
+        self.device = create_device_for_model(
             model,
             version_major=version_major,
             version_minor=version_minor,
             password=password,
-            initial_state=initial_state,
         )
-        object.__setattr__(self, "device", dev)
-        object.__setattr__(self, "stick", dev.stick)
-
-    def __getattr__(self, name: str) -> Any:
-        return getattr(self.device, name)
-
-    def __setattr__(self, name: str, value: Any) -> None:
-        if (
-            name in ("device", "stick")
-            or name in self.__dict__
-            or isinstance(getattr(type(self), name, None), property)
-        ):
-            object.__setattr__(self, name, value)
-        else:
-            setattr(self.device, name, value)
+        self.stick = self.device.stick
 
     @classmethod
     def for_model(cls, model_name: str, **kwargs: Any) -> RainbirdDeviceEmulator:
@@ -99,10 +83,6 @@ class RainbirdDeviceEmulator:
     def for_model_code(cls, model_code: int, **kwargs: Any) -> RainbirdDeviceEmulator:
         """Create an emulator configured for a specific 16-bit SIP model code."""
         return cls(model_code, **kwargs)
-
-    def apply_initial_state(self, state: dict[str, Any]) -> None:
-        """Configure emulator state from an initial_state dictionary."""
-        self.device.apply_initial_state(state)
 
     def handle_http_post(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
         """Handle simulated HTTP POST to /stick or /stick:80."""
