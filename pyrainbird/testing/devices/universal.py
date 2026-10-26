@@ -48,6 +48,12 @@ class UniversalCDTDevice(UpgradedTM2Device):
     def _op_universal_envelope(self, d: str, _bl: int, _t: str | None) -> str:
         return self.handle_universal(d)
 
+    def handle_sip(self, payload_hex: str, *, transport: str | None = None) -> str:
+        resp = super().handle_sip(payload_hex, transport=transport)
+        if not payload_hex.strip().upper().startswith(("0C", "80")):
+            self.cdt_engine.sync_from_device()
+        return resp
+
     def _op_cancel_flow_learn_61(self, data: str, bl: int, _tr: str | None) -> str:
         if bl != 1:
             return self._nak(data, 2)
