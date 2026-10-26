@@ -81,7 +81,11 @@ class RainbirdDeviceEmulator:
         return getattr(self.device, name)
 
     def __setattr__(self, name: str, value: Any) -> None:
-        if name in ("device", "stick"):
+        if (
+            name in ("device", "stick")
+            or name in self.__dict__
+            or isinstance(getattr(type(self), name, None), property)
+        ):
             object.__setattr__(self, name, value)
         else:
             setattr(self.device, name, value)

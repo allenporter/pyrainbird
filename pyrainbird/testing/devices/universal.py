@@ -133,7 +133,12 @@ class UniversalCDTDevice(UpgradedTM2Device):
 
         total_len = 2 + (len(resp_body_hex) // 2)
         len_le_hex = struct.pack("<H", total_len).hex().upper()
-        return f"{header_21b_hex}{len_le_hex}{resp_opcode}{resp_body_hex}"
+        resp_hdr = (
+            f"8C{header_21b_hex[2:]}"
+            if header_21b_hex.startswith("0C")
+            else header_21b_hex
+        )
+        return f"{resp_hdr}{len_le_hex}{resp_opcode}{resp_body_hex}"
 
     # --- 1. Subsystem 0x0C (CDT data table) ---
 

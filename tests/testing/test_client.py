@@ -1,5 +1,6 @@
 """Tests for high-level local controller client commands using the testing server."""
 
+import datetime
 from collections.abc import AsyncIterator
 
 import aiohttp
@@ -7,6 +8,7 @@ import pytest
 
 from pyrainbird import async_client
 from pyrainbird.async_client import AsyncRainbirdController
+from pyrainbird.const import DayOfWeek, ProgramFrequency
 from pyrainbird.testing.server import RainbirdFakeServer
 
 PASSWORD = "keepsecret"
@@ -104,3 +106,69 @@ async def test_request_firmware_update(
         unv_update_url="http://test/unv",
     )
     assert res == {"status": "OK"}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("model_name", "expected_code", "expected_programs", "expected_zone_schedules"),
+    [
+        ("ESP_RZXe", "ESP_RZXe", 0, 8),
+        ("ST8X_WF", "ST8X_WF", 0, 8),
+        ("ESP_TM2", "ESP_TM2", 3, 0),
+        ("ESP_ME", "ESP_ME", 4, 0),
+        ("ESP_TM2v3", "ESP_TM2v3", 3, 0),
+        ("ESP_ME3", "ESP_ME3", 4, 0),
+        ("RC2", "RC2", 3, 0),
+    ],
+)
+async def test_client_across_common_device_models(
+    model_name: str,
+    expected_code: str,
+    expected_programs: int,
+    expected_zone_schedules: int,
+) -> None:
+    """Verify AsyncRainbirdController end-to-end across LCR, legacy SIP, and Universal CDT controllers."""
+    async with (
+        RainbirdFakeServer(password=PASSWORD, model=model_name) as server,
+        aiohttp.ClientSession() as session,
+    ):
+        ctrl = await async_client.create_controller(session, server.host_port, PASSWORD)
+        mv = await ctrl.get_model_and_version()
+        assert mv.model_code == expected_code
+
+        stations = await ctrl.get_available_stations()
+        assert len(stations.active_set) > 0
+
+        await ctrl.set_current_time(datetime.time(9, 45, 0))
+        assert await ctrl.get_current_time() == datetime.time(9, 45, 0)
+
+        await ctrl.set_current_date(datetime.date(2026, 6, 15))
+        assert await ctrl.get_current_date() == datetime.date(2026, 6, 15)
+
+        await ctrl.set_rain_delay(4)
+        assert await ctrl.get_rain_delay() == 4
+
+        await ctrl.irrigate_zone(2, 5)
+        assert await ctrl.get_zone_state(2) is True
+        await ctrl.stop_irrigation()
+        assert await ctrl.get_zone_state(2) is False
+
+        if expected_zone_schedules > 0:
+            await ctrl.set_zone_schedule(
+                zone=1,
+                duration=datetime.timedelta(minutes=15),
+                starts=[datetime.time(6, 0)],
+                frequency=ProgramFrequency.CUSTOM,
+                days_of_week={DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY},
+            )
+
+        sched = await ctrl.get_schedule()
+        assert len(sched.programs) == expected_programs
+        assert len(sched.zone_schedules) == expected_zone_schedules
+
+        wifi = await ctrl.get_wifi_params()
+        assert wifi.mac_address is not None
+        net = await ctrl.get_network_status()
+        assert net.network_up is True
+        settings = await ctrl.get_settings()
+        assert settings.num_programs > 0
