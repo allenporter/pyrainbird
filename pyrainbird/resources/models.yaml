@@ -10,6 +10,7 @@
     max_station_pages: 0
     max_rain_delay_days: 14
     max_runtime_seconds: 21600
+    max_manual_run_seconds: 6000
     max_seasonal_adjust: 200
     max_sensors: 0
   features:
@@ -26,6 +27,7 @@
     max_station_pages: 0
     max_rain_delay_days: 14
     max_runtime_seconds: 21600
+    max_manual_run_seconds: 6000
     max_seasonal_adjust: 200
     max_sensors: 0
   features:
@@ -42,6 +44,7 @@
     max_station_pages: 0
     max_rain_delay_days: 14
     max_runtime_seconds: 21600
+    max_manual_run_seconds: 6000
     max_seasonal_adjust: 200
     max_sensors: 0
   features:
@@ -57,6 +60,7 @@
     max_station_pages: 0
     max_rain_delay_days: 14
     max_runtime_seconds: 21600
+    max_manual_run_seconds: 6000
     max_seasonal_adjust: 200
     max_sensors: 0
   features:
@@ -74,6 +78,7 @@
     max_station_pages: 0
     max_rain_delay_days: 14
     max_runtime_seconds: 21600
+    max_manual_run_seconds: 6000
     max_seasonal_adjust: 200
     max_sensors: 0
   features:
@@ -93,6 +98,7 @@
     max_station_pages: 1
     max_rain_delay_days: 14
     max_runtime_seconds: 21600
+    max_manual_run_seconds: 6000
     max_seasonal_adjust: 200
     max_sensors: 0
   features:
@@ -113,6 +119,7 @@
     max_station_pages: 0
     max_rain_delay_days: 14
     max_runtime_seconds: 21600
+    max_manual_run_seconds: 6000
     max_seasonal_adjust: 200
     max_sensors: 0
   features:
@@ -129,6 +136,7 @@
     max_station_pages: 0
     max_rain_delay_days: 14
     max_runtime_seconds: 21600
+    max_manual_run_seconds: 6000
     max_seasonal_adjust: 200
     max_sensors: 0
   features:
@@ -148,6 +156,7 @@
     max_station_pages: 0
     max_rain_delay_days: 14
     max_runtime_seconds: 32400
+    max_manual_run_seconds: 32400
     max_seasonal_adjust: 200
     max_sensors: 0
   features:
@@ -168,6 +177,7 @@
     max_station_pages: 0
     max_rain_delay_days: 14
     max_runtime_seconds: 21600
+    max_manual_run_seconds: 6000
     max_seasonal_adjust: 200
     max_sensors: 0
   features:
@@ -187,6 +197,7 @@
     max_station_pages: 0
     max_rain_delay_days: 14
     max_runtime_seconds: 32400
+    max_manual_run_seconds: 32400
     max_seasonal_adjust: 200
     max_sensors: 0
   features:
@@ -204,6 +215,7 @@
     max_station_pages: 0
     max_rain_delay_days: 14
     max_runtime_seconds: 32400
+    max_manual_run_seconds: 32400
     max_seasonal_adjust: 200
     max_sensors: 0
   features:
@@ -222,6 +234,7 @@
     max_station_pages: 0
     max_rain_delay_days: 14
     max_runtime_seconds: 21600
+    max_manual_run_seconds: 6000
     max_seasonal_adjust: 200
     max_sensors: 0
   features:
@@ -238,6 +251,7 @@
     max_station_pages: 0
     max_rain_delay_days: 14
     max_runtime_seconds: 21600
+    max_manual_run_seconds: 6000
     max_seasonal_adjust: 200
     max_sensors: 0
   features:
@@ -256,6 +270,7 @@
     max_station_pages: 0
     max_rain_delay_days: 14
     max_runtime_seconds: 21600
+    max_manual_run_seconds: 6000
     max_seasonal_adjust: 200
     max_sensors: 0
   features:
@@ -274,6 +289,7 @@
     max_station_pages: 0
     max_rain_delay_days: 14
     max_runtime_seconds: 21600
+    max_manual_run_seconds: 6000
     max_seasonal_adjust: 200
     max_sensors: 0
   features:
@@ -292,6 +308,7 @@
     max_station_pages: 0
     max_rain_delay_days: 14
     max_runtime_seconds: 21600
+    max_manual_run_seconds: 6000
     max_seasonal_adjust: 200
     max_sensors: 0
   features:
@@ -311,6 +328,7 @@
     max_station_pages: 0
     max_rain_delay_days: 14
     max_runtime_seconds: 21600
+    max_manual_run_seconds: 6000
     max_seasonal_adjust: 200
     max_sensors: 0
   features:
@@ -330,6 +348,7 @@
     max_station_pages: 0
     max_rain_delay_days: 30
     max_runtime_seconds: 32400
+    max_manual_run_seconds: 32400
     max_seasonal_adjust: 200
     max_sensors: 0
   features:
@@ -350,6 +369,7 @@
     max_station_pages: 0
     max_rain_delay_days: 30
     max_runtime_seconds: 32400
+    max_manual_run_seconds: 32400
     max_seasonal_adjust: 200
     max_sensors: 0
   features:
@@ -370,6 +390,7 @@
     max_station_pages: 0
     max_rain_delay_days: 30
     max_runtime_seconds: 32400
+    max_manual_run_seconds: 32400
     max_seasonal_adjust: 200
     max_sensors: 0
   features:
@@ -391,6 +412,7 @@
     max_station_pages: 0
     max_rain_delay_days: 30
     max_runtime_seconds: 32400
+    max_manual_run_seconds: 32400
     max_seasonal_adjust: 200
     max_sensors: 0
   features:
@@ -412,6 +434,7 @@
     max_station_pages: 1
     max_rain_delay_days: 14
     max_runtime_seconds: 21600
+    max_manual_run_seconds: 6000
     max_seasonal_adjust: 200
     max_sensors: 0
   features:
@@ -431,6 +454,7 @@
     max_station_pages: 1
     max_rain_delay_days: 30
     max_runtime_seconds: 345600
+    max_manual_run_seconds: 6000
     max_seasonal_adjust: 300
     max_sensors: 0
   features:
@@ -449,6 +473,7 @@
     max_station_pages: 1
     max_rain_delay_days: 30
     max_runtime_seconds: 345600
+    max_manual_run_seconds: 6000
     max_seasonal_adjust: 300
     max_sensors: 3
   features:
@@ -467,6 +492,7 @@
     max_station_pages: 7
     max_rain_delay_days: 30
     max_runtime_seconds: 345600
+    max_manual_run_seconds: 6000
     max_seasonal_adjust: 300
     max_sensors: 7
   features:
@@ -485,6 +511,7 @@
     max_station_pages: 0
     max_rain_delay_days: 0
     max_runtime_seconds: 0
+    max_manual_run_seconds: 0
     max_seasonal_adjust: 0
     max_sensors: 0
   features: []
