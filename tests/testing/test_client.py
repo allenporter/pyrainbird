@@ -113,7 +113,9 @@ async def test_request_firmware_update(
     ("model_name", "expected_code", "expected_programs", "expected_zone_schedules"),
     [
         ("ESP_RZXe", "ESP_RZXe", 0, 8),
+        ("ESP_RZXe2", "ESP_RZXe2", 0, 8),
         ("ST8X_WF", "ST8X_WF", 0, 8),
+        ("ST8X_WF2", "ST8X_WF2", 0, 8),
         ("ESP_TM2", "ESP_TM2", 3, 0),
         ("ESP_ME", "ESP_ME", 4, 0),
         ("ESP_TM2v3", "ESP_TM2v3", 3, 0),
@@ -153,15 +155,6 @@ async def test_client_across_common_device_models(
         await ctrl.stop_irrigation()
         assert await ctrl.get_zone_state(2) is False
 
-        if expected_zone_schedules > 0:
-            await ctrl.set_zone_schedule(
-                zone=1,
-                duration=datetime.timedelta(minutes=15),
-                starts=[datetime.time(6, 0)],
-                frequency=ProgramFrequency.CUSTOM,
-                days_of_week={DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY},
-            )
-
         sched = await ctrl.get_schedule()
         assert len(sched.programs) == expected_programs
         assert len(sched.zone_schedules) == expected_zone_schedules
@@ -172,3 +165,43 @@ async def test_client_across_common_device_models(
         assert net.network_up is True
         settings = await ctrl.get_settings()
         assert settings.num_programs > 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("model_name", ["ESP_RZXe", "ESP_RZXe2", "ST8X_WF", "ST8X_WF2"])
+async def test_lcr_zone_schedule_roundtrip(model_name: str) -> None:
+    """Verify set_zone_schedule and get_schedule roundtrip on LCR controllers."""
+    async with (
+        RainbirdFakeServer(password=PASSWORD, model=model_name) as server,
+        aiohttp.ClientSession() as session,
+    ):
+        ctrl = await async_client.create_controller(session, server.host_port, PASSWORD)
+        await ctrl.set_zone_schedule(
+            zone=1,
+            duration=datetime.timedelta(minutes=15),
+            starts=[datetime.time(6, 0)],
+            frequency=ProgramFrequency.CUSTOM,
+            days_of_week={DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY},
+        )
+        sched = await ctrl.get_schedule()
+        assert len(sched.zone_schedules) == 8
+        assert sched.zone_schedules[1].duration == datetime.timedelta(minutes=15)
+        assert sched.zone_schedules[1].starts == [datetime.time(6, 0)]
+        assert sched.zone_schedules[1].days_of_week == {
+            DayOfWeek.MONDAY,
+            DayOfWeek.WEDNESDAY,
+        }
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("model_name", ["ESP_RZXe2", "ST8X_WF2", "ESP_TM2v3"])
+async def test_combined_controller_state(model_name: str) -> None:
+    """Verify get_combined_controller_state on controllers supporting 0x4C."""
+    async with (
+        RainbirdFakeServer(password=PASSWORD, model=model_name) as server,
+        aiohttp.ClientSession() as session,
+    ):
+        ctrl = await async_client.create_controller(session, server.host_port, PASSWORD)
+        await ctrl.set_rain_delay(4)
+        state = await ctrl.get_combined_controller_state()
+        assert state.delay_setting == 4

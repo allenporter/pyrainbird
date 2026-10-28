@@ -134,9 +134,19 @@ def test_lcr_series_capabilities() -> None:
     rzxe2 = ModelAndVersion(0x0103, 2, 0).model_info
     assert not rzxe2.is_feature_supported(Feature.PROGRAM_BASED)
     assert rzxe2.max_stations == 8
+    assert rzxe2.supports_water_budget is True
     assert rzxe2.is_feature_supported(Feature.COMBINED_STATE)
     assert rzxe2.is_feature_supported(Feature.STACKED_WATERING)
     assert rzxe2.is_feature_supported(Feature.EVENT_TIMESTAMP)
+
+    # Upgraded ST8x-WiFi2 (0x0008): Zone-based LCR controller with combined state and stacked watering
+    st8_2 = ModelAndVersion(0x0008, 2, 0).model_info
+    assert not st8_2.is_feature_supported(Feature.PROGRAM_BASED)
+    assert st8_2.max_stations == 8
+    assert st8_2.supports_water_budget is True
+    assert st8_2.is_feature_supported(Feature.COMBINED_STATE)
+    assert st8_2.is_feature_supported(Feature.STACKED_WATERING)
+    assert st8_2.is_feature_supported(Feature.EVENT_TIMESTAMP)
 
 
 def test_tm2_series_capabilities() -> None:
