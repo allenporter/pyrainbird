@@ -772,8 +772,8 @@ class AsyncRainbirdController(RainbirdController):
         starts: list[datetime.time],
         frequency: ProgramFrequency = ProgramFrequency.CUSTOM,
         days_of_week: set[DayOfWeek] | None = None,
-        period: int = 0,
-        synchro: int = 0,
+        period: int | None = None,
+        synchro: int | None = None,
     ) -> None:
         """Set the schedule of a single zone.
 
@@ -783,7 +783,20 @@ class AsyncRainbirdController(RainbirdController):
         minutes. `days_of_week` only applies to a CUSTOM frequency, `period`
         and `synchro`, the days remaining of the current interval, only to a
         CYCLIC one.
+
+        When `period` or `synchro` is not set, the current value is read from
+        the zone and kept. The controller rejects a period of 0 even for a
+        CUSTOM frequency.
         """
+        if period is None or synchro is None:
+            current = await self._process_command(
+                lambda resp: resp, "RetrieveScheduleRequest", zone
+            )
+            zone_info = current["zoneInfo"][zone]
+            if period is None:
+                period = zone_info["period"]
+            if synchro is None:
+                synchro = zone_info["synchro"]
         schedule = rainbird.encode_zone_schedule(
             duration=int(duration.total_seconds() // 60),
             starts=[start.hour * 60 + start.minute for start in starts],
