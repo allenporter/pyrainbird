@@ -97,6 +97,9 @@ class ModelLimits:
     max_runtime_seconds: int = 21600
     """The maximum run time duration in seconds supported by the device."""
 
+    max_manual_run_seconds: int = 6000
+    """The maximum manual run time duration in seconds supported by the device."""
+
     max_seasonal_adjust: int = 200
     """The maximum seasonal adjustment percentage."""
 

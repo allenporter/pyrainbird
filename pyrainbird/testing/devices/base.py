@@ -342,9 +342,13 @@ class BaseControllerDevice:
     def _op_manually_run_station(self, d: str, bl: int, _t: str | None) -> str:
         if bl != 4:
             return self._nak(d, 2)
+        mins = int(d[6:8], 16)
+        max_sec = self.profile.maximum_manual_run_seconds
+        if max_sec > 0 and mins * 60 > max_sec:
+            return self._nak(d, 4)
         self.active_station = int(d[2:6], 16)
         self.active_program = 0xFF
-        self.remaining_runtime_sec = int(d[6:8], 16) * 60
+        self.remaining_runtime_sec = mins * 60
         self.manual_queue_count = 1
         return self._ack(d)
 
@@ -440,7 +444,11 @@ class BaseControllerDevice:
     def _op_stack_manual_run(self, d: str, bl: int, _t: str | None) -> str:
         if bl != 4:
             return self._nak(d, 2)
-        self._enqueue_manual_run(int(d[4:6], 16), int(d[6:8], 16) * 60)
+        mins = int(d[6:8], 16)
+        max_sec = self.profile.maximum_manual_run_seconds
+        if max_sec > 0 and mins * 60 > max_sec:
+            return self._nak(d, 4)
+        self._enqueue_manual_run(int(d[4:6], 16), mins * 60)
         return self._ack(d)
 
     def _op_combined_controller_state(self, d: str, bl: int, _t: str | None) -> str:
