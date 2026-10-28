@@ -9,6 +9,7 @@ import pytest
 from pyrainbird import async_client
 from pyrainbird.async_client import AsyncRainbirdController
 from pyrainbird.const import DayOfWeek, ProgramFrequency
+from pyrainbird.data import Feature
 from pyrainbird.testing.server import RainbirdFakeServer
 
 PASSWORD = "keepsecret"
@@ -113,7 +114,9 @@ async def test_request_firmware_update(
     ("model_name", "expected_code", "expected_programs", "expected_zone_schedules"),
     [
         ("ESP_RZXe", "ESP_RZXe", 0, 8),
+        ("ESP_RZXe2", "ESP_RZXe2", 0, 8),
         ("ST8X_WF", "ST8X_WF", 0, 8),
+        ("ST8X_WF2", "ST8X_WF2", 0, 8),
         ("ESP_TM2", "ESP_TM2", 3, 0),
         ("ESP_ME", "ESP_ME", 4, 0),
         ("ESP_TM2v3", "ESP_TM2v3", 3, 0),
@@ -165,6 +168,17 @@ async def test_client_across_common_device_models(
         sched = await ctrl.get_schedule()
         assert len(sched.programs) == expected_programs
         assert len(sched.zone_schedules) == expected_zone_schedules
+        if expected_zone_schedules > 0:
+            assert sched.zone_schedules[1].duration == datetime.timedelta(minutes=15)
+            assert sched.zone_schedules[1].starts == [datetime.time(6, 0)]
+            assert sched.zone_schedules[1].days_of_week == {
+                DayOfWeek.MONDAY,
+                DayOfWeek.WEDNESDAY,
+            }
+
+        if mv.model_info.is_feature_supported(Feature.COMBINED_STATE):
+            state = await ctrl.get_combined_controller_state()
+            assert state.delay_setting == 4
 
         wifi = await ctrl.get_wifi_params()
         assert wifi.mac_address is not None

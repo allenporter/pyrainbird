@@ -44,7 +44,8 @@
     max_runtime_seconds: 21600
     max_seasonal_adjust: 200
     max_sensors: 0
-  features: []
+  features:
+    - WATER_BUDGET
 
 - device_id: "0005"
   code: ESP_TM2
@@ -76,6 +77,7 @@
     max_seasonal_adjust: 200
     max_sensors: 0
   features:
+    - WATER_BUDGET
     - COMBINED_STATE
     - EVENT_TIMESTAMP
     - STACKED_WATERING
@@ -239,6 +241,7 @@
     max_seasonal_adjust: 200
     max_sensors: 0
   features:
+    - WATER_BUDGET
     - COMBINED_STATE
     - EVENT_TIMESTAMP
     - STACKED_WATERING

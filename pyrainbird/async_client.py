@@ -668,7 +668,10 @@ class AsyncRainbirdController(RainbirdController):
             )
         else:
             commands = ["00"]
-            if max_programs > 0:
+            if (
+                model.model_info.is_feature_supported(Feature.PROGRAM_BASED)
+                and max_programs > 0
+            ):
                 # Legacy ESP-ME / TM2 Schedule Loop
                 # Program details
                 for program in range(max_programs):
