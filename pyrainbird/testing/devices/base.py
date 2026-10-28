@@ -22,7 +22,6 @@ class BaseControllerDevice:
         version_major: int = 1,
         version_minor: int = 0,
         password: str | None = None,
-        initial_state: dict[str, Any] | None = None,
     ) -> None:
         self.profile: ControllerProfile = get_controller_profile(model)
         self.sip_model_hex: str = self.profile.sip_model_hex
@@ -39,12 +38,9 @@ class BaseControllerDevice:
 
         self.stick: LNK2StickEmulator = LNK2StickEmulator(self)
         self._sip_handlers: dict[str, SipHandler] = self._build_sip_handlers()
-        self._applied_state: dict[str, Any] = {}
-        if initial_state is not None:
-            self.apply_initial_state(initial_state)
 
     def _init_device_state(self) -> None:
-        """Initialize device-specific state attributes prior to applying initial_state."""
+        """Initialize device-specific state attributes."""
         init_core_state(self)
 
     def _build_sip_handlers(self) -> dict[str, SipHandler]:
@@ -96,14 +92,6 @@ class BaseControllerDevice:
     def handle_jsonrpc(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
         """Delegate Stick JSON-RPC 2.0 request to LNK2StickEmulator."""
         return self.stick.handle_jsonrpc(*args, **kwargs)
-
-    def apply_initial_state(self, state: dict[str, Any]) -> None:
-        """Apply initial device state dictionary."""
-        self._applied_state = dict(state)
-        for k, v in state.items():
-            setattr(self, k, v)
-        if "password" in state:
-            self.encryption_required = bool(state["password"])
 
     # --- Core SIP Command Dispatch ---
 
@@ -291,10 +279,11 @@ class BaseControllerDevice:
         prog, pct = int(d[2:4], 16), int(d[4:8], 16)
         self.water_budget[prog] = pct
         self.seasonal_adjust = pct
-        programs = getattr(self, "programs", None)
-        if programs is not None and (prog + 1) in programs:
-            programs[prog + 1].seasonal_adjust = pct
+        self._on_water_budget_updated(prog, pct)
         return self._ack(d)
+
+    def _on_water_budget_updated(self, prog: int, pct: int) -> None:
+        """Hook for program-based subclasses to synchronize program seasonal adjust."""
 
     def _op_zone_or_monthly_adjust(self, d: str, bl: int, _t: str | None) -> str:
         if bl != 2:
@@ -333,24 +322,12 @@ class BaseControllerDevice:
             self.active_station = 1
         return self._ack(d)
 
+    def _collect_program_runnable_stations(self, prog: int) -> list[tuple[int, int]]:
+        _ = prog
+        return []
+
     def _expand_program_schedule(self, prog: int) -> bool:
-        runnable: list[tuple[int, int]] = []
-        pct = self.water_budget.get(prog, 100)
-        scale = 1 if self.profile.is_battery_based else 60
-        for stn, runs in sorted(getattr(self, "station_run_times", {}).items()):
-            if 0 <= prog < len(runs) and runs[prog] > 0:
-                runnable.append((stn, max(1, round(runs[prog] * scale * pct / 100.0))))
-        lcr_zones = getattr(self, "lcr_zones", {}) if not runnable else {}
-        for z_id, z in sorted(lcr_zones.items()):
-            if z.run_time_minutes > 0 and prog in (0, z_id):
-                z_pct = (
-                    self.zone_seasonal_adjust[z_id - 1]
-                    if z_id - 1 < len(self.zone_seasonal_adjust)
-                    else 100
-                )
-                runnable.append(
-                    (z_id, max(1, round(z.run_time_minutes * 60 * z_pct / 100.0)))
-                )
+        runnable = self._collect_program_runnable_stations(prog)
         if not runnable:
             return False
         self.active_station, self.remaining_runtime_sec = runnable[0]

@@ -199,15 +199,16 @@ class LNK2StickEmulator:
 
     def _r_set_wifi_params(self, _m: str, p: RpcDict, _e: bool) -> RpcDict:
         d = self.device
-        for pk, attr in (
-            ("wifiSsid", "wifi_ssid"),
-            ("wifiPassword", "wifi_password"),
-            ("wifiSecurity", "wifi_security"),
-            ("apSecurity", "ap_security"),
-            ("stickVersion", "stick_version"),
-        ):
-            if pk in p:
-                setattr(d, attr, str(p[pk]))
+        if "wifiSsid" in p:
+            d.wifi_ssid = str(p["wifiSsid"])
+        if "wifiPassword" in p:
+            d.wifi_password = str(p["wifiPassword"])
+        if "wifiSecurity" in p:
+            d.wifi_security = str(p["wifiSecurity"])
+        if "apSecurity" in p:
+            d.ap_security = str(p["apSecurity"])
+        if "stickVersion" in p:
+            d.stick_version = str(p["stickVersion"])
         if "apTimeoutNoLan" in p:
             d.ap_timeout_no_lan = int(p["apTimeoutNoLan"])
         if "apTimeoutIdle" in p:

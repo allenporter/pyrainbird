@@ -138,9 +138,7 @@ class FlowAndExtendedSIPMixin(UpgradedTM2Device):
         """Disambiguate 0x61 BLE transition flag (62PP) vs WiFi stick flow learn cancel (0161)."""
         if bl != 1:
             return self._nak(data, 2)
-        if (
-            tr == "STICK_TUNNEL_SIP" or "flow_learn_active" in self._applied_state
-        ) and tr != "BLE":
+        if (tr == "STICK_TUNNEL_SIP" or self.flow_learn_active) and tr != "BLE":
             self.flow_learn_active = False
             self.flow_learn_state = 0
             return self._ack(data)

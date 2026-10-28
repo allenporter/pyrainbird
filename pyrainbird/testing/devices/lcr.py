@@ -13,6 +13,20 @@ class LCRZoneDevice(BaseControllerDevice):
         super()._init_device_state()
         init_schedule_state(self)
 
+    def _collect_program_runnable_stations(self, prog: int) -> list[tuple[int, int]]:
+        runnable: list[tuple[int, int]] = []
+        for z_id, z in sorted(self.lcr_zones.items()):
+            if z.run_time_minutes > 0 and prog in (0, z_id):
+                z_pct = (
+                    self.zone_seasonal_adjust[z_id - 1]
+                    if z_id - 1 < len(self.zone_seasonal_adjust)
+                    else 100
+                )
+                runnable.append(
+                    (z_id, max(1, round(z.run_time_minutes * 60 * z_pct / 100.0)))
+                )
+        return runnable
+
     def _format_page0_sensor_byte(self) -> int:
         return 0x01 if self.rain_sensor_bypassed else 0x00
 

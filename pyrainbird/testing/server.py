@@ -67,6 +67,7 @@ class RainbirdFakeServer:
         udp_port: int = 0,
         response_udp_port: int = 33668,
         output_dir: str = "./extracted_fw",
+        model: str = "ESP-TM2",
     ) -> None:
         self.mac_address = mac_address
         self.uuid_str = uuid_str
@@ -77,8 +78,11 @@ class RainbirdFakeServer:
         self.response_udp_port = response_udp_port
         self.output_dir = output_dir
 
-        self.device = FakeRainbirdDevice(output_dir=output_dir)
-        self.device.set_model("ESP-TM2")  # default
+        self.device = FakeRainbirdDevice(
+            output_dir=output_dir,
+            model=model,
+            password=password,
+        )
 
         self._udp_transport: asyncio.DatagramTransport | None = None
         self._http_runner: web.AppRunner | None = None

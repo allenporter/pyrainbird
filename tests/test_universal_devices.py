@@ -44,13 +44,13 @@ def test_universal_cdt_batch_and_subsystems() -> None:
     )
     assert me3.handle_sip(
         _uni_pkt("0C", "1B0B", "011500020000000000000100")
-    ).startswith("0C20")
+    ).startswith("8C20")
     assert me3.handle_sip(
         _uni_pkt("0C", "050B", "011D00030000000000000000000001000268016801")
     ).endswith("060B00")
     assert me3.handle_sip(
         _uni_pkt("0C", "1B0B", "011D0003000000000000000000000100")
-    ).startswith("0C20")
+    ).startswith("8C20")
 
     # Subsystem 0x03 (system time): calendar, timezone, SNTP
     assert me3.handle_sip(_uni_pkt("03", "0605", "EA07030F091E00")).endswith("070500")
@@ -62,18 +62,18 @@ def test_universal_cdt_batch_and_subsystems() -> None:
 
     # Subsystem 0x09 (irrigation control) & 0x13 (controller status & alarms)
     assert me3.handle_sip(_uni_pkt("09", "0A20", "0200")).endswith("0B2000")
-    assert me3.handle_sip(_uni_pkt("09", "6620")).startswith("0C20")
+    assert me3.handle_sip(_uni_pkt("09", "6620")).startswith("8C20")
     assert me3.handle_sip(_uni_pkt("09", "0C20")).endswith("0D2000")
     assert me3.handle_sip(_uni_pkt("09", "0620")).endswith("072000")
     assert me3.handle_sip(_uni_pkt("09", "2F20")).endswith("302000")
     assert me3.handle_sip("61") == "0161"
-    assert me3.handle_sip(_uni_pkt("09", "4E20")).startswith("0C20")
+    assert me3.handle_sip(_uni_pkt("09", "4E20")).startswith("8C20")
     assert me3.handle_sip(_uni_pkt("09", "5020")).endswith("512000")
-    assert me3.handle_sip(_uni_pkt("09", "6420")).startswith("0C20")
+    assert me3.handle_sip(_uni_pkt("09", "6420")).startswith("8C20")
     assert me3.handle_sip(_uni_pkt("13", "2D30", "02")).endswith("2E3000")
     assert me3.handle_sip(_uni_pkt("13", "0A30")).endswith("0B30000000")
     me3.alarms = ["NO_WATER_DAYS"]
-    assert me3.handle_sip(_uni_pkt("13", "1330")).startswith("0C20")
+    assert me3.handle_sip(_uni_pkt("13", "1330")).startswith("8C20")
 
     # Subsystem 0x18 (panel session), 0x04 (field devices & 2-wire), 0x05/0x0D (modules)
     esp2w = UniversalCDTDevice("ESP_2WIRE")
@@ -89,19 +89,19 @@ def test_universal_cdt_batch_and_subsystems() -> None:
     assert esp2w.front_panel_locked is False
 
     assert esp2w.handle_sip(_uni_pkt("04", "3509", "01")).endswith("360901")
-    assert esp2w.handle_sip(_uni_pkt("04", "3709")).startswith("0C20")
+    assert esp2w.handle_sip(_uni_pkt("04", "3709")).startswith("8C20")
     assert esp2w.handle_sip(_uni_pkt("04", "3109", "010001")).endswith("320900")
-    assert esp2w.handle_sip(_uni_pkt("04", "3309")).startswith("0C20")
-    assert esp2w.handle_sip(_uni_pkt("04", "3B09")).startswith("0C20")
+    assert esp2w.handle_sip(_uni_pkt("04", "3309")).startswith("8C20")
+    assert esp2w.handle_sip(_uni_pkt("04", "3B09")).startswith("8C20")
     assert esp2w.handle_sip(_uni_pkt("04", "4C09")).endswith("4D090264")
-    assert esp2w.handle_sip(_uni_pkt("04", "2F09")).startswith("0C20")
-    assert esp2w.handle_sip(_uni_pkt("04", "2009")).startswith("0C20")
-    assert esp2w.handle_sip(_uni_pkt("04", "4E09", "00")).startswith("0C20")
+    assert esp2w.handle_sip(_uni_pkt("04", "2F09")).startswith("8C20")
+    assert esp2w.handle_sip(_uni_pkt("04", "2009")).startswith("8C20")
+    assert esp2w.handle_sip(_uni_pkt("04", "4E09", "00")).startswith("8C20")
     assert esp2w.handle_sip(_uni_pkt("05", "1F50", "0101")).endswith("205000")
     assert esp2w.handle_sip(_uni_pkt("05", "2350", "02")).endswith("245000")
-    assert esp2w.handle_sip(_uni_pkt("05", "2150")).startswith("0C20")
+    assert esp2w.handle_sip(_uni_pkt("05", "2150")).startswith("8C20")
     assert esp2w.handle_sip(_uni_pkt("0D", "240B")).endswith("250B000000000100")
-    assert esp2w.handle_sip(_uni_pkt("0D", "220B")).startswith("0C20")
+    assert esp2w.handle_sip(_uni_pkt("0D", "220B")).startswith("8C20")
 
 
 def test_universal_sip_and_cdt_state_synchronization() -> None:

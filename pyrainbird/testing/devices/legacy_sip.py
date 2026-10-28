@@ -14,6 +14,19 @@ class LegacyProgramDevice(BaseControllerDevice):
         super()._init_device_state()
         init_schedule_state(self)
 
+    def _on_water_budget_updated(self, prog: int, pct: int) -> None:
+        if (prog + 1) in self.programs:
+            self.programs[prog + 1].seasonal_adjust = pct
+
+    def _collect_program_runnable_stations(self, prog: int) -> list[tuple[int, int]]:
+        pct = self.water_budget.get(prog, 100)
+        scale = 1 if self.profile.is_battery_based else 60
+        return [
+            (stn, max(1, round(runs[prog] * scale * pct / 100.0)))
+            for stn, runs in sorted(self.station_run_times.items())
+            if 0 <= prog < len(runs) and runs[prog] > 0
+        ]
+
     def _is_ble_schedule_format(self) -> bool:
         return self.profile.is_battery_based or self.profile.protocol_family in (
             ProtocolFamily.BLE_CBOS,
@@ -42,8 +55,7 @@ class LegacyProgramDevice(BaseControllerDevice):
         return (
             self._is_ble_schedule_format()
             or self.profile.is_isk_controller
-            or "calendar_days_off_11_15" in self._applied_state
-            or "calendar_days_off_page_1" in self._applied_state
+            or any(d is not None for d in self.calendar_days_off[10:15])
         )
 
     def _retrieve_page_0000(self) -> str:

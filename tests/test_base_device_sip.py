@@ -17,8 +17,8 @@ def test_model_version_and_available_stations() -> None:
         version_major=1,
         version_minor=3,
         password="secret",
-        initial_state={"fw_submodules": ["01020304"]},
     )
+    dev_tm2.fw_submodules = ["01020304"]
     assert dev_tm2.profile.controller_type == "ESP_TM2"
     assert dev_tm2.encryption_required is True
     assert dev_tm2.handle_sip("02") == "8200050103"
