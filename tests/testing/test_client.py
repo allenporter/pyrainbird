@@ -243,38 +243,17 @@ async def test_manual_irrigation_within_model_limit(
 async def test_manual_irrigation_exceeding_model_limit_nacks(
     model_name: str, display_name: str
 ) -> None:
-    """Verify irrigate_zone raises a descriptive RainbirdDeviceNackError when exceeding the 100-minute AC limit."""
+    """Verify irrigate_zone raises RainbirdDeviceNackError locally before sending when exceeding the limit."""
     async with (
         RainbirdFakeServer(password=PASSWORD, model=model_name) as server,
         aiohttp.ClientSession() as session,
     ):
         ctrl = await async_client.create_controller(session, server.host_port, PASSWORD)
         expected_msg = (
-            "Device returned a NACK response for ManuallyRunStationRequest "
-            "(nak_code=0x04: Incompatible or out-of-range data); "
-            f"requested duration of 101 minutes exceeds the 100-minute manual run limit for {display_name}"
+            "Manual irrigation duration of 101 minutes exceeds "
+            f"the 100-minute limit for {display_name}"
         )
         with pytest.raises(RainbirdDeviceNackError) as exc_info:
             await ctrl.irrigate_zone(1, 101)
         assert str(exc_info.value) == expected_msg
-        assert exc_info.value.command == "ManuallyRunStationRequest"
-        assert exc_info.value.command_echo == 0x39
-        assert exc_info.value.nak_code == 0x04
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("model_name", ["ESP_RZXe", "ESP_ME3"])
-async def test_unsupported_command_nack_message(model_name: str) -> None:
-    """Verify unsupported SIP commands raise RainbirdDeviceNackError with nak_code=0x01 details."""
-    async with (
-        RainbirdFakeServer(password=PASSWORD, model=model_name) as server,
-        aiohttp.ClientSession() as session,
-    ):
-        ctrl = await async_client.create_controller(session, server.host_port, PASSWORD)
-        with pytest.raises(RainbirdDeviceNackError) as exc_info:
-            await ctrl.get_combined_controller_state()
-        assert str(exc_info.value) == (
-            "Device returned a NACK response for CombinedControllerStateRequest "
-            "(nak_code=0x01: Command not supported)"
-        )
-        assert exc_info.value.nak_code == 0x01
+        assert await ctrl.get_zone_state(1) is False

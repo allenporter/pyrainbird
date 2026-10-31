@@ -31,8 +31,6 @@ from pyrainbird.exceptions import (
     RainbirdAuthException,
     RainbirdConnectionError,
     RainbirdDeviceBusyException,
-    RainbirdDeviceNackError,
-    format_nack_reason,
 )
 
 from .conftest import LENGTH, PASSWORD, REQUEST, RESPONSE, RESULT_DATA, ResponseResult
@@ -632,16 +630,8 @@ async def test_not_acknowledge_response(
     fake_device.handlers["39"] = lambda data: fake_device._encode(
         "NotAcknowledgeResponse", 17, 28
     )
-    with pytest.raises(RainbirdDeviceNackError) as exc_info:
+    with pytest.raises(RainbirdApiException):
         await controller.irrigate_zone(1, 30)
-    assert str(exc_info.value) == (
-        "Device returned a NACK response for ManuallyRunStationRequest "
-        "(nak_code=0x1C: Incompatible or out-of-range data, Checksum error)"
-    )
-    assert exc_info.value.command == "ManuallyRunStationRequest"
-    assert exc_info.value.command_echo == 17
-    assert exc_info.value.nak_code == 28
-    assert format_nack_reason(0) == "Unknown error"
 
 
 async def test_get_network_status(

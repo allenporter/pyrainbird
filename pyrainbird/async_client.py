@@ -573,23 +573,17 @@ class AsyncRainbirdController(RainbirdController):
 
     async def irrigate_zone(self, zone: int, minutes: int) -> None:
         """Send the irrigate command."""
-        try:
-            await self._process_command(
-                lambda resp: True, "ManuallyRunStationRequest", zone, minutes
+        model = await self.get_model_and_version()
+        max_sec = model.model_info.limits.max_manual_run_seconds
+        if max_sec > 0 and minutes * 60 > max_sec:
+            max_min = max_sec // 60
+            raise RainbirdDeviceNackError(
+                f"Manual irrigation duration of {minutes} minutes exceeds "
+                f"the {max_min}-minute limit for {model.model_name}"
             )
-        except RainbirdDeviceNackError as err:
-            if self._model is not None:
-                max_sec = self._model.model_info.limits.max_manual_run_seconds
-                if max_sec > 0 and minutes * 60 > max_sec:
-                    max_min = max_sec // 60
-                    raise RainbirdDeviceNackError(
-                        f"{err}; requested duration of {minutes} minutes exceeds "
-                        f"the {max_min}-minute manual run limit for {self._model.model_name}",
-                        command=err.command,
-                        command_echo=err.command_echo,
-                        nak_code=err.nak_code,
-                    ) from err
-            raise
+        await self._process_command(
+            lambda resp: True, "ManuallyRunStationRequest", zone, minutes
+        )
 
     async def stop_irrigation(self) -> None:
         """Send the stop command."""
@@ -860,7 +854,7 @@ class AsyncRainbirdController(RainbirdController):
             msg = f"Request ({command}) failed with wrong response! Requested ({allowed}), got {response_code}:\n{decoded}"
             if response_code == "00":
                 _LOGGER.debug(msg)
-                raise RainbirdDeviceNackError.from_decoded(command, decoded)
+                raise RainbirdDeviceNackError("Device returned a NACK response")
             _LOGGER.error(msg)
             raise RainbirdApiException("Unexpected response from Rain Bird device")
         return funct(decoded)
