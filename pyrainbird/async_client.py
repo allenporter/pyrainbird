@@ -573,6 +573,14 @@ class AsyncRainbirdController(RainbirdController):
 
     async def irrigate_zone(self, zone: int, minutes: int) -> None:
         """Send the irrigate command."""
+        model = await self.get_model_and_version()
+        max_sec = model.model_info.limits.max_manual_run_seconds
+        if max_sec > 0 and minutes * 60 > max_sec:
+            max_min = max_sec // 60
+            raise RainbirdDeviceNackError(
+                f"Manual irrigation duration of {minutes} minutes exceeds "
+                f"the {max_min}-minute limit for {model.model_name}"
+            )
         await self._process_command(
             lambda resp: True, "ManuallyRunStationRequest", zone, minutes
         )

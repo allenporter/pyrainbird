@@ -8972,9 +8972,30 @@
 # name: test_irrigate_zone
   '''
   [client >]
-  Intent: ManuallyRunStationRequest (3900051E)
+  Intent: ModelAndVersionRequest (02)
   Payload: {
     "id": 1,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "02",
+      "length": 1
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "8200070103"
+    },
+    "id": 1
+  }
+  
+  [client >]
+  Intent: ManuallyRunStationRequest (3900051E)
+  Payload: {
+    "id": 2,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
@@ -8989,7 +9010,7 @@
     "result": {
       "data": "0139"
     },
-    "id": 1
+    "id": 2
   }
   '''
 # ---
@@ -9039,9 +9060,30 @@
 # name: test_not_acknowledge_response
   '''
   [client >]
-  Intent: ManuallyRunStationRequest (3900011E)
+  Intent: ModelAndVersionRequest (02)
   Payload: {
     "id": 1,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "02",
+      "length": 1
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "8200070103"
+    },
+    "id": 1
+  }
+  
+  [client >]
+  Intent: ManuallyRunStationRequest (3900011E)
+  Payload: {
+    "id": 2,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
@@ -9056,7 +9098,7 @@
     "result": {
       "data": "00111C"
     },
-    "id": 1
+    "id": 2
   }
   '''
 # ---

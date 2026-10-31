@@ -88,5 +88,9 @@ def test_core_sip_time_date_budget_and_irrigation() -> None:
     cc_resp = dev_tm2v3.handle_sip("4C")
     assert cc_resp.startswith("CC091E000F37EA0005")
 
-    # NAK for bad length
+    # NAK for bad length or manual run exceeding model maximum_manual_run_seconds (100 min = 0x64)
     assert dev.handle_sip("1109") == "001102"
+    assert dev.handle_sip("39000164") == "0139"
+    assert dev.handle_sip("39000165") == "003904"
+    assert dev.handle_sip("4B000164") == "014B"
+    assert dev.handle_sip("4B000165") == "004B04"

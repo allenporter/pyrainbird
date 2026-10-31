@@ -9,6 +9,7 @@ import pytest
 from pyrainbird import async_client
 from pyrainbird.async_client import AsyncRainbirdController
 from pyrainbird.const import DayOfWeek, ProgramFrequency
+from pyrainbird.exceptions import RainbirdDeviceNackError
 from pyrainbird.testing.server import RainbirdFakeServer
 
 PASSWORD = "keepsecret"
@@ -205,3 +206,54 @@ async def test_combined_controller_state(model_name: str) -> None:
         await ctrl.set_rain_delay(4)
         state = await ctrl.get_combined_controller_state()
         assert state.delay_setting == 4
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("model_name", "minutes"),
+    [
+        ("ESP_RZXe", 100),
+        ("ESP_ME3", 100),
+        ("ESP_BAT_BT", 180),
+    ],
+)
+async def test_manual_irrigation_within_model_limit(
+    model_name: str, minutes: int
+) -> None:
+    """Verify irrigate_zone succeeds when duration is within max_manual_run_seconds."""
+    async with (
+        RainbirdFakeServer(password=PASSWORD, model=model_name) as server,
+        aiohttp.ClientSession() as session,
+    ):
+        ctrl = await async_client.create_controller(session, server.host_port, PASSWORD)
+        await ctrl.irrigate_zone(1, minutes)
+        assert await ctrl.get_zone_state(1) is True
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("model_name", "display_name"),
+    [
+        ("ESP_RZXe", "ESP-RZXe"),
+        ("ESP_RZXe2", "ESP-RZXe2"),
+        ("ESP_ME", "ESP-Me"),
+        ("ESP_ME3", "ESP-ME3"),
+    ],
+)
+async def test_manual_irrigation_exceeding_model_limit_nacks(
+    model_name: str, display_name: str
+) -> None:
+    """Verify irrigate_zone raises RainbirdDeviceNackError locally before sending when exceeding the limit."""
+    async with (
+        RainbirdFakeServer(password=PASSWORD, model=model_name) as server,
+        aiohttp.ClientSession() as session,
+    ):
+        ctrl = await async_client.create_controller(session, server.host_port, PASSWORD)
+        expected_msg = (
+            "Manual irrigation duration of 101 minutes exceeds "
+            f"the 100-minute limit for {display_name}"
+        )
+        with pytest.raises(RainbirdDeviceNackError) as exc_info:
+            await ctrl.irrigate_zone(1, 101)
+        assert str(exc_info.value) == expected_msg
+        assert await ctrl.get_zone_state(1) is False
