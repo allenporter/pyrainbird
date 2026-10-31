@@ -380,7 +380,7 @@ def test_battery_bluetooth_series_capabilities() -> None:
     assert tbos.limits.max_programs == 3
     assert tbos.limits.max_run_times == 8
     assert tbos.limits.max_runtime_seconds == 32400
-    assert tbos.limits.max_manual_run_seconds == 32400
+    assert tbos.limits.max_manual_run_seconds == 43200
     assert tbos.is_feature_supported(Feature.SECONDS_BASED)
     assert tbos.is_feature_supported(Feature.PROGRAM_BASED)
 
@@ -389,6 +389,7 @@ def test_battery_bluetooth_series_capabilities() -> None:
     assert bat_bt.limits.max_stations == 6
     assert bat_bt.limits.max_programs == 4
     assert bat_bt.limits.max_run_times == 8
+    assert bat_bt.limits.max_manual_run_seconds == 32400
     assert bat_bt.is_feature_supported(Feature.SECONDS_BASED)
     assert bat_bt.is_feature_supported(Feature.COMBINED_STATE)
     assert bat_bt.is_feature_supported(Feature.STACKED_WATERING)
@@ -398,6 +399,7 @@ def test_battery_bluetooth_series_capabilities() -> None:
     assert bat_pro.limits.max_programs == 12
     assert bat_pro.limits.max_rain_delay_days == 30
     assert bat_pro.limits.max_stations == 6
+    assert bat_pro.limits.max_manual_run_seconds == 32400
 
     bat_pro_flow = ModelAndVersion(0x0018, 1, 0).model_info
     assert bat_pro_flow.code == "ESP_BAT_PRO_FLOW"

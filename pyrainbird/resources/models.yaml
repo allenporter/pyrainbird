@@ -197,7 +197,7 @@
     max_station_pages: 0
     max_rain_delay_days: 14
     max_runtime_seconds: 32400
-    max_manual_run_seconds: 32400
+    max_manual_run_seconds: 43200
     max_seasonal_adjust: 200
     max_sensors: 0
   features:
@@ -215,7 +215,7 @@
     max_station_pages: 0
     max_rain_delay_days: 14
     max_runtime_seconds: 32400
-    max_manual_run_seconds: 32400
+    max_manual_run_seconds: 43200
     max_seasonal_adjust: 200
     max_sensors: 0
   features:
