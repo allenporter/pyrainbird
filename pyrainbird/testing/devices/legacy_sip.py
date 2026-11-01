@@ -2,9 +2,25 @@
 
 from __future__ import annotations
 
+import datetime
+
+from pyrainbird.const import DayOfWeek, ProgramFrequency
+
 from ..profiles import ProtocolFamily
 from .base import BaseControllerDevice
-from .state import ProgramScheduleConfig, init_schedule_state
+from .state import (
+    ProgramScheduleConfig,
+    init_schedule_state,
+    normalize_program_schedule_inputs,
+)
+
+_SIP_PROGRAM_FREQUENCY_CODE: dict[ProgramFrequency, int] = {
+    ProgramFrequency.CUSTOM: 0,
+    ProgramFrequency.CYCLIC: 1,
+    ProgramFrequency.ODD: 2,
+    ProgramFrequency.EVEN: 3,
+    ProgramFrequency.OFF: 4,
+}
 
 
 class LegacyProgramDevice(BaseControllerDevice):
@@ -13,6 +29,34 @@ class LegacyProgramDevice(BaseControllerDevice):
     def _init_device_state(self) -> None:
         super()._init_device_state()
         init_schedule_state(self)
+
+    def set_program(
+        self,
+        program: int,
+        *,
+        frequency: ProgramFrequency = ProgramFrequency.CUSTOM,
+        days_of_week: set[DayOfWeek] | None = None,
+        period: int | None = None,
+        synchro: int = 0,
+        starts: list[datetime.time] | None = None,
+        durations: dict[int, datetime.timedelta] | None = None,
+    ) -> None:
+        """Configure a program schedule on the emulated controller using logical types."""
+        start_mins, zone_secs, days = normalize_program_schedule_inputs(
+            self, program, starts, durations, days_of_week
+        )
+        slot_count = max(8, self.profile.maximum_start_times)
+        padded_starts = start_mins + [0xFFFF] * (slot_count - len(start_mins))
+        prog_cfg = self.programs.setdefault(program + 1, ProgramScheduleConfig())
+        prog_cfg.water_cycle = _SIP_PROGRAM_FREQUENCY_CODE[ProgramFrequency(frequency)]
+        prog_cfg.custom_days_mask = sum(1 << int(d) for d in days)
+        prog_cfg.cyclic_days = period if period is not None else 0
+        prog_cfg.days_remaining = synchro
+        prog_cfg.start_times_minutes = padded_starts
+        scale = 1 if self.profile.is_battery_based else 60
+        for stn, runs in self.station_run_times.items():
+            if program < len(runs):
+                runs[program] = zone_secs.get(stn, 0) // scale
 
     def _on_water_budget_updated(self, prog: int, pct: int) -> None:
         if (prog + 1) in self.programs:

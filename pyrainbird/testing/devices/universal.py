@@ -25,14 +25,21 @@ through both legacy SIP commands (`0x36`/`0x37`, `0x30`/`0x31`) and CDT tables
 
 from __future__ import annotations
 
+import datetime
 import struct
 from collections.abc import Callable
 from typing import Any
 
+from pyrainbird.const import DayOfWeek, ProgramFrequency
+
 from .base import BaseControllerDevice, SipHandler
 from .cdt_store import CDTStore
 from .constants import ALARM_STATUS_MASKS
-from .state import init_ble_state, init_universal_state
+from .state import (
+    apply_universal_program_schedule,
+    init_ble_state,
+    init_universal_state,
+)
 from .universal_diagnostics import (
     handle_uni_ac_current_test,
     handle_uni_get_discovery_progress,
@@ -87,6 +94,22 @@ class UniversalCDTDevice(BaseControllerDevice):
         super()._init_device_state()
         init_universal_state(self)
         init_ble_state(self)
+
+    def set_program(
+        self,
+        program: int,
+        *,
+        frequency: ProgramFrequency = ProgramFrequency.CUSTOM,
+        days_of_week: set[DayOfWeek] | None = None,
+        period: int | None = None,
+        synchro: int = 0,
+        starts: list[datetime.time] | None = None,
+        durations: dict[int, datetime.timedelta] | None = None,
+    ) -> None:
+        """Configure a program schedule in the CDT store using logical types."""
+        apply_universal_program_schedule(
+            self, program, frequency, days_of_week, period, synchro, starts, durations
+        )
 
     def _build_sip_handlers(self) -> dict[str, SipHandler]:
         handlers = super()._build_sip_handlers()

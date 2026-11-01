@@ -2032,6 +2032,30 @@ async def test_get_schedule_esp_me3(
     assert pgm_d.starts == []
     assert pgm_d.durations == []
 
+    events = list(
+        schedule.timeline.overlapping(
+            datetime.datetime(2023, 1, 21, 0, 0, 0),
+            datetime.datetime(2023, 1, 26, 0, 0, 0),
+        )
+    )
+    assert [(e.program_id.name, e.start, e.end) for e in events] == [
+        (
+            "PGM C",
+            datetime.datetime(2023, 1, 21, 6, 0, 0),
+            datetime.datetime(2023, 1, 21, 7, 0, 0),
+        ),
+        (
+            "PGM A",
+            datetime.datetime(2023, 1, 22, 5, 0, 0),
+            datetime.datetime(2023, 1, 22, 16, 30, 0),
+        ),
+        (
+            "PGM C",
+            datetime.datetime(2023, 1, 24, 6, 0, 0),
+            datetime.datetime(2023, 1, 24, 7, 0, 0),
+        ),
+    ]
+
 
 @freeze_time("2023-01-21 09:32:00")
 async def test_get_schedule_arc8(

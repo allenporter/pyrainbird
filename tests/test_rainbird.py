@@ -254,3 +254,53 @@ def test_decode_universal() -> None:
             }
         ],
     }
+
+
+@pytest.mark.parametrize(
+    ("raw_code", "expected_frequency"),
+    [
+        (0, ProgramFrequency.CUSTOM),
+        (1, ProgramFrequency.ODD),
+        (2, ProgramFrequency.ODD),
+        (3, ProgramFrequency.EVEN),
+        (4, ProgramFrequency.CYCLIC),
+        (5, ProgramFrequency.OFF),
+        (99, ProgramFrequency.OFF),
+    ],
+)
+def test_decode_universal_frequency_codes(
+    raw_code: int, expected_frequency: ProgramFrequency
+) -> None:
+    """Test Universal CDT table 0x13 water cycle codes decode to ProgramFrequency."""
+    # Single-block 080B response for table 1300 rank 1 [0..0] width 1
+    payload = bytes.fromhex("080B011300010000000001") + bytes([raw_code])
+    frame = (
+        bytes.fromhex("8C200000000C00000000000805000000000500FFFF")
+        + len(payload).to_bytes(2, "little")
+        + payload
+    )
+    decoded = decode(frame.hex().upper())
+    assert decoded == {
+        "type": "UniversalMessageTransportResponse",
+        "programInfo": [{"program": 0, "frequency": expected_frequency}],
+    }
+
+
+@pytest.mark.parametrize(
+    ("raw_code", "expected_frequency"),
+    [
+        (0, ProgramFrequency.CUSTOM),
+        (1, ProgramFrequency.CYCLIC),
+        (2, ProgramFrequency.ODD),
+        (3, ProgramFrequency.EVEN),
+        (4, ProgramFrequency.OFF),
+        (5, ProgramFrequency.ODD),
+        (99, ProgramFrequency.OFF),
+    ],
+)
+def test_decode_schedule_program_frequency_codes(
+    raw_code: int, expected_frequency: ProgramFrequency
+) -> None:
+    """Test program-based SIP 0xA0 subpage 0x10 frequency codes decode cleanly."""
+    decoded = decode(f"A000107F03010064{raw_code:02X}")
+    assert decoded["programInfo"]["frequency"] == expected_frequency

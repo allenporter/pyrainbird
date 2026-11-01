@@ -967,7 +967,9 @@ class Schedule(DataClassDictMixin):
             program = prog_durations.get("program")
             if program is None or program >= len(program_info):
                 continue
-            program_info[program]["durations"] = prog_durations.get("durations", [])
+            program_info[program]["durations"].extend(
+                prog_durations.get("durations", [])
+            )
         return values
 
 
