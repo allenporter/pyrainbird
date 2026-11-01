@@ -462,6 +462,7 @@
     - WATER_BUDGET
     - EVENT_TIMESTAMP
     - STACKED_WATERING
+    - UNIVERSAL_MESSAGES
 
 - device_id: "000d"
   code: LX_IVM
@@ -481,6 +482,7 @@
     - WATER_BUDGET
     - STACKED_WATERING
     - FLOW_SENSOR
+    - UNIVERSAL_MESSAGES
 
 - device_id: "000e"
   code: LX_IVM_PRO
@@ -500,6 +502,7 @@
     - WATER_BUDGET
     - STACKED_WATERING
     - FLOW_SENSOR
+    - UNIVERSAL_MESSAGES
 
 - device_id: "UNKNOWN"
   code: UNKNOWN

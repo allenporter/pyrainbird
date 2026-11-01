@@ -32,6 +32,7 @@ from pyrainbird.exceptions import (
     RainbirdConnectionError,
     RainbirdDeviceBusyException,
 )
+from pyrainbird.rainbird import encode_universal_schedule_commands
 
 from .conftest import LENGTH, PASSWORD, REQUEST, RESPONSE, RESULT_DATA, ResponseResult
 from .fake_device import FakeRainbirdDevice
@@ -1832,35 +1833,18 @@ async def test_get_schedule_unknown_model_fallback(
     assert len(requests) == 11
 
 
-async def test_get_schedule_lxme2_bit_collision(
+async def test_get_schedule_lxme2_universal_chunking(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
     fake_device: FakeRainbirdDevice,
 ) -> None:
-    # LXME2 (Model 0x0C): max_programs=40, max_stations=48
+    """Verify LXME2 dispatches 104 unique chunked Universal 0x0C schedule commands."""
+    # LXME2 (Model 0x0C): max_programs=40, max_run_times=10, max_stations=48
     fake_device.model_code = 0x0C
     fake_device.version_major = 1
     fake_device.version_minor = 3
     fake_device.stations = set(range(1, 17))
-
-    schedule_data = {"0000": "A0000000000000"}
-
-    # 40 programs * 2 commands (0x10-0x37 for info, 0x60-0x87 for start times) = 80 commands
-    # Plus 24 zone pages = 104 commands
-    for i in range(104):
-        # We don't want to actually populate all 91 keys manually in this test.
-        # Since it only tests bit collision logic via mocked requests, we can just intercept the mock process.
-        # However, fake_device expects all keys to be present. We will use a default dict for fake_device in this specific test.
-        pass
-
-    class DefaultScheduleDict(dict):
-        def __contains__(self, item: Any) -> bool:
-            return True
-
-        def __getitem__(self, key: Any) -> Any:
-            return "A00099"  # Unrecognized format skips decoding
-
-    schedule_data = DefaultScheduleDict({"0000": "A0000000000000"})
-    fake_device.schedule = schedule_data
+    lxme2_cmds = encode_universal_schedule_commands(40, 10, 48)
+    fake_device.schedule = dict.fromkeys(lxme2_cmds, "8C00")
 
     controller = await rainbird_controller()
 
@@ -1869,18 +1853,15 @@ async def test_get_schedule_lxme2_bit_collision(
     ) as mock_process:
         await controller.get_schedule()
 
-    requests = [
+    cmd_names = [call.args[1] for call in mock_process.call_args_list]
+    assert cmd_names.count("RetrieveScheduleRequest") == 0
+    assert cmd_names.count("UniversalMessageRequest") == 104
+    uni_payloads = [
         call.args[2]
         for call in mock_process.call_args_list
-        if call.args[1] == "RetrieveScheduleRequest"
+        if call.args[1] == "UniversalMessageRequest"
     ]
-
-    # Prove the bug by counting duplicate occurrences
-    # program index 16 evaluates to 0x10 | 16 = 0x10 (decimal 16). We expect 16 twice.
-    assert requests.count(16) == 2
-
-    # Program index 32 evaluating to 0x60 | 32 = 0x60 (decimal 96). We expect 96 twice.
-    assert requests.count(96) == 2
+    assert len(set(uni_payloads)) == 104
 
 
 async def test_get_schedule_partial_nack(

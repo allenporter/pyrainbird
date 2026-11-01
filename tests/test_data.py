@@ -17,6 +17,7 @@ from pyrainbird.data import (
     States,
     ZoneDuration,
 )
+from pyrainbird.timeline import ProgramId
 
 
 def encode_name_func(testcase_func, param_num, param):
@@ -195,6 +196,7 @@ def test_commercial_lx_series_capabilities() -> None:
     assert lxme2.limits.max_seasonal_adjust == 300
     assert lxme2.is_feature_supported(Feature.EVENT_TIMESTAMP)
     assert lxme2.is_feature_supported(Feature.STACKED_WATERING)
+    assert lxme2.is_feature_supported(Feature.UNIVERSAL_MESSAGES)
     assert not lxme2.is_feature_supported(Feature.COMBINED_STATE)
 
     # LX-IVM (0x000D): 60 stations, 2 pages, 10 programs, 8 starts, 3 flow/weather sensors
@@ -208,6 +210,7 @@ def test_commercial_lx_series_capabilities() -> None:
     assert lxivm.limits.max_runtime_seconds == 345600
     assert lxivm.is_feature_supported(Feature.FLOW_SENSOR)
     assert lxivm.is_feature_supported(Feature.STACKED_WATERING)
+    assert lxivm.is_feature_supported(Feature.UNIVERSAL_MESSAGES)
 
     # LX-IVM-PRO (0x000E): 240 stations, 8 pages (pages 0-7), 40 programs, 8 starts, 7 sensors
     lxivm_pro = ModelAndVersion(0x000E, 1, 0).model_info
@@ -220,6 +223,7 @@ def test_commercial_lx_series_capabilities() -> None:
     assert lxivm_pro.limits.max_runtime_seconds == 345600
     assert lxivm_pro.is_feature_supported(Feature.FLOW_SENSOR)
     assert lxivm_pro.is_feature_supported(Feature.STACKED_WATERING)
+    assert lxivm_pro.is_feature_supported(Feature.UNIVERSAL_MESSAGES)
 
 
 def test_isk_series_capabilities() -> None:
@@ -477,3 +481,25 @@ def test_schedule_merges_multi_chunk_universal_program_durations() -> None:
         (1, datetime.timedelta(minutes=10)),
         (30, datetime.timedelta(minutes=20)),
     ]
+
+
+@pytest.mark.parametrize(
+    ("program_idx", "zone", "expected_pgm_name", "expected_id_name"),
+    [
+        (0, None, "PGM A", "PGM A"),
+        (3, 5, "PGM D", "PGM D: Zone 5"),
+        (25, None, "PGM Z", "PGM Z"),
+        (26, None, "PGM 27", "PGM 27"),
+        (39, 12, "PGM 40", "PGM 40: Zone 12"),
+    ],
+)
+def test_program_name_formatting(
+    program_idx: int,
+    zone: int | None,
+    expected_pgm_name: str,
+    expected_id_name: str,
+) -> None:
+    """Verify Program.name and ProgramId.name use A-Z for 0-25 and 1-based numbers for >=26."""
+    program = Program(program=program_idx, frequency=ProgramFrequency.OFF)
+    assert program.name == expected_pgm_name
+    assert ProgramId(program=program_idx, zone=zone).name == expected_id_name

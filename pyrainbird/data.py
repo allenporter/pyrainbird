@@ -707,8 +707,12 @@ class Program(DataClassDictMixin):
     @property
     def name(self) -> str:
         """Name of the program."""
-        letter = chr(ord("A") + self.program)
-        return f"PGM {letter}"
+        label = (
+            chr(ord("A") + self.program)
+            if 0 <= self.program < 26
+            else str(self.program + 1)
+        )
+        return f"PGM {label}"
 
     @property
     def timeline(self) -> ProgramTimeline:

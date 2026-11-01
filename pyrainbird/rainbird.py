@@ -61,6 +61,10 @@ _PROGRAM_FREQUENCY: dict[int, int] = {
 _UNIVERSAL_REQUEST_HEADER = bytes.fromhex("0C200001000805000000000C000000000005000000")
 _CDT_BUNCH_GET_REQUEST = b"\x07\x0b"
 _CDT_BUNCH_GET_RESPONSE = b"\x08\x0b"
+# Each SIP serial frame between the WiFi module and controller uses a 1-byte
+# payload length (<= 255 bytes), so CDT schedule reads slice program metadata
+# into groups of 5 programs and station runtimes into groups of 25 stations.
+_UNIVERSAL_PROGRAM_CHUNK_SIZE = 5
 _UNIVERSAL_STATION_CHUNK_SIZE = 25
 
 _CDI_GLOBAL_SENSOR_BYPASS = 0x0D
@@ -326,30 +330,41 @@ def encode_universal_schedule_commands(
     """Build the Universal (0x0C) schedule retrieval commands for a controller."""
     if max_programs <= 0:
         return []
-    p_end = max_programs - 1
     s_end = max(max_run_times - 1, 0)
-    commands = [
-        encode_universal_bunch_get_request(
+    commands: list[str] = []
+    for p_start in range(0, max_programs, _UNIVERSAL_PROGRAM_CHUNK_SIZE):
+        p_end = min(p_start + _UNIVERSAL_PROGRAM_CHUNK_SIZE - 1, max_programs - 1)
+        header_blocks: list[tuple[int, list[tuple[int, int]]]] = []
+        if p_start == 0:
+            header_blocks.extend(
+                [
+                    (_CDI_RAIN_DELAY, []),
+                    (_CDI_GLOBAL_SENSOR_BYPASS, []),
+                ]
+            )
+        header_blocks.extend(
             [
-                (_CDI_RAIN_DELAY, []),
-                (_CDI_GLOBAL_SENSOR_BYPASS, []),
-                (_CDI_SEASONAL_ADJUST_BY_PROGRAM, [(0, p_end)]),
-                (_CDI_PROGRAM_CYCLE_TYPE, [(0, p_end)]),
+                (_CDI_SEASONAL_ADJUST_BY_PROGRAM, [(p_start, p_end)]),
+                (_CDI_PROGRAM_CYCLE_TYPE, [(p_start, p_end)]),
             ]
-        ),
-        encode_universal_bunch_get_request(
+        )
+        commands.extend(
             [
-                (_CDI_PROGRAM_CYCLE_DAYS, [(0, p_end)]),
-                (_CDI_PROGRAM_CYCLE_COUNT, [(0, p_end)]),
-                (_CDI_PROGRAM_CUSTOM_DAYS, [(0, p_end), (0, 6)]),
+                encode_universal_bunch_get_request(header_blocks),
+                encode_universal_bunch_get_request(
+                    [
+                        (_CDI_PROGRAM_CYCLE_DAYS, [(p_start, p_end)]),
+                        (_CDI_PROGRAM_CYCLE_COUNT, [(p_start, p_end)]),
+                        (_CDI_PROGRAM_CUSTOM_DAYS, [(p_start, p_end), (0, 6)]),
+                    ]
+                ),
+                encode_universal_bunch_get_request(
+                    [
+                        (_CDI_START_TIMES, [(p_start, p_end), (0, 0), (0, s_end)]),
+                    ]
+                ),
             ]
-        ),
-        encode_universal_bunch_get_request(
-            [
-                (_CDI_START_TIMES, [(0, p_end), (0, 0), (0, s_end)]),
-            ]
-        ),
-    ]
+        )
     for program in range(max_programs):
         for station_start in range(0, max_stations, _UNIVERSAL_STATION_CHUNK_SIZE):
             station_end = min(

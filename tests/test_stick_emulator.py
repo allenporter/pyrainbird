@@ -16,6 +16,7 @@ from pyrainbird.testing.crypto import (
     pad_zero_16,
     strip_stick_padding,
 )
+from pyrainbird.testing.emulator import RainbirdDeviceEmulator
 from pyrainbird.testing.stick import LNK2StickEmulator
 
 
@@ -498,3 +499,19 @@ def test_stick_jsonrpc_methods() -> None:
         }
     )
     assert res_test["result"] == {"length": 5, "string": "AAAAA", "value": 42}
+
+
+def test_tunnel_sip_rejects_oversize_response_frame() -> None:
+    """Verify tunnelSip rejects SIP responses exceeding the 255-byte wire frame limit."""
+    emu = RainbirdDeviceEmulator.for_model("LX_ME2")
+    # Unchunked 0x1D start-time read across all 40 programs x 10 slots produces an 839-byte 0x8C response
+    unchunked_req = "0C200001000805000000000C0000000000050000001200070B011D0003000027000000000000000900"
+    resp = emu.handle_jsonrpc(
+        {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tunnelSip",
+            "params": {"data": unchunked_req, "length": len(unchunked_req) // 2},
+        }
+    )
+    assert resp["error"] == {"code": -32603, "message": "SIP response frame overflow"}

@@ -171,6 +171,10 @@ class LNK2StickEmulator:
         wire = encode_sip_wire_frame(raw_bytes)
         self.device.last_uart_tx_frame_hex = wire.hex().upper()
         resp = self.device.handle_sip(data_hex, transport="STICK_TUNNEL_SIP")
+        try:
+            encode_sip_wire_frame(bytes.fromhex(resp))
+        except ValueError as exc:
+            raise _RpcError(-32603, "SIP response frame overflow") from exc
         return {"data": resp, "length": len(resp) // 2}
 
     def _r_set_password(self, _m: str, p: RpcDict, is_enc: bool) -> str:
