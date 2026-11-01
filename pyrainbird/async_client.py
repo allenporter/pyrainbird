@@ -75,6 +75,7 @@ from .exceptions import (
     RainbirdDeviceNackError,
 )
 from .resources import LENGTH, RAINBIRD_COMMANDS, RESPONSE
+from .timeline import MAX_LETTER_PROGRAMS
 
 
 class ControllerFeature(enum.StrEnum):
@@ -752,6 +753,8 @@ class AsyncRainbirdController(RainbirdController):
                     elif key == "programInfo":
                         items = value if isinstance(value, list) else [value]
                         for item in items:
+                            if max_programs > MAX_LETTER_PROGRAMS:
+                                item.setdefault("numbered", True)
                             prog_id = item.get("program")
                             if prog_id is not None and prog_id in program_info_by_id:
                                 program_info_by_id[prog_id].update(item)

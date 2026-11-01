@@ -484,22 +484,72 @@ def test_schedule_merges_multi_chunk_universal_program_durations() -> None:
 
 
 @pytest.mark.parametrize(
-    ("program_idx", "zone", "expected_pgm_name", "expected_id_name"),
+    ("program_idx", "zone", "numbered", "expected_pgm_name", "expected_id_name"),
     [
-        (0, None, "PGM A", "PGM A"),
-        (3, 5, "PGM D", "PGM D: Zone 5"),
-        (25, None, "PGM Z", "PGM Z"),
-        (26, None, "PGM 27", "PGM 27"),
-        (39, 12, "PGM 40", "PGM 40: Zone 12"),
+        (0, None, False, "PGM A", "PGM A"),
+        (3, 5, False, "PGM D", "PGM D: Zone 5"),
+        (4, None, False, "PGM 5", "PGM 5"),
+        (0, None, True, "PGM 1", "PGM 1"),
+        (3, 2, True, "PGM 4", "PGM 4: Zone 2"),
+        (9, None, True, "PGM 10", "PGM 10"),
+        (39, 12, True, "PGM 40", "PGM 40: Zone 12"),
     ],
 )
 def test_program_name_formatting(
     program_idx: int,
     zone: int | None,
+    numbered: bool,
     expected_pgm_name: str,
     expected_id_name: str,
 ) -> None:
-    """Verify Program.name and ProgramId.name use A-Z for 0-25 and 1-based numbers for >=26."""
-    program = Program(program=program_idx, frequency=ProgramFrequency.OFF)
+    """Verify Program.name and ProgramId.name use A-D for <=4-program models and 1-N for >4-program models."""
+    program = Program(
+        program=program_idx, frequency=ProgramFrequency.OFF, numbered=numbered
+    )
     assert program.name == expected_pgm_name
-    assert ProgramId(program=program_idx, zone=zone).name == expected_id_name
+    assert (
+        ProgramId(program=program_idx, zone=zone, numbered=numbered).name
+        == expected_id_name
+    )
+
+
+@freeze_time("2026-06-15 00:00:00")
+@pytest.mark.parametrize(
+    ("program_count", "expected_first", "expected_last", "expected_last_zone"),
+    [
+        (4, "PGM A", "PGM D", "PGM D: Zone 2"),
+        (10, "PGM 1", "PGM 10", "PGM 10: Zone 2"),
+        (40, "PGM 1", "PGM 40", "PGM 40: Zone 2"),
+    ],
+)
+def test_schedule_numbered_program_names(
+    program_count: int,
+    expected_first: str,
+    expected_last: str,
+    expected_last_zone: str,
+) -> None:
+    """Verify Schedule names programs A-D when count <= 4 and 1-N across all programs when count > 4."""
+    programs = [
+        Program(
+            program=idx,
+            frequency=ProgramFrequency.ODD,
+            starts=[datetime.time(idx // 60, idx % 60)],
+            durations=[ZoneDuration(zone=2, duration=datetime.timedelta(minutes=5))],
+        )
+        for idx in range(program_count)
+    ]
+    schedule = Schedule(controller_info=None, programs=programs)
+    assert schedule.programs[0].name == expected_first
+    assert schedule.programs[-1].name == expected_last
+
+    start = datetime.datetime(2026, 6, 15, 0, 0, 0)
+    end = datetime.datetime(2026, 6, 16, 0, 0, 0)
+    sched_events = list(schedule.timeline.overlapping(start, end))
+    assert sched_events[0].program_id.name == expected_first
+    assert sched_events[-1].program_id.name == expected_last
+
+    prog_events = list(schedule.programs[-1].timeline.overlapping(start, end))
+    assert prog_events[0].program_id.name == expected_last
+
+    zone_events = list(schedule.programs[-1].zone_timeline.overlapping(start, end))
+    assert zone_events[0].program_id.name == expected_last_zone

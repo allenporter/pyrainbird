@@ -435,7 +435,7 @@ async def test_universal_multi_chunk_station_schedule_esp_2wire() -> None:
         "last_station",
     ),
     [
-        ("LX_IVM", 10, 9, "PGM J", 60),
+        ("LX_IVM", 10, 9, "PGM 10", 60),
         ("LXME2", 40, 39, "PGM 40", 48),
         ("LX_IVM_PRO", 40, 39, "PGM 40", 240),
     ],
@@ -474,7 +474,7 @@ async def test_lx_commercial_universal_schedule_and_timeline(
         sched = await ctrl.get_schedule()
         assert len(sched.programs) == expected_programs
 
-        assert sched.programs[0].name == "PGM A"
+        assert sched.programs[0].name == "PGM 1"
         assert [(d.zone, d.duration) for d in sched.programs[0].durations] == [
             (
                 1,
@@ -506,7 +506,7 @@ async def test_lx_commercial_universal_schedule_and_timeline(
         )
         assert [(e.program_id.name, e.start, e.end) for e in events] == [
             (
-                "PGM A",
+                "PGM 1",
                 datetime.datetime(2026, 6, 15, 5, 0, tzinfo=datetime.UTC),
                 datetime.datetime(2026, 6, 15, 5, 30, tzinfo=datetime.UTC),
             ),
