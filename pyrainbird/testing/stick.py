@@ -156,13 +156,19 @@ class LNK2StickEmulator:
     def _r_tunnel_sip(self, _m: str, p: RpcDict, _e: bool) -> Any:
         data_hex = str(p.get("data", "")).strip().upper()
         exp = p.get("length")
+        byte_len = len(data_hex) // 2
         if (
             not data_hex
             or len(data_hex) % 2 != 0
-            or (exp is not None and int(exp) != len(data_hex) // 2)
+            or byte_len > 255
+            or (exp is not None and int(exp) != byte_len)
         ):
             raise _RpcError(-32602, "Invalid params")
-        wire = encode_sip_wire_frame(bytes.fromhex(data_hex))
+        try:
+            raw_bytes = bytes.fromhex(data_hex)
+        except ValueError as exc:
+            raise _RpcError(-32602, "Invalid params") from exc
+        wire = encode_sip_wire_frame(raw_bytes)
         self.device.last_uart_tx_frame_hex = wire.hex().upper()
         resp = self.device.handle_sip(data_hex, transport="STICK_TUNNEL_SIP")
         return {"data": resp, "length": len(resp) // 2}

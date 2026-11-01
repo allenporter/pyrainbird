@@ -114,10 +114,13 @@ class BaseControllerDevice:
         if len(data) < 2 or len(data) % 2 != 0:
             return "000002"
         cmd = data[:2]
+        byte_len = len(data) // 2
+        if byte_len > 255:
+            return self._nak(cmd, 2)
         handler = self._sip_handlers.get(cmd)
         if handler is None:
             return self._nak(cmd, 1)
-        return handler(data, len(data) // 2, transport)
+        return handler(data, byte_len, transport)
 
     def _op_model_and_version(self, d: str, bl: int, _t: str | None) -> str:
         if bl != 1:
@@ -236,10 +239,19 @@ class BaseControllerDevice:
             self.manual_queue_count += 1
         self.queued_entries.append({"station_id": stn, "remaining_seconds": dur_sec})
 
+    def _valid_manual_run(self, stn: int, dur_sec: int) -> bool:
+        p = self.profile
+        max_stn = 6 if p.controller_type == "ESP_BAT_BT" else max(1, p.maximum_stations)
+        max_s = p.maximum_manual_run_seconds
+        return (1 <= stn <= max_stn) and (max_s <= 0 or dur_sec <= max_s)
+
     def _op_stack_run_station_seconds(self, d: str, bl: int, _t: str | None) -> str:
         if bl != 5:
             return self._nak(d, 2)
-        self._enqueue_manual_run(int(d[2:6], 16), int(d[6:10], 16))
+        stn, dur_sec = int(d[2:6], 16), int(d[6:10], 16)
+        if not self._valid_manual_run(stn, dur_sec):
+            return self._nak(d, 4)
+        self._enqueue_manual_run(stn, dur_sec)
         return self._ack(d)
 
     def _op_test_all_stations_seconds(self, d: str, bl: int, _t: str | None) -> str:
@@ -270,6 +282,8 @@ class BaseControllerDevice:
         if bl != 2:
             return self._nak(d, 2)
         prog = int(d[2:4], 16)
+        if prog >= max(1, self.profile.maximum_programs):
+            return self._nak(d, 4)
         pct = self.water_budget.get(prog, self.seasonal_adjust)
         return f"B0{prog & 0xFF:02X}{pct & 0xFFFF:04X}"
 
@@ -277,6 +291,12 @@ class BaseControllerDevice:
         if bl != 4:
             return self._nak(d, 2)
         prog, pct = int(d[2:4], 16), int(d[4:8], 16)
+        if prog >= max(1, self.profile.maximum_programs) or not (
+            self.profile.minimum_seasonal_adjust
+            <= pct
+            <= max(200, self.profile.maximum_seasonal_adjust)
+        ):
+            return self._nak(d, 4)
         self.water_budget[prog] = pct
         self.seasonal_adjust = pct
         self._on_water_budget_updated(prog, pct)
@@ -306,13 +326,18 @@ class BaseControllerDevice:
     def _op_set_rain_delay(self, d: str, bl: int, _t: str | None) -> str:
         if bl != 3:
             return self._nak(d, 2)
-        self.rain_delay_days = int(d[2:6], 16)
+        days = int(d[2:6], 16)
+        if days > max(14, self.profile.maximum_rain_delay_days):
+            return self._nak(d, 4)
+        self.rain_delay_days = days
         return self._ack(d)
 
     def _op_manually_run_program(self, d: str, bl: int, _t: str | None) -> str:
         if bl != 2:
             return self._nak(d, 2)
         prog = int(d[2:4], 16)
+        if prog >= max(1, self.profile.maximum_programs):
+            return self._nak(d, 4)
         self.active_program = prog
         if self.program_0_stations and prog == 0:
             first = self.program_0_stations[0]
@@ -342,14 +367,11 @@ class BaseControllerDevice:
     def _op_manually_run_station(self, d: str, bl: int, _t: str | None) -> str:
         if bl != 4:
             return self._nak(d, 2)
-        mins = int(d[6:8], 16)
-        max_sec = self.profile.maximum_manual_run_seconds
-        if max_sec > 0 and mins * 60 > max_sec:
+        stn, mins = int(d[2:6], 16), int(d[6:8], 16)
+        if not self._valid_manual_run(stn, mins * 60):
             return self._nak(d, 4)
-        self.active_station = int(d[2:6], 16)
-        self.active_program = 0xFF
-        self.remaining_runtime_sec = mins * 60
-        self.manual_queue_count = 1
+        self.active_station, self.active_program = stn, 0xFF
+        self.remaining_runtime_sec, self.manual_queue_count = mins * 60, 1
         return self._ack(d)
 
     def _op_test_all_stations(self, d: str, bl: int, _t: str | None) -> str:
@@ -394,10 +416,8 @@ class BaseControllerDevice:
     def _op_stop_irrigation(self, d: str, bl: int, _t: str | None) -> str:
         if bl != 1:
             return self._nak(d, 2)
-        self.active_station = 0
-        self.remaining_runtime_sec = 0
-        self.manual_queue_count = 0
-        self.auto_queue_count = 0
+        self.active_station = self.remaining_runtime_sec = 0
+        self.manual_queue_count = self.auto_queue_count = 0
         self.queue.clear()
         self.queued_entries.clear()
         return self._ack(d)
@@ -413,15 +433,16 @@ class BaseControllerDevice:
             self.manual_queue_count = len(self.queued_entries)
         elif self.queue:
             item = self.queue.pop(0)
-            if isinstance(item, dict):
-                self.active_station = int(item["station"])
-                self.remaining_runtime_sec = int(item.get("seconds", 0))
-            else:
-                self.active_station = int(item)
+            self.active_station = int(
+                item["station"] if isinstance(item, dict) else item
+            )
+            self.remaining_runtime_sec = (
+                int(item.get("seconds", 0)) if isinstance(item, dict) else 0
+            )
         else:
-            self.active_station = 0
-            self.remaining_runtime_sec = 0
-            self.manual_queue_count = 0
+            self.active_station = self.remaining_runtime_sec = (
+                self.manual_queue_count
+            ) = 0
             self.queued_entries.clear()
         return self._ack(d)
 
@@ -444,11 +465,10 @@ class BaseControllerDevice:
     def _op_stack_manual_run(self, d: str, bl: int, _t: str | None) -> str:
         if bl != 4:
             return self._nak(d, 2)
-        mins = int(d[6:8], 16)
-        max_sec = self.profile.maximum_manual_run_seconds
-        if max_sec > 0 and mins * 60 > max_sec:
+        stn, mins = int(d[2:6], 16), int(d[6:8], 16)
+        if not self._valid_manual_run(stn, mins * 60):
             return self._nak(d, 4)
-        self._enqueue_manual_run(int(d[4:6], 16), mins * 60)
+        self._enqueue_manual_run(stn, mins * 60)
         return self._ack(d)
 
     def _op_combined_controller_state(self, d: str, bl: int, _t: str | None) -> str:

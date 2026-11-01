@@ -26,3 +26,6 @@ global_seasonal_adjustment: false
 controller_state_set: false
 combined_controller_state: false
 stack_manual_run_station: false
+minimum_frequency_cycle_days: 2
+maximum_frequency_cycle_days: 31
+maximum_station_delay_seconds: 32400

@@ -97,6 +97,9 @@ class ControllerProfile(DataClassYAMLMixin):
     is_lx_controller: bool = False
     is_tm2: bool = False
     is_upgraded_tm2: bool = False
+    minimum_frequency_cycle_days: int = 2
+    maximum_frequency_cycle_days: int = 31
+    maximum_station_delay_seconds: int = 600
 
     @property
     def is_universal_based(self) -> bool:
@@ -122,6 +125,54 @@ class ControllerProfile(DataClassYAMLMixin):
     def is_battery_powered(self) -> bool:
         """Alias for is_battery_based."""
         return self.is_battery_based
+
+    @property
+    def default_cyclic_days(self) -> int:
+        """Return factory default cyclic interval days for program schedules."""
+        return 1 if self.is_lx_controller else 3
+
+    @property
+    def maximum_calendar_days_off(self) -> int:
+        """Return maximum calendar day-off slots supported by this controller."""
+        if self.controller_type == "LX_ME2" or self.is_cbos_series:
+            return 15
+        if self.controller_type in ("LX_IVM", "LX_IVM_PRO"):
+            return 5
+        return 0
+
+    @property
+    def maximum_master_valves(self) -> int:
+        """Return maximum master valves supported by this controller."""
+        if self.controller_type == "LX_IVM":
+            return 5
+        if self.controller_type == "LX_IVM_PRO":
+            return 10
+        return 1
+
+    @property
+    def maximum_weather_sensors(self) -> int:
+        """Return maximum weather sensors supported by this controller."""
+        if self.controller_type == "LX_IVM":
+            return 4
+        if self.controller_type == "LX_IVM_PRO":
+            return 8
+        return 1
+
+    @property
+    def maximum_flow_sensors(self) -> int:
+        """Return maximum flow sensors/zones supported by this controller."""
+        if self.controller_type == "LX_IVM":
+            return 5
+        if self.controller_type == "LX_IVM_PRO":
+            return 10
+        if self.controller_type in ("ESP_ME3", "ESP_2WIRE", "LX_ME2"):
+            return 1
+        return 0
+
+    @property
+    def supports_permanent_days_off(self) -> bool:
+        """Return True if controller supports per-program permanent days off."""
+        return self.universal_messages and not self.is_isk_controller
 
 
 def _load_device_profiles() -> dict[str, ControllerProfile]:

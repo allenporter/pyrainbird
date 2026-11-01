@@ -63,9 +63,10 @@ def init_core_state(device: Any) -> None:
     device.rain_delay_days = 0
     device.controller_state = 1
     device.controller_state_str = "Auto"
+    max_progs = max(12, device.profile.maximum_programs)
     device.seasonal_adjust = 100
-    device.water_budget = {i: 100 for i in range(12)}
-    device.monthly_water_budget = {i: 100 for i in range(12)}
+    device.water_budget = dict.fromkeys(range(max_progs), 100)
+    device.monthly_water_budget = dict.fromkeys(range(12), 100)
     device.zone_count = max(8, max_stns)
     device.event_timestamps = {1: 0}
     device.active_station = 0
@@ -88,9 +89,20 @@ def init_core_state(device: Any) -> None:
 def init_schedule_state(device: Any) -> None:
     """Initialize schedule storage for LCR and program-centric SIP controllers."""
     max_stns = device.profile.maximum_stations
+    max_progs = max(12, device.profile.maximum_programs)
+    cyc_def = (
+        device.profile.default_cyclic_days if device.profile.universal_messages else 0
+    )
+    start_slots = max(8, device.profile.maximum_start_times)
     device.lcr_zones = {z: LCRZoneSchedule() for z in range(1, 9)}
     device.zone_seasonal_adjust = [100] * 8
-    device.programs = {p: ProgramScheduleConfig() for p in range(1, 13)}
+    device.programs = {
+        p: ProgramScheduleConfig(
+            cyclic_days=cyc_def,
+            start_times_minutes=[65535] * start_slots,
+        )
+        for p in range(1, max_progs + 1)
+    }
     device.station_run_times = {
         s: [0] * max(4, device.profile.maximum_programs)
         for s in range(1, max(24, max_stns) + 1)
