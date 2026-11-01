@@ -715,6 +715,9 @@ async def test_create_controller_https_abort_falls_back_to_http() -> None:
 @pytest.mark.asyncio
 async def test_arc8_https_wrong_password_and_430_lockout() -> None:
     """Verify ARC8 raises RainbirdAuthException on 403 and RainbirdAuthLockoutException on 430."""
+    assert issubclass(RainbirdAuthLockoutException, RainbirdApiException)
+    assert not issubclass(RainbirdAuthLockoutException, RainbirdAuthException)
+
     ssl_ctx = create_self_signed_ssl_context()
     async with (
         RainbirdFakeServer(
@@ -739,8 +742,10 @@ async def test_arc8_https_wrong_password_and_430_lockout() -> None:
 
         with pytest.raises(
             RainbirdAuthLockoutException, match="temporarily locked out"
-        ):
+        ) as err_lockout:
             await async_client.create_controller(session, server.host_port, "123456")
+        assert isinstance(err_lockout.value, RainbirdApiException)
+        assert not isinstance(err_lockout.value, RainbirdAuthException)
         assert len(server.device.request_log) == 2
 
 
@@ -789,7 +794,7 @@ async def test_arc8_https_wrong_password_and_430_lockout() -> None:
                 ),
                 "123456",
             ),
-            RainbirdAuthLockoutException,
+            RainbirdAuthException,
             "Password protected",
         ),
         (

@@ -14,7 +14,7 @@ from Crypto.Hash import SHA256
 
 from .exceptions import (
     RainbirdApiException,
-    RainbirdAuthLockoutException,
+    RainbirdAuthException,
     RainbirdDeviceBusyException,
 )
 
@@ -171,7 +171,7 @@ class PayloadCoder:
                     f"Rain Bird responded with an error: {message}"
                 )
             if code == ErrorCode.LOCKOUT_ACTIVE:
-                raise RainbirdAuthLockoutException(
+                raise RainbirdAuthException(
                     f"Rain Bird responded with an error: {message}"
                 )
             raise RainbirdApiException(f"Rain Bird responded with an error: {message}")

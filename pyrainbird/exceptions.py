@@ -17,7 +17,7 @@ class RainbirdAuthException(RainbirdApiException):
     """Authentication exception from rainbird API."""
 
 
-class RainbirdAuthLockoutException(RainbirdAuthException):
+class RainbirdAuthLockoutException(RainbirdApiException):
     """Authentication temporarily locked out due to repeated failed password attempts."""
 
 
