@@ -1,4 +1,13 @@
-"""UniversalCDTDevice for ESP_ME3, RC2, ARC8, ESP_2WIRE, LX_ME2, and LX_IVM*."""
+"""UniversalCDTDevice for ESP_ME3, RC2, ARC8, ESP_2WIRE, LX_ME2, and LX_IVM*.
+
+Universal controllers pair Core SIP status/control commands (`BaseControllerDevice`)
+with a structured sub-protocol carried inside SIP command `0x0C` (response `0x8C`).
+Rather than legacy `0x20` / `0x21` schedule pages, schedules and hardware settings
+live in the Controller Data Table (`CDTStore`, subsystem `0x0C`), alongside runtime
+subsystems for clock/timezone (`0x03`), live irrigation (`0x09`), status/alarms
+(`0x13`), panel session lock (`0x18`), field/2-wire diagnostics (`0x04`), and
+modules (`0x05` / `0x0D`).
+"""
 
 from __future__ import annotations
 
@@ -6,15 +15,26 @@ import struct
 from collections.abc import Callable
 from typing import Any
 
-from .base import SipHandler
+from .base import BaseControllerDevice, SipHandler
 from .cdt_store import CDTStore
-from .constants import (
-    ALARM_STATUS_MASKS,
-    DISCOVERY_PROGRESS_STATUS_CODES,
-    WEATHER_SENSOR_STATUS_CODES,
-)
-from .legacy_sip import UpgradedTM2Device
+from .constants import ALARM_STATUS_MASKS
 from .state import init_ble_state, init_universal_state
+from .universal_diagnostics import (
+    handle_uni_ac_current_test,
+    handle_uni_get_discovery_progress,
+    handle_uni_get_discovery_results,
+    handle_uni_get_module_info,
+    handle_uni_get_module_list,
+    handle_uni_get_raster_test_status,
+    handle_uni_get_responding_devices,
+    handle_uni_get_segment_info,
+    handle_uni_get_two_wire_line_survey,
+    handle_uni_get_weather_sensor_status,
+    handle_uni_ping_device,
+    handle_uni_ping_device_setup,
+    handle_uni_set_diagnostic_mode,
+    handle_uni_set_raster_test,
+)
 from .universal_irrigation import (
     collect_universal_program_stations,
     format_uni_irrigation_queue_6720,
@@ -28,8 +48,8 @@ from .universal_irrigation import (
     handle_uni_run_station,
     handle_uni_stop_all,
     handle_uni_stop_station,
-    sync_core_queue_from_uni,
-    sync_uni_queue_from_core,
+    record_sip_manual_run_in_queue,
+    refresh_active_station_state,
 )
 
 UniRes = tuple[str, str]
@@ -39,8 +59,8 @@ _CDT_GET_RESP_MAP = {"070B": "080B", "030B": "040B", "0207": "0307"}
 _CDT_SET_RESP_MAP = {"050B": "060B", "010B": "020B", "0507": "0607"}
 
 
-class UniversalCDTDevice(UpgradedTM2Device):
-    """Universal CDT/UPT controller emulator routing 0x0C/0x80 commands across subsystems and CDT blocks."""
+class UniversalCDTDevice(BaseControllerDevice):
+    """Universal controller emulator routing Core SIP and 0x0C subsystem/CDT commands."""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self.cdt_engine: CDTStore = CDTStore(self)
@@ -58,14 +78,14 @@ class UniversalCDTDevice(UpgradedTM2Device):
         handlers = super()._build_sip_handlers()
         for unsupported in ("20", "21", "32", "33"):
             handlers.pop(unsupported, None)
-        if not self.profile.controller_state_set:
-            handlers.pop("49", None)
-        if not self.profile.schedule_timestamp:
-            handlers.pop("4A", None)
-        if not self.profile.stack_manual_run_station:
-            handlers.pop("4B", None)
-        if not self.profile.combined_controller_state:
-            handlers.pop("4C", None)
+        for cmd, ok in (
+            ("49", self.profile.controller_state_set),
+            ("4A", self.profile.schedule_timestamp),
+            ("4B", self.profile.stack_manual_run_station),
+            ("4C", self.profile.combined_controller_state),
+        ):
+            if not ok:
+                handlers.pop(cmd, None)
         handlers["0C"] = self._op_universal_envelope
         handlers["80"] = self._op_universal_envelope
         handlers["61"] = self._op_cancel_flow_learn_61
@@ -80,12 +100,38 @@ class UniversalCDTDevice(UpgradedTM2Device):
             self.queue.clear()
             self.queued_entries.clear()
         resp = super().handle_sip(payload_hex, transport=transport)
-        if resp.startswith("01"):
-            if cmd in ("31", "37"):
-                self.cdt_engine.sync_from_device()
-            elif cmd in ("2B", "2C", "39", "3A", "4B"):
-                sync_uni_queue_from_core(self)
+        if resp.startswith("01") and cmd in ("2B", "2C", "39", "3A", "4B"):
+            record_sip_manual_run_in_queue(self)
         return resp
+
+    def _op_rain_delay(self, d: str, bl: int, _t: str | None) -> str:
+        rd = int(self.cdt_store.get("1400", self.rain_delay_days)) & 0xFFFF
+        return f"B6{rd:04X}" if bl == 1 else self._nak(d, 2)
+
+    def _op_set_rain_delay(self, d: str, bl: int, _t: str | None) -> str:
+        resp = super()._op_set_rain_delay(d, bl, _t)
+        if resp.startswith("01") and "1400" in self.cdt_store:
+            self.cdt_store["1400"] = self.rain_delay_days
+        return resp
+
+    def _op_water_budget(self, d: str, bl: int, _t: str | None) -> str:
+        if bl != 2:
+            return self._nak(d, 2)
+        prog = int(d[2:4], 16)
+        if prog >= max(1, self.profile.maximum_programs):
+            return self._nak(d, 4)
+        tbl = self.cdt_store.get("1800")
+        pct = (
+            int(tbl[prog])
+            if isinstance(tbl, list) and prog < len(tbl)
+            else self.water_budget.get(prog, self.seasonal_adjust)
+        )
+        return f"B0{prog & 0xFF:02X}{pct & 0xFFFF:04X}"
+
+    def _on_water_budget_updated(self, prog: int, pct: int) -> None:
+        tbl = self.cdt_store.get("1800")
+        if isinstance(tbl, list) and prog < len(tbl):
+            tbl[prog] = pct
 
     def _collect_program_runnable_stations(self, prog: int) -> list[tuple[int, int]]:
         return collect_universal_program_stations(self, prog)
@@ -103,7 +149,7 @@ class UniversalCDTDevice(UpgradedTM2Device):
         if bl != 1:
             return self._nak(d, 2)
         self.uni_irrigation_queue.clear()
-        sync_core_queue_from_uni(self)
+        refresh_active_station_state(self)
         return self._ack(d)
 
     def _op_advance_station(self, d: str, bl: int, _t: str | None) -> str:
@@ -343,152 +389,49 @@ class UniversalCDTDevice(UpgradedTM2Device):
     def _uni_session_beacon(self, _op: str, _body: bytes) -> UniRes:
         return "0814", "00"
 
-    # --- 6. Subsystem 0x04 (field devices & 2-wire) ---
+    # --- 6. Subsystems 0x04 (field/2-wire), 0x05 (diagnostics), 0x0D (modules) ---
 
     def _uni_set_raster_test(self, _op: str, body: bytes) -> UniRes:
-        if body:
-            active = body[0] == 1
-            self.uni_raster_test["active"] = active
-            self.uni_raster_test["progress"] = 0 if active else 100
-        return "3609", "01"
+        return handle_uni_set_raster_test(self, body)
 
     def _uni_get_raster_test_status(self, _op: str, _body: bytes) -> UniRes:
-        is_act = 1 if self.uni_raster_test.get("active", False) else 0
-        prog = int(self.uni_raster_test.get("progress", 100)) & 0xFF
-        stn_bytes, short_bytes = bytearray(3), bytearray(3)
-        for s in self.uni_raster_test.get("open_stations", []):
-            s_idx = int(s) - 1
-            if 0 <= s_idx < 24:
-                stn_bytes[s_idx // 8] |= 1 << (s_idx % 8)
-        for s in self.uni_raster_test.get("shorted_stations", []):
-            s_idx = int(s) - 1
-            if 0 <= s_idx < 24:
-                short_bytes[s_idx // 8] |= 1 << (s_idx % 8)
-        body = (
-            f"{is_act:02X}{prog:02X}00000000000000"
-            f"0000{short_bytes.hex().upper()}{stn_bytes.hex().upper()}0000"
-        )
-        return "3809", body
+        return handle_uni_get_raster_test_status(self)
 
     def _uni_ping_device_setup_polling(self, _op: str, body: bytes) -> UniRes:
-        if len(body) >= 3:
-            self.ping_polling_target = {
-                "device_number": struct.unpack("<H", body[0:2])[0],
-                "device_type": body[2],
-            }
-        return "3209", "00"
+        return handle_uni_ping_device_setup(self, body)
 
     def _uni_ping_device(self, op: str, _body: bytes) -> UniRes:
-        lp = self.last_ping
-        volt_byte = round(float(lp.get("voltage", 28.5)) / 0.25) & 0xFF
-        rec = struct.pack(
-            "<HBHB6sB",
-            int(lp.get("device_number", 1)),
-            int(lp.get("device_type", 1)),
-            int(lp.get("address", 1001)),
-            1 if lp.get("status", True) else 0,
-            b"\x00" * 6,
-            volt_byte,
-        )
-        if op == "3309":
-            return "3409", f"{1 if lp.get('ready', True) else 0:02X}{rec.hex().upper()}"
-        return "1E09", rec.hex().upper()
+        return handle_uni_ping_device(self, op)
 
     def _uni_get_weather_sensor_status(self, _op: str, _body: bytes) -> UniRes:
-        codes = [
-            WEATHER_SENSOR_STATUS_CODES.get(s, 1) for s in self.weather_sensor_status
-        ]
-        return "3C09", bytes([len(codes), *codes]).hex().upper()
+        return handle_uni_get_weather_sensor_status(self)
 
     def _uni_get_discovery_progress(self, _op: str, _body: bytes) -> UniRes:
-        st_str = str(self.discovery.get("status", "DISCOVERY_COMPLETED"))
-        st_code = DISCOVERY_PROGRESS_STATUS_CODES.get(st_str, 2)
-        pct = int(self.discovery.get("percent_complete", 100)) & 0xFF
-        return "4D09", f"{st_code:02X}{pct:02X}"
+        return handle_uni_get_discovery_progress(self)
 
     def _uni_get_two_wire_line_survey(self, _op: str, _body: bytes) -> UniRes:
-        ls = self.line_survey
-        peak_raw = int(ls.get("peak_voltage_v", 28)) * 10
-        curr_ma = int(ls.get("current_ma", 45))
-        lim_raw = int(ls.get("limit_threshold_ma", 800)) // 10
-        buf = bytearray(18)
-        for off, val in (
-            (0, peak_raw),
-            (2, 272),
-            (4, peak_raw),
-            (6, 272),
-            (8, curr_ma),
-            (10, peak_raw),
-            (12, curr_ma),
-        ):
-            struct.pack_into("<H", buf, off, val)
-        buf[14], buf[17] = 0x30, lim_raw & 0xFF
-        return "3009", buf.hex().upper()
+        return handle_uni_get_two_wire_line_survey(self)
 
     def _uni_get_responding_or_not_device(self, op: str, _body: bytes) -> UniRes:
-        nr = self.not_responding
-        masks = []
-        for k in ("weather", "flow", "mv", "pump", "stations"):
-            m = 0
-            for idx in nr.get(k, []):
-                m |= 1 << (int(idx) - 1)
-            masks.append(m)
-        buf = struct.pack("<BBBHHBBH", 0, 1, 2, *masks)
-        return ("2109" if op == "2009" else "2309"), buf.hex().upper()
+        return handle_uni_get_responding_devices(self, op)
 
     def _uni_get_short_status(self, _op: str, _body: bytes) -> UniRes:
         return "4309", "00000000"
 
     def _uni_get_discovery_results(self, _op: str, body: bytes) -> UniRes:
-        page = body[0] if body else 0
-        devs = self.discovery.get("devices", [])
-        buf = bytearray(struct.pack("<BH", page, len(devs)))
-        for d_rec in devs[:16]:
-            buf.extend(
-                struct.pack(
-                    "<BHHB",
-                    int(d_rec.get("assignment", 1)),
-                    int(d_rec.get("device_index", 1)),
-                    int(d_rec.get("address", 1001)),
-                    int(d_rec.get("status", 0)),
-                )
-            )
-        if len(devs) < 16:
-            buf.extend(b"\x00" * 6)
-        return "4F09", buf.hex().upper()
-
-    # --- 7. Subsystem 0x05 (module diagnostics) & 8. Subsystem 0x0D (module firmware) ---
+        return handle_uni_get_discovery_results(self, body)
 
     def _uni_ac_current_test(self, _op: str, body: bytes) -> UniRes:
-        if len(body) >= 2:
-            self.ac_current_test["path"] = body[0]
-            self.ac_current_test["source_on"] = body[1] == 1
-        return "2050", "00"
+        return handle_uni_ac_current_test(self, body)
 
     def _uni_get_segment_info(self, _op: str, _body: bytes) -> UniRes:
-        si = self.segment_info
-        buf = struct.pack(
-            "<BBBI",
-            int(si.get("diagnostic_mode", 0)),
-            int(si.get("shorted_map", 0)),
-            int(si.get("test_path", 0)),
-            int(si.get("current", 0)),
-        )
-        return "2250", buf.hex().upper()
+        return handle_uni_get_segment_info(self)
 
     def _uni_set_diagnostic_mode(self, _op: str, body: bytes) -> UniRes:
-        if body:
-            self.segment_info["diagnostic_mode"] = body[0]
-        return "2450", "00"
+        return handle_uni_set_diagnostic_mode(self, body)
 
     def _uni_get_module_list(self, _op: str, _body: bytes) -> UniRes:
-        return "250B", f"00000000{self.module_info_address}"
+        return handle_uni_get_module_list(self)
 
     def _uni_get_module_info(self, _op: str, _body: bytes) -> UniRes:
-        hdr, rec = bytearray(12), bytearray(42)
-        hdr[11] = 1
-        struct.pack_into("<I", rec, 0, 458753)
-        struct.pack_into("<I", rec, 4, 321)
-        struct.pack_into("<H", rec, 9, self.fw_major)
-        struct.pack_into("<H", rec, 11, self.fw_minor)
-        return "230B", (hdr + rec).hex().upper()
+        return handle_uni_get_module_info(self)

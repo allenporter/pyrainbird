@@ -1,4 +1,23 @@
-"""CDT schema definitions, per-model index limits, and value validators."""
+"""Controller Data Table (CDT) schema, index bounds, and value validators.
+
+On Universal controllers (`ARC8`, `RC2`, `ESP-ME3`, `ESP-2WIRE`, `LX-ME2`,
+`LX-IVM*`), persistent configuration and watering schedules are stored in an
+indexed key-value table called the **Controller Data Table (CDT)** rather than
+fixed SIP `0x20` / `0x21` memory pages.
+
+Each CDT entry is addressed by:
+- A 2-byte little-endian **Data ID** (for example `"1300"` for program
+  frequency mode or `"1500"` for station runtimes).
+- A **rank** (`0` = scalar controller setting, `1` = 1D array such as
+  `[program]` or `[station]`, `2` = 2D matrix such as `[program][station]`,
+  `3` = 3D array `[program][0][start_slot]`).
+- A **wire value width** in bytes (`1`, `2`, `4`, or `255` for bit-packed
+  boolean flags).
+
+Unwritten cells return model-specific hardware defaults (`get_cdt_default`),
+and batch writes (`050B`) validate rank, per-model dimension bounds, wire width,
+and value ranges before committing any block.
+"""
 
 from __future__ import annotations
 
@@ -16,41 +35,61 @@ CDT_NAK_INVALID_DATATYPE = 0x05
 
 # CDT Metadata: data_id -> (rank, value_width, is_float, default_value)
 CDT_SCHEMA: dict[str, tuple[int, int, bool, Any]] = {
+    # --- Controller display & general options ---
     "0100": (0, 2, False, 0),
     "0200": (0, 1, False, 0),
     "0300": (0, 1, False, 0),
     "0400": (0, 1, False, 0),
     "0500": (0, 1, False, 0),
     "0600": (0, 1, False, 0),
-    "0700": (1, 1, False, 255),
-    "0800": (1, 1, False, 255),
-    "0900": (1, 2, False, 255),
-    "0A00": (1, 2, False, 0),
-    "0B00": (1, 2, False, 0),
-    "0C00": (1, 2, False, 0),
-    "0D00": (0, 1, False, 0),
+    # --- Calendar days off (255 = unused slot; 0800 month is 0-based 0..11) ---
+    "0700": (1, 1, False, 255),  # event day off: day of month [slot]
+    "0800": (1, 1, False, 255),  # event day off: 0-based month [slot]
+    "0900": (1, 2, False, 255),  # event day off: year [slot]
+    # --- Cycle & soak, inter-station delay & global sensor bypass ---
+    "0A00": (1, 2, False, 0),  # station cycle minutes [station]
+    "0B00": (1, 2, False, 0),  # station soak minutes [station]
+    "0C00": (1, 2, False, 0),  # inter-station delay seconds [program]
+    "0D00": (0, 1, False, 0),  # global weather sensor bypass (0=obey, 1=bypass)
     "0E00": (0, 1, False, 0),
-    "0F00": (2, 1, False, 1),
-    "1000": (2, 1, False, 0),
-    "1100": (1, 1, False, 0),
-    "1200": (1, 1, False, 3),
-    "1300": (1, 1, False, 0),
-    "1400": (0, 2, False, 0),
-    "1500": (2, 4, False, 0),
-    "1600": (1, 2, False, 100),
-    "1700": (1, 1, False, 0),
-    "1800": (1, 2, False, 100),
-    "1900": (2, 1, False, 0),
-    "1A00": (1, 1, False, 0),
-    "1B00": (0, 1, False, 1),
-    "1C00": (0, 1, False, 1),
-    "1D00": (3, 2, False, 1440),
-    "1E00": (1, 2, False, 1),
+    # --- Program schedules (days 0..6 = Sun..Sat; 1440 = disabled time slot) ---
+    "0F00": (2, 1, False, 1),  # permanent days off [prog][day] (1=allow, 0=off)
+    "1000": (2, 1, False, 0),  # custom watering days [prog][day] (1=run, 0=off)
+    "1100": (1, 1, False, 0),  # cyclic days remaining [prog]
+    "1200": (1, 1, False, 3),  # cyclic interval days [prog]
+    "1300": (
+        1,
+        1,
+        False,
+        0,
+    ),  # frequency [prog]: 0=Cust,1=Odd,2=Odd31,3=Even,4=Cyc,5=Off
+    "1400": (0, 2, False, 0),  # rain delay days (shared with SIP 0x36/0x37)
+    "1500": (2, 4, False, 0),  # station runtimes in seconds [prog][station]
+    "1600": (1, 2, False, 100),  # monthly seasonal adjust % [month 0..11]
+    "1700": (1, 1, False, 0),  # cycle & soak enable [prog]
+    "1800": (
+        1,
+        2,
+        False,
+        100,
+    ),  # program seasonal adjust % [prog] (shared w/ SIP 0x30/0x31)
+    # --- Weather sensors, master valves, simultaneous stations & water windows ---
+    "1900": (2, 1, False, 0),  # station sensor bypass [sensor][station] (1=bypass)
+    "1A00": (1, 1, False, 0),  # weather sensor enable [sensor]
+    "1B00": (0, 1, False, 1),  # max simultaneous stations (controller)
+    "1C00": (0, 1, False, 1),  # simultaneous station setting
+    "1D00": (
+        3,
+        2,
+        False,
+        1440,
+    ),  # program start times in min from midnight [prog][0][slot]
+    "1E00": (1, 2, False, 1),  # station master valve assignment [station]
     "1F00": (0, 1, False, 0),
     "2000": (0, 1, False, 1),
-    "2100": (1, 1, False, 1),
-    "2200": (1, 2, False, 1440),
-    "2300": (1, 2, False, 1440),
+    "2100": (1, 1, False, 1),  # max simultaneous stations [prog]
+    "2200": (1, 2, False, 1440),  # water window open time [prog]
+    "2300": (1, 2, False, 1440),  # water window close time [prog]
     "2400": (0, 1, False, 0),
     "2500": (0, 1, False, 0),
     "2600": (0, 2, False, 0),
@@ -60,6 +99,7 @@ CDT_SCHEMA: dict[str, tuple[int, int, bool, Any]] = {
     "2A00": (0, 2, False, 0),
     "2B00": (0, 2, False, 70),
     "2C00": (0, 2, False, 0),
+    # --- Flow sensors, FloWatch & station flow configuration ---
     "2D00": (1, 1, False, 0),
     "2E00": (1, 4, True, 0.0),
     "2F00": (1, 4, False, 0),
@@ -77,7 +117,7 @@ CDT_SCHEMA: dict[str, tuple[int, int, bool, Any]] = {
     "3B00": (1, 4, False, 0),
     "3C00": (1, 1, False, 0),
     "3D00": (1, 4, True, 0.0),
-    "3E00": (1, 255, False, 0),
+    "3E00": (1, 255, False, 0),  # station learned-flow bitmap [station]
     "3F00": (1, 4, True, 0.0),
     "4000": (1, 1, False, 0),
     "4100": (1, 2, False, 0),
@@ -102,6 +142,7 @@ CDT_SCHEMA: dict[str, tuple[int, int, bool, Any]] = {
     "5400": (1, 2, False, 0),
     "5500": (1, 1, False, 0),
     "5600": (1, 2, False, 0),
+    # --- Auxiliary, hardware & 2-wire / IVM configuration ---
     "5700": (1, 1, False, 0),
     "5800": (1, 1, False, 0),
     "5900": (1, 1, False, 0),
@@ -132,7 +173,7 @@ CDT_SCHEMA: dict[str, tuple[int, int, bool, Any]] = {
     "8300": (1, 2, False, 0),
     "8400": (1, 1, False, 0),
     "8500": (1, 2, False, 0),
-    "8600": (2, 255, False, 0),
+    "8600": (2, 255, False, 0),  # master valve station map [mv][station]
     "8700": (1, 255, False, 0),
     "8B00": (1, 1, False, 0),
 }

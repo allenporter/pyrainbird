@@ -224,7 +224,7 @@ def test_universal_cdt_factory_defaults_and_run_length_reads(
 def test_universal_schedule_frequency_start_runtime_roundtrip(
     model: str, freq_code: int
 ) -> None:
-    """Verify full schedule CDT write/read roundtrips and SIP state sync across all models."""
+    """Verify full schedule CDT write/read roundtrips and shared SIP fields across all models."""
     dev = UniversalCDTDevice(model)
     custom_days = "01000100010000"  # Sun, Tue, Thu (indices 0, 2, 4)
     start_payload = _u16(360) + _u16(1110) + _u16(1440) + _u16(1440)
@@ -243,28 +243,29 @@ def test_universal_schedule_frequency_start_runtime_roundtrip(
     )
     assert dev.handle_sip(_uni_pkt("0C", "050B", set_body)).endswith("060B00")
 
-    assert dev.programs[1].water_cycle == freq_code
-    assert dev.programs[1].custom_days_mask == 0x15
-    assert dev.programs[1].cyclic_days == 5
-    assert dev.programs[1].days_remaining == 2
-    assert dev.programs[1].start_times_minutes[:4] == [360, 1110, 0xFFFF, 0xFFFF]
+    assert dev.rain_delay_days == 6
+    assert dev.water_budget[0] == 125
     assert dev.handle_sip("36") == "B60006"
     assert dev.handle_sip("3000") == "B000007D"
 
     get_body = (
-        "04"
+        "06"
         + _get_block("1300", (0, 0))
         + _get_block("1000", (0, 0), (0, 6))
+        + _get_block("1200", (0, 0))
+        + _get_block("1100", (0, 0))
         + _get_block("1D00", (0, 0), (0, 0), (0, 3))
         + _get_block("1500", (0, 0), (0, 1))
     )
     get_resp = dev.handle_sip(_uni_pkt("0C", "070B", get_body))
     assert f"{_get_block('1300', (0, 0))}01{freq_code:02X}" in get_resp
     assert f"{_get_block('1000', (0, 0), (0, 6))}01{custom_days}" in get_resp
+    assert f"{_get_block('1200', (0, 0))}0105" in get_resp
+    assert f"{_get_block('1100', (0, 0))}0102" in get_resp
     assert f"{_get_block('1D00', (0, 0), (0, 0), (0, 3))}02{start_payload}" in get_resp
     assert f"{_get_block('1500', (0, 0), (0, 1))}04{rt_payload}" in get_resp
 
-    # SIP 0x37 and 0x31 mutations propagate back into CDT 1400 and 1800
+    # SIP 0x37 and 0x31 update the shared rain delay and seasonal adjust settings
     assert dev.handle_sip("370009") == "0137"
     assert dev.handle_sip("31000096") == "0131"
     sync_resp = dev.handle_sip(
@@ -291,7 +292,7 @@ def test_universal_permanent_days_off_polarity(model: str) -> None:
             "0C", "050B", "01" + _set_block("0F00", 1, days_payload, (0, 0), (0, 6))
         )
     ).endswith("060B00")
-    assert dev.programs[1].permanent_days_off == 0x41
+    assert dev.cdt_store["0F00"]["0"] == [0, 1, 1, 1, 1, 1, 0]
     read_back = dev.handle_sip(_uni_pkt("0C", "070B", "01" + blk))
     assert read_back.endswith(f"080B01{blk}01{days_payload}")
 
@@ -329,7 +330,19 @@ def test_universal_calendar_days_off_roundtrip_and_limits(
         + _set_block("0900", 2, _u16(2026), (0, 0))  # Year = 2026 (uint16 LE)
     )
     assert dev.handle_sip(_uni_pkt("0C", "050B", set_body)).endswith("060B00")
-    assert dev.calendar_days_off[0] == {"year": 2026, "month": 7, "day": 4}
+    cal_resp = dev.handle_sip(
+        _uni_pkt(
+            "0C",
+            "070B",
+            "03"
+            + _get_block("0700", (0, 0))
+            + _get_block("0800", (0, 0))
+            + _get_block("0900", (0, 0)),
+        )
+    )
+    assert f"{_get_block('0700', (0, 0))}0104" in cal_resp
+    assert f"{_get_block('0800', (0, 0))}0106" in cal_resp
+    assert f"{_get_block('0900', (0, 0))}02{_u16(2026)}" in cal_resp
 
     oob_resp = dev.handle_sip(
         _uni_pkt("0C", "050B", "01" + _set_block("0800", 1, "06", (0, max_slots)))
@@ -343,7 +356,7 @@ def test_universal_station_sensor_bypass_1900_1d_and_2d() -> None:
     assert me3.handle_sip(
         _uni_pkt("0C", "050B", "01" + _set_block("1900", 1, "010001", (0, 0), (0, 2)))
     ).endswith("060B00")
-    assert me3.station_rain_sensor_obey[:3] == [False, True, False]
+    assert me3.cdt_store["1900"]["0"] == [1, 0, 1]
     row_resp = me3.handle_sip(
         _uni_pkt("0C", "070B", "01" + _get_block("1900", (0, 0), (0, 2)))
     )

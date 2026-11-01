@@ -1,4 +1,17 @@
-"""CDTStore implementing 0D-3D CDT batch read, write, and run-length read operations."""
+"""Controller Data Table (CDT) read and write engine for Universal controllers.
+
+Universal controllers expose subsystem `0x0C` inside SIP command `0x0C` to read
+and write slices of the controller's N-dimensional configuration table:
+
+- **Batch / single-block read (`070B -> 080B`, `030B -> 040B`)**: Reads one or
+  more scalar (`0D`) or indexed (`1D`–`3D`) blocks in a single round-trip.
+- **Run-length read (`1B0B -> 1C0B`)**: Returns the first value in a program's
+  station runtime (`1500`) or start-time (`1D00`) slice along with how far that
+  identical value repeats, allowing clients to skip reading all-zero or
+  all-disabled rows.
+- **Batch / single-block write (`050B -> 060B`, `010B -> 020B`)**: Validates
+  all blocks in the request first and commits them atomically.
+"""
 
 from __future__ import annotations
 
@@ -13,7 +26,6 @@ from .cdt_schema import (
     is_valid_cdt_write_width,
     validate_cdt_values,
 )
-from .cdt_sync import sync_cdt_from_device, sync_device_from_cdt
 
 RangePair = tuple[int, int]
 ParsedWriteBlock = tuple[str, int, list[RangePair], list[Any]]
@@ -76,10 +88,6 @@ class CDTStore:
 
     def __init__(self, device: Any) -> None:
         self.device = device
-
-    def sync_from_device(self) -> None:
-        """Synchronize canonical device state into cdt_store after legacy SIP writes."""
-        sync_cdt_from_device(self.device)
 
     def _are_ranges_valid(self, data_id: str, ranges: list[RangePair]) -> bool:
         limits = get_cdt_dim_limits(self.device.profile, data_id)
@@ -152,10 +160,16 @@ class CDTStore:
     ) -> bytes:
         stored = self.device.cdt_store.get(data_id)
         if rank == 0:
-            val = default_val if stored is None else stored
+            if stored is None and data_id == "1400":
+                val = self.device.rain_delay_days
+            else:
+                val = default_val if stored is None else stored
             return encode_cdt_scalar(val, val_width, is_float)
         if rank == 1:
-            return self._read_rank1(stored, ranges[0], val_width, is_float, default_val)
+            fallback_map = self.device.water_budget if data_id == "1800" else None
+            return self._read_rank1(
+                stored, ranges[0], val_width, is_float, default_val, fallback_map
+            )
         if rank == 2:
             if data_id in ("1900", "8600") and (
                 data_id == "8600" or ranges[0][0] < ranges[0][1]
@@ -172,7 +186,12 @@ class CDTStore:
 
     @staticmethod
     def _read_rank1(
-        stored: Any, r0: RangePair, val_width: int, is_float: bool, default_val: Any
+        stored: Any,
+        r0: RangePair,
+        val_width: int,
+        is_float: bool,
+        default_val: Any,
+        fallback_map: dict[int, int] | None = None,
     ) -> bytes:
         s_idx, e_idx = r0
         vals = []
@@ -181,6 +200,8 @@ class CDTStore:
                 vals.append(stored[idx])
             elif isinstance(stored, dict) and str(idx) in stored:
                 vals.append(stored[str(idx)])
+            elif fallback_map is not None and idx in fallback_map:
+                vals.append(fallback_map[idx])
             else:
                 vals.append(default_val)
         return _pack_cdt_values(vals, val_width, is_float)
@@ -252,7 +273,6 @@ class CDTStore:
             return "01"
         for data_id, rank, ranges, values in parsed:
             self._commit_write_block(data_id, rank, ranges, values)
-            sync_device_from_cdt(self.device, data_id)
         return "00"
 
     def _parse_and_validate_write_block(
@@ -340,6 +360,8 @@ class CDTStore:
         def_val = get_cdt_default(self.device.profile, data_id)
         if rank == 0:
             self.device.cdt_store[data_id] = values[0]
+            if data_id == "1400":
+                self.device.rain_delay_days = int(values[0])
             return
         if rank == 1:
             s0, e0 = ranges[0]
@@ -348,6 +370,11 @@ class CDTStore:
                 arr.append(def_val)
             for offset_i, idx in enumerate(range(s0, e0 + 1)):
                 arr[idx] = values[offset_i]
+                if data_id == "1800":
+                    pct = int(values[offset_i])
+                    self.device.water_budget[idx] = pct
+                    if idx == 0:
+                        self.device.seasonal_adjust = pct
             self.device.cdt_store[data_id] = arr
             return
         (s0, e0), (s_inner, e_inner) = ranges[0], ranges[-1]

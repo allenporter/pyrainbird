@@ -1,4 +1,16 @@
-"""Universal subsystem 0x09 irrigation queue execution and 0x3B queue formatting."""
+"""Universal subsystem 0x09 live watering queue and flow runtime operations.
+
+Universal controllers maintain a single live watering queue driven by both
+Universal subsystem `0x09` commands (`0A20` run program, `0220` run station,
+`0420` / `0620` / `0820` stop, `0C20` advance) and Core SIP manual-control
+commands (`0x38`, `0x39`, `0x4B`, `0x2B`, `0x40`, `0x42`).
+
+Starting a program (`0A20` or `0x38`) reads configured station runtimes
+(`1500`, in seconds) and the program's seasonal adjust (`1800`, %) directly
+from the Controller Data Table (CDT) to populate the active watering queue,
+which can then be inspected via Universal `6620 -> 6720` or Core SIP
+`0x3B -> 0xBB` and `0x3F -> 0xBF`.
+"""
 
 from __future__ import annotations
 
@@ -32,17 +44,12 @@ def collect_universal_program_stations(
     rt_tbl = store.get("1500")
     prog_row = rt_tbl.get(str(prog_idx)) if isinstance(rt_tbl, dict) else None
     result: list[tuple[int, int]] = []
-    for stn_idx in range(device.profile.maximum_stations):
-        base_sec = 0
-        if isinstance(prog_row, list) and stn_idx < len(prog_row):
+    if isinstance(prog_row, list):
+        for stn_idx in range(min(len(prog_row), device.profile.maximum_stations)):
             base_sec = int(prog_row[stn_idx])
-        else:
-            runs = device.station_run_times.get(stn_idx + 1, [])
-            if 0 <= prog_idx < len(runs) and runs[prog_idx] > 0:
-                base_sec = int(runs[prog_idx]) * 60
-        if base_sec > 0:
-            scaled_sec = max(1, round(base_sec * pct / 100.0))
-            result.append((stn_idx + 1, scaled_sec))
+            if base_sec > 0:
+                scaled_sec = max(1, round(base_sec * pct / 100.0))
+                result.append((stn_idx + 1, scaled_sec))
     if not result and prog_idx == 0 and device.program_0_stations:
         for entry in device.program_0_stations:
             sec = int(entry.get("minutes", 0)) * 60
@@ -51,8 +58,8 @@ def collect_universal_program_stations(
     return result
 
 
-def sync_core_queue_from_uni(device: Any) -> None:
-    """Mirror uni_irrigation_queue onto core SIP active/queue attributes."""
+def refresh_active_station_state(device: Any) -> None:
+    """Update active station and queue summary attributes from uni_irrigation_queue."""
     q = [r for r in device.uni_irrigation_queue if "station_number" in r]
     if not q:
         device.active_station = 0
@@ -93,8 +100,10 @@ def sync_core_queue_from_uni(device: Any) -> None:
     device.queue = tail
 
 
-def sync_uni_queue_from_core(device: Any, *, source: str = "ManualStation") -> None:
-    """Mirror core SIP queue state onto uni_irrigation_queue after SIP run/stop/advance."""
+def record_sip_manual_run_in_queue(
+    device: Any, *, source: str = "ManualStation"
+) -> None:
+    """Populate uni_irrigation_queue after a Core SIP manual station/test command."""
     if device.active_station <= 0:
         device.uni_irrigation_queue.clear()
         return
@@ -159,7 +168,7 @@ def handle_uni_run_program(device: Any, body: bytes) -> UniRes:
         ]
     else:
         device.uni_irrigation_queue = [{"program": prog_idx, "source": raw_src}]
-    sync_core_queue_from_uni(device)
+    refresh_active_station_state(device)
     return "0B20", "00"
 
 
@@ -194,7 +203,7 @@ def handle_uni_run_station(device: Any, body: bytes) -> UniRes:
             "secondary_time_s": 0,
         }
     )
-    sync_core_queue_from_uni(device)
+    refresh_active_station_state(device)
     return "0320", "00"
 
 
@@ -209,14 +218,14 @@ def handle_uni_stop_station(device: Any, body: bytes) -> UniRes:
         ]
     elif device.uni_irrigation_queue:
         device.uni_irrigation_queue.pop(0)
-    sync_core_queue_from_uni(device)
+    refresh_active_station_state(device)
     return "0520", "00"
 
 
 def handle_uni_stop_all(device: Any, op: str) -> UniRes:
     """Execute Universal 0620 / 0820 stop program / stop all irrigation."""
     device.uni_irrigation_queue.clear()
-    sync_core_queue_from_uni(device)
+    refresh_active_station_state(device)
     return ("0720" if op == "0620" else "0920"), "00"
 
 
@@ -224,7 +233,7 @@ def handle_uni_advance_station(device: Any) -> UniRes:
     """Execute Universal 0C20 advance station."""
     if device.uni_irrigation_queue:
         device.uni_irrigation_queue.pop(0)
-    sync_core_queue_from_uni(device)
+    refresh_active_station_state(device)
     return "0D20", "00"
 
 
