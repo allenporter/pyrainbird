@@ -2,26 +2,12 @@
 
 from __future__ import annotations
 
+import json
+import time
 from collections.abc import Callable
 from typing import Any
 
-from .crypto import (
-    decode_manchester_frame,
-    decode_sip_wire_frame,
-    decrypt_lnk2_envelope,
-    decrypt_stick_payload,
-    derive_aes256_key,
-    encode_manchester_frame,
-    encode_sip_wire_frame,
-    encrypt_lnk2_envelope,
-    encrypt_stick_payload,
-    manchester_decode_pulses,
-    manchester_encode_bytes,
-    pad_zero_16,
-    strip_stick_padding,
-    zero_pad_16,
-    zero_unpad,
-)
+from .crypto import decrypt_lnk2_envelope, encode_sip_wire_frame
 
 RpcDict = dict[str, Any]
 RpcHandler = Callable[[str, RpcDict, bool], Any]
@@ -88,6 +74,32 @@ class LNK2StickEmulator:
             "PeripheralReadWrite": self._r_peripheral_read_write,
         }
 
+    def check_lockout(self) -> bool:
+        """Return True if password lockout is currently active, expiring elapsed timers."""
+        dev = self.device
+        if not dev.lockout_active:
+            return False
+        if dev.lockout_until > 0.0 and time.monotonic() >= dev.lockout_until:
+            dev.lockout_active = False
+            dev.lockout_until = 0.0
+            return False
+        return True
+
+    def record_auth_failure(self) -> RpcDict:
+        """Increment failed password attempts and activate lockout at threshold."""
+        dev = self.device
+        dev.failed_attempts += 1
+        if dev.failed_attempts >= dev.lockout_tries:
+            dev.lockout_active = True
+            dev.lockout_until = time.monotonic() + dev.lockout_timeout
+        return {
+            "status_code": 403,
+            "http_status": 403,
+            "status_text": "403 Password",
+            "body": "Invalid Password",
+            "decrypt_verified": False,
+        }
+
     def handle_http_post(
         self,
         path: str,
@@ -100,36 +112,50 @@ class LNK2StickEmulator:
         dev = self.device
         if path not in ("/stick", "/stick:80", "/upload"):
             return {"status_code": 404, "status_text": "404 Not Found"}
-        if dev.lockout_active:
-            return {"status_code": 503, "status_text": "503 Service Unavailable"}
+        if self.check_lockout():
+            return {
+                "status_code": 430,
+                "http_status": 430,
+                "status_text": "430 Password Lockout",
+                "body": "PASSWORD LOCKOUT",
+            }
 
-        content_type = headers.get("Content-Type") or headers.get("content-type") or ""
+        ct = headers.get("Content-Type") or headers.get("content-type") or ""
         if dev.encryption_required:
-            if content_type == "application/json" or body_type == "PLAINTEXT_JSON":
+            if ct == "application/json" or body_type == "PLAINTEXT_JSON":
                 return {"status_code": 400, "status_text": "400 Bad Request"}
             if client_password is not None and client_password != dev.password:
-                return self._record_auth_failure()
-            if isinstance(body, bytes) and len(body) >= 48:
-                ok, plain = decrypt_lnk2_envelope(body, dev.password or "")
+                return self.record_auth_failure()
+            if body is not None:
+                raw = body.encode("utf-8") if isinstance(body, str) else body
+                ok, plain = (
+                    decrypt_lnk2_envelope(raw, dev.password or "")
+                    if len(raw) >= 48
+                    else (False, None)
+                )
                 if not ok or plain is None:
-                    return self._record_auth_failure()
+                    return self.record_auth_failure()
             return {
                 "status_code": 200,
                 "headers": {"Content-Type": "application/octet-stream"},
                 "body_type": "AES256_CBC_ENVELOPE",
             }
+        if body is not None:
+            try:
+                text = body.decode("utf-8") if isinstance(body, bytes) else body
+                json.loads(text)
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                return {"status_code": 400, "status_text": "400 Bad Request"}
+        resp_ct = (
+            "application/octet-stream"
+            if "application/octet-stream" in ct
+            else "application/json"
+        )
         return {
             "status_code": 200,
-            "headers": {"Content-Type": "application/json"},
+            "headers": {"Content-Type": resp_ct},
             "body_type": "PLAINTEXT_JSON",
         }
-
-    def _record_auth_failure(self) -> RpcDict:
-        dev = self.device
-        dev.failed_attempts += 1
-        if dev.failed_attempts >= dev.lockout_tries:
-            dev.lockout_active = True
-        return {"status_code": 403, "http_status": 403, "decrypt_verified": False}
 
     def handle_jsonrpc(
         self, request: RpcDict, *, request_encrypted: bool | None = None
@@ -209,20 +235,13 @@ class LNK2StickEmulator:
 
     def _r_set_wifi_params(self, _m: str, p: RpcDict, _e: bool) -> RpcDict:
         d = self.device
-        if "wifiSsid" in p:
-            d.wifi_ssid = str(p["wifiSsid"])
-        if "wifiPassword" in p:
-            d.wifi_password = str(p["wifiPassword"])
-        if "wifiSecurity" in p:
-            d.wifi_security = str(p["wifiSecurity"])
-        if "apSecurity" in p:
-            d.ap_security = str(p["apSecurity"])
-        if "stickVersion" in p:
-            d.stick_version = str(p["stickVersion"])
-        if "apTimeoutNoLan" in p:
-            d.ap_timeout_no_lan = int(p["apTimeoutNoLan"])
-        if "apTimeoutIdle" in p:
-            d.ap_timeout_idle = int(p["apTimeoutIdle"])
+        d.wifi_ssid = str(p.get("wifiSsid", d.wifi_ssid))
+        d.wifi_password = str(p.get("wifiPassword", d.wifi_password))
+        d.wifi_security = str(p.get("wifiSecurity", d.wifi_security))
+        d.ap_security = str(p.get("apSecurity", d.ap_security))
+        d.stick_version = str(p.get("stickVersion", d.stick_version))
+        d.ap_timeout_no_lan = int(p.get("apTimeoutNoLan", d.ap_timeout_no_lan))
+        d.ap_timeout_idle = int(p.get("apTimeoutIdle", d.ap_timeout_idle))
         return {"joinedNetwork": True}
 
     def _r_get_scan_results(self, _m: str, p: RpcDict, _e: bool) -> RpcDict:
@@ -265,12 +284,9 @@ class LNK2StickEmulator:
     def _r_set_server_mode(self, _m: str, p: RpcDict, _e: bool) -> str:
         d = self.device
         d.server_mode = bool(p["serverMode"])
-        if "checkInInterval" in p:
-            d.check_in_interval = int(p["checkInInterval"])
-        if "serverUrl" in p:
-            d.server_url = str(p["serverUrl"])
-        if "relayTimeout" in p:
-            d.relay_timeout = int(p["relayTimeout"])
+        d.check_in_interval = int(p.get("checkInInterval", d.check_in_interval))
+        d.server_url = str(p.get("serverUrl", d.server_url))
+        d.relay_timeout = int(p.get("relayTimeout", d.relay_timeout))
         return "OK"
 
     def _r_get_settings(self, _m: str, _p: RpcDict, _e: bool) -> RpcDict:
@@ -301,12 +317,9 @@ class LNK2StickEmulator:
     def _r_set_program_info(self, _m: str, p: RpcDict, _e: bool) -> str:
         d = self.device
         idx = max(0, min(7, int(p.get("Program", 1)) - 1))
-        if "SoilType" in p:
-            d.soil_types[idx] = int(p["SoilType"])
-        if "FlowRate" in p:
-            d.flow_rates[idx] = int(p["FlowRate"])
-        if "FlowUnit" in p:
-            d.flow_units[idx] = int(p["FlowUnit"])
+        d.soil_types[idx] = int(p.get("SoilType", d.soil_types[idx]))
+        d.flow_rates[idx] = int(p.get("FlowRate", d.flow_rates[idx]))
+        d.flow_units[idx] = int(p.get("FlowUnit", d.flow_units[idx]))
         return "OK"
 
     def _r_set_soil_type(self, _m: str, p: RpcDict, _e: bool) -> str:
@@ -477,21 +490,4 @@ class LNK2StickEmulator:
         }
 
 
-__all__ = [
-    "LNK2StickEmulator",
-    "decode_manchester_frame",
-    "decode_sip_wire_frame",
-    "decrypt_lnk2_envelope",
-    "decrypt_stick_payload",
-    "derive_aes256_key",
-    "encode_manchester_frame",
-    "encode_sip_wire_frame",
-    "encrypt_lnk2_envelope",
-    "encrypt_stick_payload",
-    "manchester_decode_pulses",
-    "manchester_encode_bytes",
-    "pad_zero_16",
-    "strip_stick_padding",
-    "zero_pad_16",
-    "zero_unpad",
-]
+__all__ = ["LNK2StickEmulator"]

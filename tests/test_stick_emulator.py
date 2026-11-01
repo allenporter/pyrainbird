@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass, field
 from typing import Any
+
+import pytest
 
 from pyrainbird.testing.crypto import (
     decode_manchester_frame,
@@ -36,6 +39,7 @@ class _StubDevice:
     lockout_active: bool = False
     lockout_tries: int = 5
     lockout_timeout: int = 5
+    lockout_until: float = 0.0
     failed_attempts: int = 0
     mac_address: str = "D8:B6:73:01:02:03"
     local_ip_address: str = "192.168.1.50"
@@ -139,7 +143,7 @@ def test_manchester_and_uart_wire_framing() -> None:
 
 
 def test_http_stick_endpoints_and_lockout() -> None:
-    """Verify HTTP /stick and /stick:80 status codes 200, 400, 403, 404, 503."""
+    """Verify HTTP /stick and /stick:80 status codes 200, 400, 403, 404, 430."""
     dev_plain = _StubDevice(encryption_required=False)
     stick_plain = LNK2StickEmulator(dev_plain)
     assert (
@@ -175,6 +179,7 @@ def test_http_stick_endpoints_and_lockout() -> None:
         "/stick", {"Content-Type": "application/octet-stream"}, body=bad_env
     )
     assert res_403_1["status_code"] == 403
+    assert res_403_1["body"] == "Invalid Password"
     assert dev.lockout_active is False
 
     res_403_2 = stick.handle_http_post(
@@ -183,12 +188,81 @@ def test_http_stick_endpoints_and_lockout() -> None:
     assert res_403_2["status_code"] == 403
     assert dev.lockout_active is True
 
-    res_503 = stick.handle_http_post(
+    res_430 = stick.handle_http_post(
         "/stick",
         {"Content-Type": "application/octet-stream"},
         body_type="AES256_CBC_ENVELOPE",
     )
-    assert res_503["status_code"] == 503
+    assert res_430["status_code"] == 430
+    assert res_430["status_text"] == "430 Password Lockout"
+    assert res_430["body"] == "PASSWORD LOCKOUT"
+
+
+def test_http_stick_lockout_expiry_preserves_failed_attempts() -> None:
+    """Verify lockout timer expiry clears lockout without resetting failed_attempts."""
+    emu = RainbirdDeviceEmulator.for_model("ARC8", password="123456")
+    emu.device.lockout_tries = 2
+    emu.device.lockout_timeout = 10
+
+    bad_env = encrypt_stick_payload(
+        '{"id":1,"jsonrpc":"2.0","method":"getWifiParams"}', "000000"
+    )
+    headers = {"Content-Type": "application/octet-stream"}
+
+    assert (
+        emu.stick.handle_http_post("/stick", headers, body=bad_env)["status_code"]
+        == 403
+    )
+    assert (
+        emu.stick.handle_http_post("/stick", headers, body=bad_env)["status_code"]
+        == 403
+    )
+    assert (
+        emu.stick.handle_http_post("/stick", headers, body=bad_env)["status_code"]
+        == 430
+    )
+
+    # Simulate cooldown elapsed: failed_attempts stays at 2 so one bad attempt locks out again
+    emu.device.lockout_until = time.monotonic() - 1.0
+    valid_env = encrypt_stick_payload(
+        '{"id":1,"jsonrpc":"2.0","method":"getWifiParams"}', "123456"
+    )
+    assert (
+        emu.stick.handle_http_post("/stick", headers, body=valid_env)["status_code"]
+        == 200
+    )
+    assert emu.device.failed_attempts == 2
+
+    assert (
+        emu.stick.handle_http_post("/stick", headers, body=bad_env)["status_code"]
+        == 403
+    )
+    assert emu.device.lockout_active is True
+    assert (
+        emu.stick.handle_http_post("/stick", headers, body=valid_env)["status_code"]
+        == 430
+    )
+
+
+@pytest.mark.parametrize("empty_pwd", [None, ""])
+def test_http_stick_empty_password_octet_stream_and_ciphertext_rejection(
+    empty_pwd: str | None,
+) -> None:
+    """Verify unencrypted sticks accept plaintext over octet-stream and reject binary ciphertext."""
+    emu = RainbirdDeviceEmulator.for_model("ARC8", password=empty_pwd)
+    headers = {"Content-Type": "application/octet-stream"}
+    plaintext_body = b'{"id":1,"jsonrpc":"2.0","method":"tunnelSip","params":{"data":"02","length":1}}'
+
+    res_ok = emu.stick.handle_http_post("/stick", headers, body=plaintext_body)
+    assert res_ok == {
+        "status_code": 200,
+        "headers": {"Content-Type": "application/octet-stream"},
+        "body_type": "PLAINTEXT_JSON",
+    }
+
+    encrypted_body = encrypt_stick_payload(plaintext_body.decode("utf-8"), "123456")
+    res_bad = emu.stick.handle_http_post("/stick", headers, body=encrypted_body)
+    assert res_bad["status_code"] == 400
 
 
 def test_stick_jsonrpc_methods() -> None:

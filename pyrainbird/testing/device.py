@@ -297,8 +297,9 @@ class FakeRainbirdDevice(RainbirdDeviceEmulator):
         else:
             rpc_req = {"jsonrpc": "2.0", **request}
             rpc_resp = self.stick.handle_jsonrpc(rpc_req, request_encrypted=bool(pwd))
-            if "error" in rpc_resp:
+            if "error" in rpc_resp and rpc_resp["error"].get("code") == -32601:
                 return None
+            pwd = self.device.password
             payload = json.dumps(rpc_resp)
 
         return encrypt(payload, pwd) if pwd else payload.encode("UTF-8")

@@ -223,6 +223,7 @@ def init_stick_state(device: Any, password: str | None = None) -> None:
     device.lockout_active = False
     device.lockout_tries = 5
     device.lockout_timeout = 5
+    device.lockout_until = 0.0
     device.failed_attempts = 0
     device.mac_address = "D8:B6:73:01:02:03"
     device.local_ip_address = "192.168.1.50"
