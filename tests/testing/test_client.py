@@ -1,7 +1,6 @@
 """Tests for high-level local controller client commands using the testing server."""
 
 import datetime
-import struct
 from collections.abc import AsyncIterator
 
 import aiohttp
@@ -12,22 +11,10 @@ from pyrainbird import async_client
 from pyrainbird.async_client import AsyncRainbirdController
 from pyrainbird.const import DayOfWeek, ProgramFrequency
 from pyrainbird.exceptions import RainbirdDeviceNackError
+from pyrainbird.testing.emulator import RainbirdDeviceEmulator
 from pyrainbird.testing.server import RainbirdFakeServer
 
 PASSWORD = "keepsecret"
-
-
-def _cdt_set_packet(*blocks: tuple[str, int, str, list[tuple[int, int]]]) -> str:
-    """Build a Universal 0x0C CDT batch-write (050B) frame."""
-    body_parts = [f"{len(blocks):02X}"]
-    for data_id, width, payload_hex, ranges in blocks:
-        dims = "".join(
-            struct.pack("<HH", start, end).hex().upper() for start, end in ranges
-        )
-        body_parts.append(f"{data_id}{len(ranges):02X}{dims}{width:02X}{payload_hex}")
-    inner = bytes.fromhex("050B" + "".join(body_parts))
-    header = bytes.fromhex("0C200001000805000000000C000000000005000000")
-    return (header + len(inner).to_bytes(2, "little") + inner).hex().upper()
 
 
 @pytest.fixture
@@ -286,54 +273,58 @@ async def test_manual_irrigation_exceeding_model_limit_nacks(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("model_name", ["ARC8", "RC2"])
+@pytest.mark.parametrize(
+    ("model_name", "expected_programs"),
+    [
+        ("ESP_TM2", 3),
+        ("ESP_ME", 4),
+        ("ESP_TM2v3", 3),
+        ("ESP_ME3", 4),
+        ("RC2", 3),
+        ("ARC8", 3),
+    ],
+)
 @freeze_time("2026-06-15 00:00:00")
-async def test_universal_isk_schedule_and_timeline(model_name: str) -> None:
-    """Verify ARC8 and RC2 Universal schedule decoding and calendar timeline generation."""
+async def test_program_schedule_and_timeline(
+    model_name: str, expected_programs: int
+) -> None:
+    """Verify schedule decoding and calendar timeline across SIP and Universal controllers."""
     async with (
         RainbirdFakeServer(password=PASSWORD, model=model_name) as server,
         aiohttp.ClientSession() as session,
     ):
-        # Configure 3 programs via Universal CDT batch write (050B):
-        # - PGM A (0): Custom (0) on Mon/Wed/Fri, 06:00, Zone 1=10m + Zone 2=15m
-        # - PGM B (1): Odd days (1), 07:00, Zone 3=20m
-        # - PGM C (2): Off (5), 08:00, Zone 4=30m (saved but disabled)
-        starts_hex = struct.pack(
-            "<12H",
-            360,
-            1440,
-            1440,
-            1440,
-            420,
-            1440,
-            1440,
-            1440,
-            480,
-            1440,
-            1440,
-            1440,
-        ).hex()
-        pgm_a_days_hex = bytes([0, 1, 0, 1, 0, 1, 0]).hex()
-        runtimes_a_hex = struct.pack("<2I", 600, 900).hex()
-        runtimes_b_hex = struct.pack("<I", 1200).hex()
-        runtimes_c_hex = struct.pack("<I", 1800).hex()
-        write_resp = server.device.handle_sip(
-            _cdt_set_packet(
-                ("1300", 1, "000105", [(0, 2)]),
-                ("1000", 1, pgm_a_days_hex, [(0, 0), (0, 6)]),
-                ("1D00", 2, starts_hex, [(0, 2), (0, 0), (0, 3)]),
-                ("1500", 4, runtimes_a_hex, [(0, 0), (0, 1)]),
-                ("1500", 4, runtimes_b_hex, [(1, 1), (2, 2)]),
-                ("1500", 4, runtimes_c_hex, [(2, 2), (3, 3)]),
-            )
+        server.device.set_program(
+            0,
+            frequency=ProgramFrequency.CUSTOM,
+            days_of_week={
+                DayOfWeek.MONDAY,
+                DayOfWeek.WEDNESDAY,
+                DayOfWeek.FRIDAY,
+            },
+            starts=[datetime.time(6, 0)],
+            durations={
+                1: datetime.timedelta(minutes=10),
+                2: datetime.timedelta(minutes=15),
+            },
         )
-        assert write_resp.endswith("060B00")
+        server.device.set_program(
+            1,
+            frequency=ProgramFrequency.ODD,
+            starts=[datetime.time(7, 0)],
+            durations={3: datetime.timedelta(minutes=20)},
+        )
+        server.device.set_program(
+            2,
+            frequency=ProgramFrequency.OFF,
+            starts=[datetime.time(8, 0)],
+            durations={4: datetime.timedelta(minutes=30)},
+        )
 
         ctrl = await async_client.create_controller(session, server.host_port, PASSWORD)
         sched = await ctrl.get_schedule()
-        assert len(sched.programs) == 3
+        assert len(sched.programs) == expected_programs
 
-        pgm_a, pgm_b, pgm_c = sched.programs
+        pgm_a, pgm_b, pgm_c = sched.programs[:3]
         assert pgm_a.frequency == ProgramFrequency.CUSTOM
         assert pgm_a.days_of_week == {
             DayOfWeek.MONDAY,
@@ -395,19 +386,25 @@ async def test_universal_multi_chunk_station_schedule_esp_2wire() -> None:
         RainbirdFakeServer(password=PASSWORD, model="ESP_2WIRE") as server,
         aiohttp.ClientSession() as session,
     ):
-        write_resp = server.device.handle_sip(
-            _cdt_set_packet(
-                ("1300", 1, "04030505", [(0, 3)]),
-                ("1200", 1, "03", [(0, 0)]),
-                ("1100", 1, "01", [(0, 0)]),
-                ("1D00", 2, struct.pack("<H", 330).hex(), [(0, 0), (0, 0), (0, 0)]),
-                ("1D00", 2, struct.pack("<H", 390).hex(), [(1, 1), (0, 0), (0, 0)]),
-                ("1500", 4, struct.pack("<I", 720).hex(), [(0, 0), (0, 0)]),
-                ("1500", 4, struct.pack("<I", 1080).hex(), [(0, 0), (29, 29)]),
-                ("1500", 4, struct.pack("<I", 600).hex(), [(1, 1), (49, 49)]),
-            )
+        server.device.set_program(
+            0,
+            frequency=ProgramFrequency.CYCLIC,
+            period=3,
+            synchro=1,
+            starts=[datetime.time(5, 30)],
+            durations={
+                1: datetime.timedelta(minutes=12),
+                30: datetime.timedelta(minutes=18),
+            },
         )
-        assert write_resp.endswith("060B00")
+        server.device.set_program(
+            1,
+            frequency=ProgramFrequency.EVEN,
+            starts=[datetime.time(6, 30)],
+            durations={50: datetime.timedelta(minutes=10)},
+        )
+        server.device.set_program(2, frequency=ProgramFrequency.OFF)
+        server.device.set_program(3, frequency=ProgramFrequency.OFF)
 
         ctrl = await async_client.create_controller(session, server.host_port, PASSWORD)
         sched = await ctrl.get_schedule()
@@ -425,3 +422,18 @@ async def test_universal_multi_chunk_station_schedule_esp_2wire() -> None:
         ]
         assert sched.programs[2].frequency == ProgramFrequency.OFF
         assert sched.programs[3].frequency == ProgramFrequency.OFF
+
+
+def test_emulator_set_program_validation() -> None:
+    """Verify set_program validates controller family and model limits."""
+    rzx = RainbirdDeviceEmulator("ESP_RZXe")
+    with pytest.raises(TypeError, match="does not support program schedules"):
+        rzx.set_program(0)
+
+    arc8 = RainbirdDeviceEmulator("ARC8")
+    with pytest.raises(ValueError, match="Program index 3 out of range"):
+        arc8.set_program(3)
+    with pytest.raises(ValueError, match="Too many start times"):
+        arc8.set_program(0, starts=[datetime.time(h, 0) for h in range(5)])
+    with pytest.raises(ValueError, match="Zone 9 out of range"):
+        arc8.set_program(0, durations={9: datetime.timedelta(minutes=5)})

@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import datetime
 from typing import Any
+
+from pyrainbird.const import DayOfWeek, ProgramFrequency
 
 from .devices.base import BaseControllerDevice
 from .devices.ble import BLEBatteryDevice, SolemTBOSDevice
@@ -125,4 +128,31 @@ class RainbirdDeviceEmulator:
             return self.device.handle_solem_frame(payload_hex)
         raise TypeError(
             f"Model {self.device.profile.controller_type} does not support Solem BLE"
+        )
+
+    def set_program(
+        self,
+        program: int,
+        *,
+        frequency: ProgramFrequency = ProgramFrequency.CUSTOM,
+        days_of_week: set[DayOfWeek] | None = None,
+        period: int | None = None,
+        synchro: int = 0,
+        starts: list[datetime.time] | None = None,
+        durations: dict[int, datetime.timedelta] | None = None,
+    ) -> None:
+        """Configure a program schedule on a program-based or Universal controller."""
+        if isinstance(self.device, (LegacyProgramDevice, UniversalCDTDevice)):
+            self.device.set_program(
+                program,
+                frequency=frequency,
+                days_of_week=days_of_week,
+                period=period,
+                synchro=synchro,
+                starts=starts,
+                durations=durations,
+            )
+            return
+        raise TypeError(
+            f"Model {self.device.profile.controller_type} does not support program schedules"
         )

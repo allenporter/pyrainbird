@@ -2,8 +2,19 @@
 
 from __future__ import annotations
 
+import datetime
 from dataclasses import dataclass, field
 from typing import Any
+
+from pyrainbird.const import DayOfWeek, ProgramFrequency
+
+_UNI_PROGRAM_FREQUENCY_CODE: dict[ProgramFrequency, int] = {
+    ProgramFrequency.CUSTOM: 0,
+    ProgramFrequency.ODD: 1,
+    ProgramFrequency.EVEN: 3,
+    ProgramFrequency.CYCLIC: 4,
+    ProgramFrequency.OFF: 5,
+}
 
 
 @dataclass
@@ -253,3 +264,70 @@ def init_stick_state(device: Any, password: str | None = None) -> None:
     device.unv_progress = 0
     device.reboot_scheduled = False
     device.last_uart_tx_frame_hex = ""
+
+
+def normalize_program_schedule_inputs(
+    device: Any,
+    program: int,
+    starts: list[datetime.time] | None,
+    durations: dict[int, datetime.timedelta] | None,
+    days_of_week: set[DayOfWeek] | None,
+) -> tuple[list[int], dict[int, int], set[DayOfWeek]]:
+    """Validate and normalize logical program schedule arguments against model limits."""
+    max_progs = device.profile.maximum_programs
+    if not 0 <= program < max_progs:
+        raise ValueError(
+            f"Program index {program} out of range for {device.profile.controller_type} (0..{max_progs - 1})"
+        )
+    start_list = list(starts or [])
+    max_starts = device.profile.maximum_start_times
+    if len(start_list) > max_starts:
+        raise ValueError(
+            f"Too many start times ({len(start_list)} > {max_starts}) for {device.profile.controller_type}"
+        )
+    start_minutes = [t.hour * 60 + t.minute for t in start_list]
+    max_stns = device.profile.maximum_stations
+    zone_seconds: dict[int, int] = {}
+    for zone, td in (durations or {}).items():
+        if not 1 <= zone <= max_stns:
+            raise ValueError(
+                f"Zone {zone} out of range for {device.profile.controller_type} (1..{max_stns})"
+            )
+        zone_seconds[zone] = int(td.total_seconds())
+    return start_minutes, zone_seconds, set(days_of_week or set())
+
+
+def apply_universal_program_schedule(
+    device: Any,
+    program: int,
+    frequency: ProgramFrequency,
+    days_of_week: set[DayOfWeek] | None,
+    period: int | None,
+    synchro: int,
+    starts: list[datetime.time] | None,
+    durations: dict[int, datetime.timedelta] | None,
+) -> None:
+    """Populate Universal CDT schedule tables for a single program."""
+    start_mins, zone_secs, days = normalize_program_schedule_inputs(
+        device, program, starts, durations, days_of_week
+    )
+    commit = device.cdt_engine._commit_write_block
+    p_range = [(program, program)]
+    commit(
+        "1300", 1, p_range, [_UNI_PROGRAM_FREQUENCY_CODE[ProgramFrequency(frequency)]]
+    )
+    commit(
+        "1000",
+        2,
+        [(program, program), (0, 6)],
+        [1 if DayOfWeek(d) in days else 0 for d in range(7)],
+    )
+    cyc_days = period if period is not None else device.profile.default_cyclic_days
+    commit("1200", 1, p_range, [cyc_days])
+    commit("1100", 1, p_range, [synchro])
+    max_starts = device.profile.maximum_start_times
+    padded_starts = start_mins + [1440] * (max_starts - len(start_mins))
+    commit("1D00", 3, [(program, program), (0, 0), (0, max_starts - 1)], padded_starts)
+    max_stns = device.profile.maximum_stations
+    run_row = [zone_secs.get(stn, 0) for stn in range(1, max_stns + 1)]
+    commit("1500", 2, [(program, program), (0, max_stns - 1)], run_row)
