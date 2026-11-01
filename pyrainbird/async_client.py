@@ -36,9 +36,8 @@ from typing import Any, TypeVar
 
 import aiohttp
 from aiohttp.client_exceptions import (
+    ClientConnectionError,
     ClientConnectorCertificateError,
-    ClientConnectorError,
-    ClientConnectorSSLError,
     ClientError,
     ClientResponseError,
 )
@@ -69,6 +68,7 @@ from .data import (
 from .exceptions import (
     RainbirdApiException,
     RainbirdAuthException,
+    RainbirdAuthLockoutException,
     RainbirdCertificateError,
     RainbirdConnectionError,
     RainbirdDeviceBusyException,
@@ -205,6 +205,9 @@ def _device_busy_retry() -> JitterRetry:
     )
 
 
+HTTP_STATUS_PASSWORD_LOCKOUT = 430
+
+
 class AsyncRainbirdClient:
     """An asyncio rainbird client.
 
@@ -219,6 +222,7 @@ class AsyncRainbirdClient:
         *,
         ssl_context: ssl.SSLContext | bool | None = None,
         min_delay: float = 0.0,
+        lock: asyncio.Lock | None = None,
     ) -> None:
         self._websession = websession
         self._url = url
@@ -228,81 +232,92 @@ class AsyncRainbirdClient:
         self._coder = encryption.PayloadCoder(password, _LOGGER)
         self._last_request_time = 0.0
         self._min_delay = min_delay
+        self._lock = lock or asyncio.Lock()
 
     def with_retry_options(self, retry_options: RetryOptions) -> "AsyncRainbirdClient":  # type: ignore[valid-type]
         """Create a new AsyncRainbirdClient with retry options."""
-        return AsyncRainbirdClient(
+        client = AsyncRainbirdClient(
             RetryClient(client_session=self._websession, retry_options=retry_options),  # type: ignore[arg-type]
             self._url,
             self._password,
             ssl_context=self._ssl_context,
             min_delay=self._min_delay,
+            lock=self._lock,
         )
+        client._last_request_time = self._last_request_time
+        return client
 
     async def request(
         self, method: str, params: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         """Send a request for any command."""
-        # Enforce inter-request cooldown pacing if configured
-        if self._min_delay > 0.0:
-            now = time.time()
-            elapsed = now - self._last_request_time
-            if elapsed < self._min_delay:
-                sleep_time = self._min_delay - elapsed
-                _LOGGER.debug("Pacing requests: sleeping for %f seconds", sleep_time)
-                await asyncio.sleep(sleep_time)
+        async with self._lock:
+            # Enforce inter-request cooldown pacing if configured
+            if self._min_delay > 0.0:
+                now = time.time()
+                elapsed = now - self._last_request_time
+                if elapsed < self._min_delay:
+                    sleep_time = self._min_delay - elapsed
+                    _LOGGER.debug(
+                        "Pacing requests: sleeping for %f seconds", sleep_time
+                    )
+                    await asyncio.sleep(sleep_time)
 
-        payload = self._coder.encode_command(method, params or {})
-        try:
+            payload = self._coder.encode_command(method, params or {})
             try:
-                request_kwargs: dict[str, Any] = {}
-                if self._ssl_context is not None:
-                    request_kwargs["ssl"] = self._ssl_context
-                if self._min_delay > 0.0:
-                    request_kwargs["timeout"] = aiohttp.ClientTimeout(total=10.0)
-                resp = await self._websession.request(
-                    "post", self._url, data=payload, headers=HEAD, **request_kwargs
+                try:
+                    request_kwargs: dict[str, Any] = {}
+                    if self._ssl_context is not None:
+                        request_kwargs["ssl"] = self._ssl_context
+                    if self._min_delay > 0.0:
+                        request_kwargs["timeout"] = aiohttp.ClientTimeout(total=10.0)
+                    resp = await self._websession.request(
+                        "post", self._url, data=payload, headers=HEAD, **request_kwargs
+                    )
+                    resp.raise_for_status()
+                    content = await resp.read()
+                finally:
+                    if self._min_delay > 0.0:
+                        self._last_request_time = time.time()
+            except ClientConnectorCertificateError as err:
+                _LOGGER.debug("Certificate verification failed: %s", err)
+                raise RainbirdCertificateError(
+                    "TLS certificate verification error communicating with Rain Bird device"
+                ) from err
+            except (ClientConnectionError, TimeoutError) as err:
+                _LOGGER.debug(
+                    "Connection error communicating with Rain Bird device: %s", err
                 )
-                resp.raise_for_status()
-            finally:
-                if self._min_delay > 0.0:
-                    self._last_request_time = time.time()
-        except ClientConnectorCertificateError as err:
-            _LOGGER.debug("Certificate verification failed: %s", err)
-            raise RainbirdCertificateError(
-                "TLS certificate verification error communicating with Rain Bird device"
-            ) from err
-        except (ClientConnectorError, ClientConnectorSSLError, TimeoutError) as err:
-            _LOGGER.debug(
-                "Connection error communicating with Rain Bird device: %s", err
-            )
-            raise RainbirdConnectionError(
-                "Connection error communicating with Rain Bird device"
-            ) from err
-        except ClientResponseError as err:
-            _LOGGER.debug("Error response from Rain Bird device: %s", err)
-            if err.status == HTTPStatus.SERVICE_UNAVAILABLE:
-                raise RainbirdDeviceBusyException(
-                    "Rain Bird device is busy; Wait and try again"
+                raise RainbirdConnectionError(
+                    "Connection error communicating with Rain Bird device"
                 ) from err
-            if err.status == HTTPStatus.FORBIDDEN:
-                raise RainbirdAuthException(
-                    "Rain Bird device denied authentication; Incorrect Password?"
+            except ClientResponseError as err:
+                _LOGGER.debug("Error response from Rain Bird device: %s", err)
+                if err.status == HTTPStatus.SERVICE_UNAVAILABLE:
+                    raise RainbirdDeviceBusyException(
+                        "Rain Bird device is busy; Wait and try again"
+                    ) from err
+                if err.status == HTTP_STATUS_PASSWORD_LOCKOUT:
+                    raise RainbirdAuthLockoutException(
+                        "Rain Bird device is temporarily locked out due to failed password attempts; Wait 15 minutes or reboot the controller and try again"
+                    ) from err
+                if err.status == HTTPStatus.FORBIDDEN:
+                    raise RainbirdAuthException(
+                        "Rain Bird device denied authentication; Incorrect Password?"
+                    ) from err
+                raise RainbirdApiException("Rain Bird responded with an error") from err
+            except ClientError as err:
+                _LOGGER.debug("Error communicating with Rain Bird device: %s", err)
+                raise RainbirdApiException(
+                    "Error communicating with Rain Bird device"
                 ) from err
-            raise RainbirdApiException("Rain Bird responded with an error") from err
-        except ClientError as err:
-            _LOGGER.debug("Error communicating with Rain Bird device: %s", err)
-            raise RainbirdApiException(
-                "Error communicating with Rain Bird device"
-            ) from err
-        content = await resp.read()
         return self._coder.decode_command(content)  # type: ignore
 
 
 def CreateController(
     websession: aiohttp.ClientSession,
     host: str,
-    password: str,
+    password: str | None = None,
     min_delay: float = 0.0,
 ) -> "AsyncRainbirdController":
     """Create an AsyncRainbirdController."""
@@ -317,7 +332,7 @@ def CreateController(
 async def create_controller(
     websession: aiohttp.ClientSession,
     host: str,
-    password: str,
+    password: str | None = None,
     min_delay: float = 0.0,
 ) -> "AsyncRainbirdController":
     """Create an AsyncRainbirdController with local HTTP/HTTPS discovery.

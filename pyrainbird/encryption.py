@@ -13,7 +13,7 @@ from Crypto.Hash import SHA256
 
 from .exceptions import (
     RainbirdApiException,
-    RainbirdAuthException,
+    RainbirdAuthLockoutException,
     RainbirdDeviceBusyException,
 )
 
@@ -87,10 +87,10 @@ class PayloadCoder:
 
     def __init__(self, password: str | None, logger: logging.Logger):
         """Initialize RainbirdSession."""
-        self._password = password
+        self._password = password or None
         self._logger = logger
 
-    def encode_command(self, method: str, params: dict[str, Any]) -> str:
+    def encode_command(self, method: str, params: dict[str, Any]) -> str | bytes:
         """Encode a request payload."""
         request_id = _request_id()
         data = {
@@ -105,20 +105,33 @@ class PayloadCoder:
             return send_data
         return encrypt(send_data, self._password)
 
-    def decode_command(self, content: bytes) -> str | dict[str, Any]:
+    def decode_command(self, content: bytes | str) -> str | dict[str, Any]:
         """Decode a response payload."""
-        if self._password is not None:
-            decrypted_data = (
-                decrypt(content, self._password)
-                .decode("UTF-8")
-                .rstrip("\x10")
-                .rstrip("\x0a")
-                .rstrip("\x00")
-                .rstrip()
-            )
-            content = decrypted_data
-        self._logger.debug(f"Response: {content!r}")
-        response = json.loads(content)
+        try:
+            if self._password is not None:
+                raw_bytes = (
+                    content.encode("UTF-8") if isinstance(content, str) else content
+                )
+                if len(raw_bytes) < 48 or (len(raw_bytes) - 48) % BLOCK_SIZE != 0:
+                    raise ValueError("Invalid encrypted payload length")
+                decoded_text = (
+                    decrypt(raw_bytes, self._password)
+                    .decode("UTF-8")
+                    .rstrip("\x10")
+                    .rstrip("\x0a")
+                    .rstrip("\x00")
+                    .rstrip()
+                )
+            else:
+                decoded_text = (
+                    content.decode("UTF-8") if isinstance(content, bytes) else content
+                )
+            self._logger.debug(f"Response: {decoded_text!r}")
+            response = json.loads(decoded_text)
+        except (ValueError, UnicodeDecodeError, json.JSONDecodeError) as err:
+            raise RainbirdApiException(
+                "Unable to decode response from Rain Bird device"
+            ) from err
         if error := response.get("error"):
             msg = ["Error from controller"]
             code = error.get("code")
@@ -138,7 +151,7 @@ class PayloadCoder:
                     f"Rain Bird responded with an error: {message}"
                 )
             if code == ErrorCode.LOCKOUT_ACTIVE:
-                raise RainbirdAuthException(
+                raise RainbirdAuthLockoutException(
                     f"Rain Bird responded with an error: {message}"
                 )
             raise RainbirdApiException(f"Rain Bird responded with an error: {message}")
