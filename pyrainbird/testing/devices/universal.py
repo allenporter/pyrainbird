@@ -1,12 +1,26 @@
 """UniversalCDTDevice for ESP_ME3, RC2, ARC8, ESP_2WIRE, LX_ME2, and LX_IVM*.
 
-Universal controllers pair Core SIP status/control commands (`BaseControllerDevice`)
-with a structured sub-protocol carried inside SIP command `0x0C` (response `0x8C`).
-Rather than legacy `0x20` / `0x21` schedule pages, schedules and hardware settings
-live in the Controller Data Table (`CDTStore`, subsystem `0x0C`), alongside runtime
-subsystems for clock/timezone (`0x03`), live irrigation (`0x09`), status/alarms
-(`0x13`), panel session lock (`0x18`), field/2-wire diagnostics (`0x04`), and
-modules (`0x05` / `0x0D`).
+How Universal Controllers Work
+------------------------------
+Universal controllers inherit basic status and manual-control commands from
+`BaseControllerDevice` (such as model ID, active station, rain delay, and
+seasonal adjust), disable the legacy fixed-page schedule commands (`0x20`,
+`0x21`), and tunnel a structured sub-protocol inside SIP command `0x0C`
+(response `0x8C`).
+
+Incoming Universal messages address either:
+1. **The Controller Data Table (`CDTStore` in `cdt_store.py`)**: The
+   controller's indexed configuration database holding schedules, runtimes,
+   sensor bypasses, and hardware options (`0x0C` subsystem).
+2. **Runtime Subsystems**: Live operational handlers for system clock and
+   timezone (`0x03`), live irrigation queue and flow totalizers (`0x09` in
+   `universal_irrigation.py`), controller mode and alarms (`0x13`), front-panel
+   session lock (`0x18`), and 2-wire/module diagnostics (`0x04`, `0x05`, `0x0D`
+   in `universal_diagnostics.py`).
+
+Two settings — Rain Delay and per-program Seasonal Adjust — are reachable
+through both legacy SIP commands (`0x36`/`0x37`, `0x30`/`0x31`) and CDT tables
+(`1400`, `1800`), reading and updating the same controller state directly.
 """
 
 from __future__ import annotations

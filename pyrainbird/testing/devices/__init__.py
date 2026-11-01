@@ -1,30 +1,40 @@
-"""Per-family Rain Bird controller device emulators.
+"""Per-family Rain Bird irrigation controller device emulators.
 
-Hardware & Protocol Overview
-----------------------------
-A networked Rain Bird setup consists of two distinct components:
+Conceptual Model: Older vs. Newer ("Universal") Controllers
+-----------------------------------------------------------
+All Rain Bird controllers share a basic set of commands for simple status and
+actions — model ID, clock, active station, rain delay, seasonal adjust, and
+starting or stopping manual watering (`BaseControllerDevice` in `base.py`).
+They differ primarily in how schedules and extended configuration are modeled:
 
-1. **Wi-Fi Stick (`LNK2StickEmulator` in `pyrainbird.testing.stick`)**:
-   Handles HTTP, AES-256-CBC framing, and stick-level JSON-RPC methods, and
-   forwards binary SIP commands to the irrigation controller via `tunnelSip`.
-2. **Irrigation Controller (`pyrainbird.testing.devices`)**:
-   Executes SIP commands to report status, run stations, and store schedules.
+1. **Older Fixed-Layout Controllers**:
+   Used custom, fixed-layout schedule commands tailored to each hardware
+   family's limits:
+   - `LCRZoneDevice` / `ST8ZoneDevice` (`lcr.py`): Entry-level zone-based
+     controllers (`ESP-RZXe*`, `ST8*`) where each zone owns an independent
+     schedule.
+   - `LegacyProgramDevice` / `UpgradedTM2Device` (`legacy_sip.py`):
+     Program-based controllers (`ESP-ME*`, `ESP-TM2*`, `TRU`) where schedules
+     are read and written as fixed binary memory pages.
+   - `BLEBatteryDevice` / `SolemTBOSDevice` (`ble.py`): Battery-operated
+     Bluetooth controllers (`ESP-BAT*`, `TBOS-BT*`) adding BLE GATT transport,
+     battery/radio telemetry, and station flow learning.
 
-Across hardware generations, controllers share a common set of Core SIP status
-and manual-control commands (`BaseControllerDevice`) while differing in how
-schedules and extended settings are represented:
-
-- `LCRZoneDevice` / `ST8ZoneDevice`: Entry-level zone-based controllers
-  (`ESP-RZXe*`, `ST8*`) where each zone stores its own schedule via SIP
-  `0x20` / `0x21`.
-- `LegacyProgramDevice` / `UpgradedTM2Device`: Program-based controllers
-  (`ESP-ME*`, `ESP-TM2*`, `TRU`) that expose schedules as fixed-layout binary
-  pages via SIP `0x20` / `0x21`.
-- `BLEBatteryDevice` / `SolemTBOSDevice`: Battery-powered Bluetooth controllers
-  (`ESP-BAT*`, `TBOS-BT*`) adding BLE GATT characteristics, battery/radio
-  telemetry, and station flow learning.
-- `UniversalCDTDevice`: Newer controllers (`ARC8`, `RC2`, `ESP-ME3`,
-  `ESP-2WIRE`, `LX-ME2`, `LX-IVM*`) that reject legacy `0x20` / `0x21` schedule
-  pages and instead tunnel a structured sub-protocol inside SIP opcode `0x0C`
-  for runtime subsystems and the Controller Data Table (CDT) config store.
+2. **Newer "Universal" Controllers (`UniversalCDTDevice` in `universal.py`)**:
+   Models such as `ARC8`, `RC2`, `ESP-ME3`, `ESP-2WIRE`, `LX-ME2`, and
+   `LX-IVM*` keep the basic status/control commands, reject the old
+   fixed-layout schedule commands, and replace them with a generic sub-protocol
+   split into two parts:
+   - **Controller Data Table (CDT) — the "Config Database"**
+     (`cdt_store.py`, `cdt_schema.py`): Persistent configuration (program
+     frequencies, start times, station runtimes, calendar days off, sensor
+     bypasses) lives in numbered tables and N-dimensional arrays. An 8-station
+     residential `ARC8` and a 240-station commercial `LX-IVM Pro` speak the
+     same schedule protocol; only the array bounds in their profile differ.
+   - **Runtime Subsystems — "Live Actions"**
+     (`universal.py`, `universal_irrigation.py`, `universal_diagnostics.py`):
+     Non-config operations — starting/stopping a program, inspecting the live
+     watering queue, setting the clock/timezone, locking the front panel, or
+     running 2-wire/module diagnostics — route to small functional subsystems
+     alongside the config store.
 """
