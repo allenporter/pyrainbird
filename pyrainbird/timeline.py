@@ -37,18 +37,28 @@ RRULE_WEEKDAY = {
 }
 
 
+MAX_LETTER_PROGRAMS = 4
+
+
+def format_program_name(program: int, *, numbered: bool = False) -> str:
+    """Format a 0-based program index as 'PGM A'-'PGM D' or 1-based 'PGM N'."""
+    if not numbered and 0 <= program < MAX_LETTER_PROGRAMS:
+        return f"PGM {chr(ord('A') + program)}"
+    return f"PGM {program + 1}"
+
+
 @dataclass
 class ProgramId:
     """An instance of a program event or zone."""
 
     program: int
     zone: int | None = None
+    numbered: bool = False
 
     @property
     def name(self) -> str:
         """Name of the program."""
-        letter = chr(ord("A") + self.program)
-        name = f"PGM {letter}"
+        name = format_program_name(self.program, numbered=self.numbered)
         zone_name = ""
         if self.zone:
             zone_name = f": Zone {self.zone}"

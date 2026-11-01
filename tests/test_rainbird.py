@@ -187,6 +187,40 @@ def test_encode_universal_schedule_commands() -> None:
         "0C200001000805000000000C0000000000050000000E00070B011500020100010000000700",
         "0C200001000805000000000C0000000000050000000E00070B011500020200020000000700",
     ]
+    assert encode_universal_schedule_commands(0, 4, 8) == []
+
+
+def test_encode_universal_schedule_commands_lx_chunking() -> None:
+    """Test 5-program metadata chunking and 25-station runtime chunking for LX controllers."""
+    # LX-IVM: 10 programs (2 slices: 0..4, 5..9), 8 start times (0..7), 60 stations (3 chunks: 0..24, 25..49, 50..59)
+    ivm_cmds = encode_universal_schedule_commands(
+        max_programs=10, max_run_times=8, max_stations=60
+    )
+    assert len(ivm_cmds) == 2 * 3 + 10 * 3
+    assert ivm_cmds[:6] == [
+        # Slice 0..4 (includes global 0x14 rain delay and 0x0D sensor bypass)
+        "0C200001000805000000000C0000000000050000001700070B041400000D00001800010000040013000100000400",
+        "0C200001000805000000000C0000000000050000001C00070B0312000100000400110001000004001000020000040000000600",
+        "0C200001000805000000000C0000000000050000001200070B011D0003000004000000000000000700",
+        # Slice 5..9 (program-scoped blocks only)
+        "0C200001000805000000000C0000000000050000001100070B021800010500090013000105000900",
+        "0C200001000805000000000C0000000000050000001C00070B0312000105000900110001050009001000020500090000000600",
+        "0C200001000805000000000C0000000000050000001200070B011D0003050009000000000000000700",
+    ]
+    assert all(len(bytes.fromhex(cmd)) <= 255 for cmd in ivm_cmds)
+
+    # LXME2: 40 programs (8 slices of 5), 10 start times (0..9), 48 stations (2 chunks: 0..24, 25..47)
+    lxme2_cmds = encode_universal_schedule_commands(
+        max_programs=40, max_run_times=10, max_stations=48
+    )
+    assert len(lxme2_cmds) == 8 * 3 + 40 * 2
+    assert lxme2_cmds[21:24] == [
+        # Final metadata slice 35..39 (0x23..0x27)
+        "0C200001000805000000000C0000000000050000001100070B021800012300270013000123002700",
+        "0C200001000805000000000C0000000000050000001C00070B0312000123002700110001230027001000022300270000000600",
+        "0C200001000805000000000C0000000000050000001200070B011D0003230027000000000000000900",
+    ]
+    assert all(len(bytes.fromhex(cmd)) <= 255 for cmd in lxme2_cmds)
 
 
 def test_decode_universal() -> None:

@@ -14,7 +14,14 @@ from mashumaro.types import SerializationStrategy
 
 from .const import DayOfWeek, ProgramFrequency
 from .resources import RAINBIRD_MODELS
-from .timeline import ProgramEvent, ProgramId, ProgramTimeline, create_recurrence
+from .timeline import (
+    MAX_LETTER_PROGRAMS,
+    ProgramEvent,
+    ProgramId,
+    ProgramTimeline,
+    create_recurrence,
+    format_program_name,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -704,11 +711,13 @@ class Program(DataClassDictMixin):
     )
     """Information about the controller as input into the programs."""
 
+    numbered: bool = False
+    """Whether all programs on the controller use 1-based numbers instead of letters."""
+
     @property
     def name(self) -> str:
         """Name of the program."""
-        letter = chr(ord("A") + self.program)
-        return f"PGM {letter}"
+        return format_program_name(self.program, numbered=self.numbered)
 
     @property
     def timeline(self) -> ProgramTimeline:
@@ -723,7 +732,7 @@ class Program(DataClassDictMixin):
             dtstart = now.replace(hour=start.hour, minute=start.minute, second=0)
             iters.append(
                 create_recurrence(
-                    ProgramId(self.program),
+                    ProgramId(self.program, numbered=self.numbered),
                     self.frequency,
                     dtstart,
                     self.duration,
@@ -745,7 +754,11 @@ class Program(DataClassDictMixin):
             for zone_duration in self.durations:
                 iters.append(
                     create_recurrence(
-                        ProgramId(self.program, zone_duration.zone),
+                        ProgramId(
+                            self.program,
+                            zone_duration.zone,
+                            numbered=self.numbered,
+                        ),
                         self.frequency,
                         dtstart,
                         zone_duration.duration,
@@ -902,7 +915,7 @@ class Schedule(DataClassDictMixin):
                 dtstart = now.replace(hour=start.hour, minute=start.minute, second=0)
                 iters.append(
                     create_recurrence(
-                        ProgramId(program.program),
+                        ProgramId(program.program, numbered=program.numbered),
                         program.frequency,
                         dtstart,
                         program.duration,
@@ -921,14 +934,22 @@ class Schedule(DataClassDictMixin):
         """Return the number of delays programs are delayed."""
         return self.controller_info.delay_days if self.controller_info else 0
 
+    def __post_init__(self) -> None:
+        if len(self.programs) > MAX_LETTER_PROGRAMS:
+            for program in self.programs:
+                program.numbered = True
+
     @classmethod
     def __pre_deserialize__(cls, values: dict[Any, Any]) -> dict[Any, Any]:
         """Parse the input values from the response into a usable format."""
         program_info = values.get("programInfo", [])
+        numbered = len(program_info) > MAX_LETTER_PROGRAMS
         for prog in program_info:
             prog.setdefault("frequency", ProgramFrequency.CUSTOM)
             prog.setdefault("durations", [])
             prog.setdefault("controllerInfo", values.get("controllerInfo"))
+            if numbered:
+                prog.setdefault("numbered", True)
         programs = values.get("programStartInfo", [])
         if not programs:
             return values

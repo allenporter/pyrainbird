@@ -3369,7 +3369,7 @@
   }
   '''
 # ---
-# name: test_get_schedule_lxme2_bit_collision
+# name: test_get_schedule_lxme2_universal_chunking
   '''
   [client >]
   Intent: ModelAndVersionRequest (02)
@@ -3435,14 +3435,14 @@
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200000)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000001700070B041400000D00001800010000040013000100000400)
   Payload: {
     "id": 4,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200000",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000001700070B041400000D00001800010000040013000100000400",
+      "length": 46
     }
   }
   
@@ -3450,20 +3450,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 4
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200010)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000001C00070B0312000100000400110001000004001000020000040000000600)
   Payload: {
     "id": 5,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200010",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000001C00070B0312000100000400110001000004001000020000040000000600",
+      "length": 51
     }
   }
   
@@ -3471,20 +3471,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 5
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200011)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000001200070B011D0003000004000000000000000900)
   Payload: {
     "id": 6,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200011",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000001200070B011D0003000004000000000000000900",
+      "length": 41
     }
   }
   
@@ -3492,20 +3492,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 6
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200012)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000001100070B021800010500090013000105000900)
   Payload: {
     "id": 7,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200012",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000001100070B021800010500090013000105000900",
+      "length": 40
     }
   }
   
@@ -3513,20 +3513,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 7
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200013)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000001C00070B0312000105000900110001050009001000020500090000000600)
   Payload: {
     "id": 8,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200013",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000001C00070B0312000105000900110001050009001000020500090000000600",
+      "length": 51
     }
   }
   
@@ -3534,20 +3534,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 8
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200014)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000001200070B011D0003050009000000000000000900)
   Payload: {
     "id": 9,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200014",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000001200070B011D0003050009000000000000000900",
+      "length": 41
     }
   }
   
@@ -3555,20 +3555,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 9
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200015)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000001100070B021800010A000E001300010A000E00)
   Payload: {
     "id": 10,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200015",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000001100070B021800010A000E001300010A000E00",
+      "length": 40
     }
   }
   
@@ -3576,20 +3576,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 10
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200016)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000001C00070B031200010A000E001100010A000E001000020A000E0000000600)
   Payload: {
     "id": 11,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200016",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000001C00070B031200010A000E001100010A000E001000020A000E0000000600",
+      "length": 51
     }
   }
   
@@ -3597,20 +3597,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 11
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200017)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000001200070B011D00030A000E000000000000000900)
   Payload: {
     "id": 12,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200017",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000001200070B011D00030A000E000000000000000900",
+      "length": 41
     }
   }
   
@@ -3618,20 +3618,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 12
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200018)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000001100070B021800010F0013001300010F001300)
   Payload: {
     "id": 13,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200018",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000001100070B021800010F0013001300010F001300",
+      "length": 40
     }
   }
   
@@ -3639,20 +3639,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 13
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200019)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000001C00070B031200010F0013001100010F0013001000020F00130000000600)
   Payload: {
     "id": 14,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200019",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000001C00070B031200010F0013001100010F0013001000020F00130000000600",
+      "length": 51
     }
   }
   
@@ -3660,20 +3660,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 14
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (20001A)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000001200070B011D00030F0013000000000000000900)
   Payload: {
     "id": 15,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "20001A",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000001200070B011D00030F0013000000000000000900",
+      "length": 41
     }
   }
   
@@ -3681,20 +3681,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 15
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (20001B)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000001100070B021800011400180013000114001800)
   Payload: {
     "id": 16,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "20001B",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000001100070B021800011400180013000114001800",
+      "length": 40
     }
   }
   
@@ -3702,20 +3702,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 16
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (20001C)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000001C00070B0312000114001800110001140018001000021400180000000600)
   Payload: {
     "id": 17,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "20001C",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000001C00070B0312000114001800110001140018001000021400180000000600",
+      "length": 51
     }
   }
   
@@ -3723,20 +3723,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 17
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (20001D)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000001200070B011D0003140018000000000000000900)
   Payload: {
     "id": 18,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "20001D",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000001200070B011D0003140018000000000000000900",
+      "length": 41
     }
   }
   
@@ -3744,20 +3744,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 18
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (20001E)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000001100070B0218000119001D0013000119001D00)
   Payload: {
     "id": 19,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "20001E",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000001100070B0218000119001D0013000119001D00",
+      "length": 40
     }
   }
   
@@ -3765,20 +3765,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 19
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (20001F)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000001C00070B0312000119001D0011000119001D0010000219001D0000000600)
   Payload: {
     "id": 20,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "20001F",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000001C00070B0312000119001D0011000119001D0010000219001D0000000600",
+      "length": 51
     }
   }
   
@@ -3786,20 +3786,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 20
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200010)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000001200070B011D000319001D000000000000000900)
   Payload: {
     "id": 21,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200010",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000001200070B011D000319001D000000000000000900",
+      "length": 41
     }
   }
   
@@ -3807,20 +3807,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 21
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200011)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000001100070B021800011E0022001300011E002200)
   Payload: {
     "id": 22,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200011",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000001100070B021800011E0022001300011E002200",
+      "length": 40
     }
   }
   
@@ -3828,20 +3828,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 22
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200012)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000001C00070B031200011E0022001100011E0022001000021E00220000000600)
   Payload: {
     "id": 23,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200012",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000001C00070B031200011E0022001100011E0022001000021E00220000000600",
+      "length": 51
     }
   }
   
@@ -3849,20 +3849,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 23
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200013)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000001200070B011D00031E0022000000000000000900)
   Payload: {
     "id": 24,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200013",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000001200070B011D00031E0022000000000000000900",
+      "length": 41
     }
   }
   
@@ -3870,20 +3870,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 24
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200014)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000001100070B021800012300270013000123002700)
   Payload: {
     "id": 25,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200014",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000001100070B021800012300270013000123002700",
+      "length": 40
     }
   }
   
@@ -3891,20 +3891,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 25
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200015)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000001C00070B0312000123002700110001230027001000022300270000000600)
   Payload: {
     "id": 26,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200015",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000001C00070B0312000123002700110001230027001000022300270000000600",
+      "length": 51
     }
   }
   
@@ -3912,20 +3912,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 26
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200016)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000001200070B011D0003230027000000000000000900)
   Payload: {
     "id": 27,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200016",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000001200070B011D0003230027000000000000000900",
+      "length": 41
     }
   }
   
@@ -3933,20 +3933,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 27
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200017)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500020000000000001800)
   Payload: {
     "id": 28,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200017",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500020000000000001800",
+      "length": 37
     }
   }
   
@@ -3954,20 +3954,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 28
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200018)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500020000000019002F00)
   Payload: {
     "id": 29,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200018",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500020000000019002F00",
+      "length": 37
     }
   }
   
@@ -3975,20 +3975,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 29
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200019)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500020100010000001800)
   Payload: {
     "id": 30,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200019",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500020100010000001800",
+      "length": 37
     }
   }
   
@@ -3996,20 +3996,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 30
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (20001A)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500020100010019002F00)
   Payload: {
     "id": 31,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "20001A",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500020100010019002F00",
+      "length": 37
     }
   }
   
@@ -4017,20 +4017,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 31
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (20001B)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500020200020000001800)
   Payload: {
     "id": 32,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "20001B",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500020200020000001800",
+      "length": 37
     }
   }
   
@@ -4038,20 +4038,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 32
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (20001C)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500020200020019002F00)
   Payload: {
     "id": 33,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "20001C",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500020200020019002F00",
+      "length": 37
     }
   }
   
@@ -4059,20 +4059,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 33
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (20001D)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500020300030000001800)
   Payload: {
     "id": 34,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "20001D",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500020300030000001800",
+      "length": 37
     }
   }
   
@@ -4080,20 +4080,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 34
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (20001E)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500020300030019002F00)
   Payload: {
     "id": 35,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "20001E",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500020300030019002F00",
+      "length": 37
     }
   }
   
@@ -4101,20 +4101,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 35
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (20001F)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500020400040000001800)
   Payload: {
     "id": 36,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "20001F",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500020400040000001800",
+      "length": 37
     }
   }
   
@@ -4122,20 +4122,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 36
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200030)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500020400040019002F00)
   Payload: {
     "id": 37,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200030",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500020400040019002F00",
+      "length": 37
     }
   }
   
@@ -4143,20 +4143,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 37
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200031)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500020500050000001800)
   Payload: {
     "id": 38,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200031",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500020500050000001800",
+      "length": 37
     }
   }
   
@@ -4164,20 +4164,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 38
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200032)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500020500050019002F00)
   Payload: {
     "id": 39,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200032",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500020500050019002F00",
+      "length": 37
     }
   }
   
@@ -4185,20 +4185,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 39
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200033)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500020600060000001800)
   Payload: {
     "id": 40,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200033",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500020600060000001800",
+      "length": 37
     }
   }
   
@@ -4206,20 +4206,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 40
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200034)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500020600060019002F00)
   Payload: {
     "id": 41,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200034",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500020600060019002F00",
+      "length": 37
     }
   }
   
@@ -4227,20 +4227,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 41
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200035)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500020700070000001800)
   Payload: {
     "id": 42,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200035",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500020700070000001800",
+      "length": 37
     }
   }
   
@@ -4248,20 +4248,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 42
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200036)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500020700070019002F00)
   Payload: {
     "id": 43,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200036",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500020700070019002F00",
+      "length": 37
     }
   }
   
@@ -4269,20 +4269,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 43
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200037)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500020800080000001800)
   Payload: {
     "id": 44,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200037",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500020800080000001800",
+      "length": 37
     }
   }
   
@@ -4290,20 +4290,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 44
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200060)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500020800080019002F00)
   Payload: {
     "id": 45,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200060",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500020800080019002F00",
+      "length": 37
     }
   }
   
@@ -4311,20 +4311,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 45
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200061)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500020900090000001800)
   Payload: {
     "id": 46,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200061",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500020900090000001800",
+      "length": 37
     }
   }
   
@@ -4332,20 +4332,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 46
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200062)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500020900090019002F00)
   Payload: {
     "id": 47,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200062",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500020900090019002F00",
+      "length": 37
     }
   }
   
@@ -4353,20 +4353,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 47
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200063)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500020A000A0000001800)
   Payload: {
     "id": 48,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200063",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500020A000A0000001800",
+      "length": 37
     }
   }
   
@@ -4374,20 +4374,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 48
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200064)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500020A000A0019002F00)
   Payload: {
     "id": 49,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200064",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500020A000A0019002F00",
+      "length": 37
     }
   }
   
@@ -4395,20 +4395,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 49
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200065)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500020B000B0000001800)
   Payload: {
     "id": 50,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200065",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500020B000B0000001800",
+      "length": 37
     }
   }
   
@@ -4416,20 +4416,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 50
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200066)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500020B000B0019002F00)
   Payload: {
     "id": 51,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200066",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500020B000B0019002F00",
+      "length": 37
     }
   }
   
@@ -4437,20 +4437,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 51
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200067)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500020C000C0000001800)
   Payload: {
     "id": 52,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200067",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500020C000C0000001800",
+      "length": 37
     }
   }
   
@@ -4458,20 +4458,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 52
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200068)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500020C000C0019002F00)
   Payload: {
     "id": 53,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200068",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500020C000C0019002F00",
+      "length": 37
     }
   }
   
@@ -4479,20 +4479,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 53
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200069)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500020D000D0000001800)
   Payload: {
     "id": 54,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200069",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500020D000D0000001800",
+      "length": 37
     }
   }
   
@@ -4500,20 +4500,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 54
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (20006A)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500020D000D0019002F00)
   Payload: {
     "id": 55,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "20006A",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500020D000D0019002F00",
+      "length": 37
     }
   }
   
@@ -4521,20 +4521,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 55
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (20006B)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500020E000E0000001800)
   Payload: {
     "id": 56,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "20006B",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500020E000E0000001800",
+      "length": 37
     }
   }
   
@@ -4542,20 +4542,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 56
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (20006C)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500020E000E0019002F00)
   Payload: {
     "id": 57,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "20006C",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500020E000E0019002F00",
+      "length": 37
     }
   }
   
@@ -4563,20 +4563,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 57
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (20006D)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500020F000F0000001800)
   Payload: {
     "id": 58,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "20006D",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500020F000F0000001800",
+      "length": 37
     }
   }
   
@@ -4584,20 +4584,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 58
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (20006E)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500020F000F0019002F00)
   Payload: {
     "id": 59,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "20006E",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500020F000F0019002F00",
+      "length": 37
     }
   }
   
@@ -4605,20 +4605,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 59
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (20006F)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500021000100000001800)
   Payload: {
     "id": 60,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "20006F",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500021000100000001800",
+      "length": 37
     }
   }
   
@@ -4626,20 +4626,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 60
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200070)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500021000100019002F00)
   Payload: {
     "id": 61,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200070",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500021000100019002F00",
+      "length": 37
     }
   }
   
@@ -4647,20 +4647,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 61
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200071)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500021100110000001800)
   Payload: {
     "id": 62,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200071",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500021100110000001800",
+      "length": 37
     }
   }
   
@@ -4668,20 +4668,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 62
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200072)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500021100110019002F00)
   Payload: {
     "id": 63,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200072",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500021100110019002F00",
+      "length": 37
     }
   }
   
@@ -4689,20 +4689,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 63
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200073)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500021200120000001800)
   Payload: {
     "id": 64,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200073",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500021200120000001800",
+      "length": 37
     }
   }
   
@@ -4710,20 +4710,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 64
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200074)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500021200120019002F00)
   Payload: {
     "id": 65,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200074",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500021200120019002F00",
+      "length": 37
     }
   }
   
@@ -4731,20 +4731,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 65
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200075)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500021300130000001800)
   Payload: {
     "id": 66,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200075",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500021300130000001800",
+      "length": 37
     }
   }
   
@@ -4752,20 +4752,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 66
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200076)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500021300130019002F00)
   Payload: {
     "id": 67,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200076",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500021300130019002F00",
+      "length": 37
     }
   }
   
@@ -4773,20 +4773,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 67
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200077)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500021400140000001800)
   Payload: {
     "id": 68,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200077",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500021400140000001800",
+      "length": 37
     }
   }
   
@@ -4794,20 +4794,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 68
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200078)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500021400140019002F00)
   Payload: {
     "id": 69,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200078",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500021400140019002F00",
+      "length": 37
     }
   }
   
@@ -4815,20 +4815,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 69
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200079)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500021500150000001800)
   Payload: {
     "id": 70,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200079",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500021500150000001800",
+      "length": 37
     }
   }
   
@@ -4836,20 +4836,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 70
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (20007A)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500021500150019002F00)
   Payload: {
     "id": 71,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "20007A",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500021500150019002F00",
+      "length": 37
     }
   }
   
@@ -4857,20 +4857,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 71
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (20007B)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500021600160000001800)
   Payload: {
     "id": 72,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "20007B",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500021600160000001800",
+      "length": 37
     }
   }
   
@@ -4878,20 +4878,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 72
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (20007C)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500021600160019002F00)
   Payload: {
     "id": 73,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "20007C",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500021600160019002F00",
+      "length": 37
     }
   }
   
@@ -4899,20 +4899,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 73
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (20007D)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500021700170000001800)
   Payload: {
     "id": 74,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "20007D",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500021700170000001800",
+      "length": 37
     }
   }
   
@@ -4920,20 +4920,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 74
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (20007E)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500021700170019002F00)
   Payload: {
     "id": 75,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "20007E",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500021700170019002F00",
+      "length": 37
     }
   }
   
@@ -4941,20 +4941,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 75
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (20007F)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500021800180000001800)
   Payload: {
     "id": 76,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "20007F",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500021800180000001800",
+      "length": 37
     }
   }
   
@@ -4962,20 +4962,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 76
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200060)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500021800180019002F00)
   Payload: {
     "id": 77,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200060",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500021800180019002F00",
+      "length": 37
     }
   }
   
@@ -4983,20 +4983,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 77
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200061)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500021900190000001800)
   Payload: {
     "id": 78,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200061",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500021900190000001800",
+      "length": 37
     }
   }
   
@@ -5004,20 +5004,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 78
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200062)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500021900190019002F00)
   Payload: {
     "id": 79,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200062",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500021900190019002F00",
+      "length": 37
     }
   }
   
@@ -5025,20 +5025,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 79
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200063)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500021A001A0000001800)
   Payload: {
     "id": 80,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200063",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500021A001A0000001800",
+      "length": 37
     }
   }
   
@@ -5046,20 +5046,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 80
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200064)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500021A001A0019002F00)
   Payload: {
     "id": 81,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200064",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500021A001A0019002F00",
+      "length": 37
     }
   }
   
@@ -5067,20 +5067,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 81
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200065)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500021B001B0000001800)
   Payload: {
     "id": 82,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200065",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500021B001B0000001800",
+      "length": 37
     }
   }
   
@@ -5088,20 +5088,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 82
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200066)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500021B001B0019002F00)
   Payload: {
     "id": 83,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200066",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500021B001B0019002F00",
+      "length": 37
     }
   }
   
@@ -5109,20 +5109,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 83
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200067)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500021C001C0000001800)
   Payload: {
     "id": 84,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200067",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500021C001C0000001800",
+      "length": 37
     }
   }
   
@@ -5130,20 +5130,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 84
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200080)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500021C001C0019002F00)
   Payload: {
     "id": 85,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200080",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500021C001C0019002F00",
+      "length": 37
     }
   }
   
@@ -5151,20 +5151,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 85
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200081)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500021D001D0000001800)
   Payload: {
     "id": 86,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200081",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500021D001D0000001800",
+      "length": 37
     }
   }
   
@@ -5172,20 +5172,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 86
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200082)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500021D001D0019002F00)
   Payload: {
     "id": 87,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200082",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500021D001D0019002F00",
+      "length": 37
     }
   }
   
@@ -5193,20 +5193,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 87
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200083)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500021E001E0000001800)
   Payload: {
     "id": 88,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200083",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500021E001E0000001800",
+      "length": 37
     }
   }
   
@@ -5214,20 +5214,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 88
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200084)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500021E001E0019002F00)
   Payload: {
     "id": 89,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200084",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500021E001E0019002F00",
+      "length": 37
     }
   }
   
@@ -5235,20 +5235,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 89
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200085)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500021F001F0000001800)
   Payload: {
     "id": 90,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200085",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500021F001F0000001800",
+      "length": 37
     }
   }
   
@@ -5256,20 +5256,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 90
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200086)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500021F001F0019002F00)
   Payload: {
     "id": 91,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200086",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500021F001F0019002F00",
+      "length": 37
     }
   }
   
@@ -5277,20 +5277,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 91
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200087)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500022000200000001800)
   Payload: {
     "id": 92,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200087",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500022000200000001800",
+      "length": 37
     }
   }
   
@@ -5298,20 +5298,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 92
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200088)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500022000200019002F00)
   Payload: {
     "id": 93,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200088",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500022000200019002F00",
+      "length": 37
     }
   }
   
@@ -5319,20 +5319,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 93
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200089)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500022100210000001800)
   Payload: {
     "id": 94,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200089",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500022100210000001800",
+      "length": 37
     }
   }
   
@@ -5340,20 +5340,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 94
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (20008A)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500022100210019002F00)
   Payload: {
     "id": 95,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "20008A",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500022100210019002F00",
+      "length": 37
     }
   }
   
@@ -5361,20 +5361,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 95
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (20008B)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500022200220000001800)
   Payload: {
     "id": 96,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "20008B",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500022200220000001800",
+      "length": 37
     }
   }
   
@@ -5382,20 +5382,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 96
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (20008C)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500022200220019002F00)
   Payload: {
     "id": 97,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "20008C",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500022200220019002F00",
+      "length": 37
     }
   }
   
@@ -5403,20 +5403,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 97
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (20008D)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500022300230000001800)
   Payload: {
     "id": 98,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "20008D",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500022300230000001800",
+      "length": 37
     }
   }
   
@@ -5424,20 +5424,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 98
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (20008E)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500022300230019002F00)
   Payload: {
     "id": 99,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "20008E",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500022300230019002F00",
+      "length": 37
     }
   }
   
@@ -5445,20 +5445,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 99
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (20008F)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500022400240000001800)
   Payload: {
     "id": 100,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "20008F",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500022400240000001800",
+      "length": 37
     }
   }
   
@@ -5466,20 +5466,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 100
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200090)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500022400240019002F00)
   Payload: {
     "id": 101,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200090",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500022400240019002F00",
+      "length": 37
     }
   }
   
@@ -5487,20 +5487,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 101
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200091)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500022500250000001800)
   Payload: {
     "id": 102,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200091",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500022500250000001800",
+      "length": 37
     }
   }
   
@@ -5508,20 +5508,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 102
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200092)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500022500250019002F00)
   Payload: {
     "id": 103,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200092",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500022500250019002F00",
+      "length": 37
     }
   }
   
@@ -5529,20 +5529,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 103
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200093)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500022600260000001800)
   Payload: {
     "id": 104,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200093",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500022600260000001800",
+      "length": 37
     }
   }
   
@@ -5550,20 +5550,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 104
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200094)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500022600260019002F00)
   Payload: {
     "id": 105,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200094",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500022600260019002F00",
+      "length": 37
     }
   }
   
@@ -5571,20 +5571,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 105
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200095)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500022700270000001800)
   Payload: {
     "id": 106,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200095",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500022700270000001800",
+      "length": 37
     }
   }
   
@@ -5592,20 +5592,20 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 106
   }
   
   [client >]
-  Intent: RetrieveScheduleRequest (200096)
+  Intent: UniversalMessageRequest (0C200001000805000000000C0000000000050000000E00070B011500022700270019002F00)
   Payload: {
     "id": 107,
     "jsonrpc": "2.0",
     "method": "tunnelSip",
     "params": {
-      "data": "200096",
-      "length": 3
+      "data": "0C200001000805000000000C0000000000050000000E00070B011500022700270019002F00",
+      "length": 37
     }
   }
   
@@ -5613,30 +5613,9 @@
   Payload: {
     "jsonrpc": "2.0",
     "result": {
-      "data": "A00099"
+      "data": "8C00"
     },
     "id": 107
-  }
-  
-  [client >]
-  Intent: RetrieveScheduleRequest (200097)
-  Payload: {
-    "id": 108,
-    "jsonrpc": "2.0",
-    "method": "tunnelSip",
-    "params": {
-      "data": "200097",
-      "length": 3
-    }
-  }
-  
-  [server <]
-  Payload: {
-    "jsonrpc": "2.0",
-    "result": {
-      "data": "A00099"
-    },
-    "id": 108
   }
   '''
 # ---

@@ -17,6 +17,7 @@ from pyrainbird.data import (
     States,
     ZoneDuration,
 )
+from pyrainbird.timeline import ProgramId
 
 
 def encode_name_func(testcase_func, param_num, param):
@@ -195,6 +196,7 @@ def test_commercial_lx_series_capabilities() -> None:
     assert lxme2.limits.max_seasonal_adjust == 300
     assert lxme2.is_feature_supported(Feature.EVENT_TIMESTAMP)
     assert lxme2.is_feature_supported(Feature.STACKED_WATERING)
+    assert lxme2.is_feature_supported(Feature.UNIVERSAL_MESSAGES)
     assert not lxme2.is_feature_supported(Feature.COMBINED_STATE)
 
     # LX-IVM (0x000D): 60 stations, 2 pages, 10 programs, 8 starts, 3 flow/weather sensors
@@ -208,6 +210,7 @@ def test_commercial_lx_series_capabilities() -> None:
     assert lxivm.limits.max_runtime_seconds == 345600
     assert lxivm.is_feature_supported(Feature.FLOW_SENSOR)
     assert lxivm.is_feature_supported(Feature.STACKED_WATERING)
+    assert lxivm.is_feature_supported(Feature.UNIVERSAL_MESSAGES)
 
     # LX-IVM-PRO (0x000E): 240 stations, 8 pages (pages 0-7), 40 programs, 8 starts, 7 sensors
     lxivm_pro = ModelAndVersion(0x000E, 1, 0).model_info
@@ -220,6 +223,7 @@ def test_commercial_lx_series_capabilities() -> None:
     assert lxivm_pro.limits.max_runtime_seconds == 345600
     assert lxivm_pro.is_feature_supported(Feature.FLOW_SENSOR)
     assert lxivm_pro.is_feature_supported(Feature.STACKED_WATERING)
+    assert lxivm_pro.is_feature_supported(Feature.UNIVERSAL_MESSAGES)
 
 
 def test_isk_series_capabilities() -> None:
@@ -477,3 +481,75 @@ def test_schedule_merges_multi_chunk_universal_program_durations() -> None:
         (1, datetime.timedelta(minutes=10)),
         (30, datetime.timedelta(minutes=20)),
     ]
+
+
+@pytest.mark.parametrize(
+    ("program_idx", "zone", "numbered", "expected_pgm_name", "expected_id_name"),
+    [
+        (0, None, False, "PGM A", "PGM A"),
+        (3, 5, False, "PGM D", "PGM D: Zone 5"),
+        (4, None, False, "PGM 5", "PGM 5"),
+        (0, None, True, "PGM 1", "PGM 1"),
+        (3, 2, True, "PGM 4", "PGM 4: Zone 2"),
+        (9, None, True, "PGM 10", "PGM 10"),
+        (39, 12, True, "PGM 40", "PGM 40: Zone 12"),
+    ],
+)
+def test_program_name_formatting(
+    program_idx: int,
+    zone: int | None,
+    numbered: bool,
+    expected_pgm_name: str,
+    expected_id_name: str,
+) -> None:
+    """Verify Program.name and ProgramId.name use A-D for <=4-program models and 1-N for >4-program models."""
+    program = Program(
+        program=program_idx, frequency=ProgramFrequency.OFF, numbered=numbered
+    )
+    assert program.name == expected_pgm_name
+    assert (
+        ProgramId(program=program_idx, zone=zone, numbered=numbered).name
+        == expected_id_name
+    )
+
+
+@freeze_time("2026-06-15 00:00:00")
+@pytest.mark.parametrize(
+    ("program_count", "expected_first", "expected_last", "expected_last_zone"),
+    [
+        (4, "PGM A", "PGM D", "PGM D: Zone 2"),
+        (10, "PGM 1", "PGM 10", "PGM 10: Zone 2"),
+        (40, "PGM 1", "PGM 40", "PGM 40: Zone 2"),
+    ],
+)
+def test_schedule_numbered_program_names(
+    program_count: int,
+    expected_first: str,
+    expected_last: str,
+    expected_last_zone: str,
+) -> None:
+    """Verify Schedule names programs A-D when count <= 4 and 1-N across all programs when count > 4."""
+    programs = [
+        Program(
+            program=idx,
+            frequency=ProgramFrequency.ODD,
+            starts=[datetime.time(idx // 60, idx % 60)],
+            durations=[ZoneDuration(zone=2, duration=datetime.timedelta(minutes=5))],
+        )
+        for idx in range(program_count)
+    ]
+    schedule = Schedule(controller_info=None, programs=programs)
+    assert schedule.programs[0].name == expected_first
+    assert schedule.programs[-1].name == expected_last
+
+    start = datetime.datetime(2026, 6, 15, 0, 0, 0)
+    end = datetime.datetime(2026, 6, 16, 0, 0, 0)
+    sched_events = list(schedule.timeline.overlapping(start, end))
+    assert sched_events[0].program_id.name == expected_first
+    assert sched_events[-1].program_id.name == expected_last
+
+    prog_events = list(schedule.programs[-1].timeline.overlapping(start, end))
+    assert prog_events[0].program_id.name == expected_last
+
+    zone_events = list(schedule.programs[-1].zone_timeline.overlapping(start, end))
+    assert zone_events[0].program_id.name == expected_last_zone

@@ -425,6 +425,99 @@ async def test_universal_multi_chunk_station_schedule_esp_2wire() -> None:
         assert sched.programs[3].frequency == ProgramFrequency.OFF
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    (
+        "model_name",
+        "expected_programs",
+        "last_prog",
+        "expected_last_name",
+        "last_station",
+    ),
+    [
+        ("LX_IVM", 10, 9, "PGM 10", 60),
+        ("LXME2", 40, 39, "PGM 40", 48),
+        ("LX_IVM_PRO", 40, 39, "PGM 40", 240),
+    ],
+)
+@freeze_time("2026-06-15 00:00:00")
+async def test_lx_commercial_universal_schedule_and_timeline(
+    model_name: str,
+    expected_programs: int,
+    last_prog: int,
+    expected_last_name: str,
+    last_station: int,
+) -> None:
+    """Verify multi-program and multi-station Universal schedule chunking on LX controllers."""
+    async with (
+        RainbirdFakeServer(password=PASSWORD, model=model_name) as server,
+        aiohttp.ClientSession() as session,
+    ):
+        server.device.set_program(
+            0,
+            frequency=ProgramFrequency.CUSTOM,
+            days_of_week={DayOfWeek.MONDAY},
+            starts=[datetime.time(5, 0)],
+            durations={
+                1: datetime.timedelta(minutes=10),
+                30: datetime.timedelta(minutes=20),
+            },
+        )
+        server.device.set_program(
+            last_prog,
+            frequency=ProgramFrequency.ODD,
+            starts=[datetime.time(7, 0)],
+            durations={last_station: datetime.timedelta(minutes=15)},
+        )
+
+        ctrl = await async_client.create_controller(session, server.host_port, PASSWORD)
+        sched = await ctrl.get_schedule()
+        assert len(sched.programs) == expected_programs
+
+        assert sched.programs[0].name == "PGM 1"
+        assert [(d.zone, d.duration) for d in sched.programs[0].durations] == [
+            (
+                1,
+                datetime.timedelta(minutes=10),
+            ),
+            (
+                30,
+                datetime.timedelta(minutes=20),
+            ),
+        ]
+        assert sched.programs[1].frequency == ProgramFrequency.CUSTOM
+        assert sched.programs[1].days_of_week == set()
+        assert sched.programs[1].starts == []
+        assert sched.programs[1].durations == []
+
+        tail = sched.programs[last_prog]
+        assert tail.name == expected_last_name
+        assert tail.frequency == ProgramFrequency.ODD
+        assert tail.starts == [datetime.time(7, 0)]
+        assert [(d.zone, d.duration) for d in tail.durations] == [
+            (last_station, datetime.timedelta(minutes=15)),
+        ]
+
+        events = list(
+            sched.timeline_tz(datetime.UTC).overlapping(
+                datetime.datetime(2026, 6, 15, 0, 0, tzinfo=datetime.UTC),
+                datetime.datetime(2026, 6, 16, 0, 0, tzinfo=datetime.UTC),
+            )
+        )
+        assert [(e.program_id.name, e.start, e.end) for e in events] == [
+            (
+                "PGM 1",
+                datetime.datetime(2026, 6, 15, 5, 0, tzinfo=datetime.UTC),
+                datetime.datetime(2026, 6, 15, 5, 30, tzinfo=datetime.UTC),
+            ),
+            (
+                expected_last_name,
+                datetime.datetime(2026, 6, 15, 7, 0, tzinfo=datetime.UTC),
+                datetime.datetime(2026, 6, 15, 7, 15, tzinfo=datetime.UTC),
+            ),
+        ]
+
+
 @pytest.mark.parametrize(
     ("model_name", "program", "kwargs", "exc_type", "match"),
     [
