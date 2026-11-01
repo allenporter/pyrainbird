@@ -1,10 +1,12 @@
 """Tests for high-level local controller client commands using the testing server."""
 
 import datetime
+import struct
 from collections.abc import AsyncIterator
 
 import aiohttp
 import pytest
+from freezegun import freeze_time
 
 from pyrainbird import async_client
 from pyrainbird.async_client import AsyncRainbirdController
@@ -13,6 +15,19 @@ from pyrainbird.exceptions import RainbirdDeviceNackError
 from pyrainbird.testing.server import RainbirdFakeServer
 
 PASSWORD = "keepsecret"
+
+
+def _cdt_set_packet(*blocks: tuple[str, int, str, list[tuple[int, int]]]) -> str:
+    """Build a Universal 0x0C CDT batch-write (050B) frame."""
+    body_parts = [f"{len(blocks):02X}"]
+    for data_id, width, payload_hex, ranges in blocks:
+        dims = "".join(
+            struct.pack("<HH", start, end).hex().upper() for start, end in ranges
+        )
+        body_parts.append(f"{data_id}{len(ranges):02X}{dims}{width:02X}{payload_hex}")
+    inner = bytes.fromhex("050B" + "".join(body_parts))
+    header = bytes.fromhex("0C200001000805000000000C000000000005000000")
+    return (header + len(inner).to_bytes(2, "little") + inner).hex().upper()
 
 
 @pytest.fixture
@@ -121,7 +136,9 @@ async def test_request_firmware_update(
         ("ESP_ME", "ESP_ME", 4, 0),
         ("ESP_TM2v3", "ESP_TM2v3", 3, 0),
         ("ESP_ME3", "ESP_ME3", 4, 0),
+        ("ESP_2WIRE", "ESP_2WIRE", 4, 0),
         ("RC2", "RC2", 3, 0),
+        ("ARC8", "ARC8", 3, 0),
     ],
 )
 async def test_client_across_common_device_models(
@@ -159,6 +176,15 @@ async def test_client_across_common_device_models(
         sched = await ctrl.get_schedule()
         assert len(sched.programs) == expected_programs
         assert len(sched.zone_schedules) == expected_zone_schedules
+        assert (
+            list(
+                sched.timeline_tz(datetime.UTC).overlapping(
+                    datetime.datetime(2026, 6, 15, 0, 0, tzinfo=datetime.UTC),
+                    datetime.datetime(2026, 6, 22, 0, 0, tzinfo=datetime.UTC),
+                )
+            )
+            == []
+        )
 
         wifi = await ctrl.get_wifi_params()
         assert wifi.mac_address is not None
@@ -257,3 +283,145 @@ async def test_manual_irrigation_exceeding_model_limit_nacks(
             await ctrl.irrigate_zone(1, 101)
         assert str(exc_info.value) == expected_msg
         assert await ctrl.get_zone_state(1) is False
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("model_name", ["ARC8", "RC2"])
+@freeze_time("2026-06-15 00:00:00")
+async def test_universal_isk_schedule_and_timeline(model_name: str) -> None:
+    """Verify ARC8 and RC2 Universal schedule decoding and calendar timeline generation."""
+    async with (
+        RainbirdFakeServer(password=PASSWORD, model=model_name) as server,
+        aiohttp.ClientSession() as session,
+    ):
+        # Configure 3 programs via Universal CDT batch write (050B):
+        # - PGM A (0): Custom (0) on Mon/Wed/Fri, 06:00, Zone 1=10m + Zone 2=15m
+        # - PGM B (1): Odd days (1), 07:00, Zone 3=20m
+        # - PGM C (2): Off (5), 08:00, Zone 4=30m (saved but disabled)
+        starts_hex = struct.pack(
+            "<12H",
+            360,
+            1440,
+            1440,
+            1440,
+            420,
+            1440,
+            1440,
+            1440,
+            480,
+            1440,
+            1440,
+            1440,
+        ).hex()
+        pgm_a_days_hex = bytes([0, 1, 0, 1, 0, 1, 0]).hex()
+        runtimes_a_hex = struct.pack("<2I", 600, 900).hex()
+        runtimes_b_hex = struct.pack("<I", 1200).hex()
+        runtimes_c_hex = struct.pack("<I", 1800).hex()
+        write_resp = server.device.handle_sip(
+            _cdt_set_packet(
+                ("1300", 1, "000105", [(0, 2)]),
+                ("1000", 1, pgm_a_days_hex, [(0, 0), (0, 6)]),
+                ("1D00", 2, starts_hex, [(0, 2), (0, 0), (0, 3)]),
+                ("1500", 4, runtimes_a_hex, [(0, 0), (0, 1)]),
+                ("1500", 4, runtimes_b_hex, [(1, 1), (2, 2)]),
+                ("1500", 4, runtimes_c_hex, [(2, 2), (3, 3)]),
+            )
+        )
+        assert write_resp.endswith("060B00")
+
+        ctrl = await async_client.create_controller(session, server.host_port, PASSWORD)
+        sched = await ctrl.get_schedule()
+        assert len(sched.programs) == 3
+
+        pgm_a, pgm_b, pgm_c = sched.programs
+        assert pgm_a.frequency == ProgramFrequency.CUSTOM
+        assert pgm_a.days_of_week == {
+            DayOfWeek.MONDAY,
+            DayOfWeek.WEDNESDAY,
+            DayOfWeek.FRIDAY,
+        }
+        assert pgm_a.starts == [datetime.time(6, 0)]
+        assert [(d.zone, d.duration) for d in pgm_a.durations] == [
+            (1, datetime.timedelta(minutes=10)),
+            (2, datetime.timedelta(minutes=15)),
+        ]
+
+        assert pgm_b.frequency == ProgramFrequency.ODD
+        assert pgm_b.starts == [datetime.time(7, 0)]
+        assert [(d.zone, d.duration) for d in pgm_b.durations] == [
+            (3, datetime.timedelta(minutes=20)),
+        ]
+
+        assert pgm_c.frequency == ProgramFrequency.OFF
+        assert pgm_c.starts == [datetime.time(8, 0)]
+        assert [(d.zone, d.duration) for d in pgm_c.durations] == [
+            (4, datetime.timedelta(minutes=30)),
+        ]
+
+        events = list(
+            sched.timeline_tz(datetime.UTC).overlapping(
+                datetime.datetime(2026, 6, 15, 0, 0, tzinfo=datetime.UTC),
+                datetime.datetime(2026, 6, 19, 0, 0, tzinfo=datetime.UTC),
+            )
+        )
+        assert [(e.program_id.name, e.start, e.end) for e in events] == [
+            (
+                "PGM A",
+                datetime.datetime(2026, 6, 15, 6, 0, tzinfo=datetime.UTC),
+                datetime.datetime(2026, 6, 15, 6, 25, tzinfo=datetime.UTC),
+            ),
+            (
+                "PGM B",
+                datetime.datetime(2026, 6, 15, 7, 0, tzinfo=datetime.UTC),
+                datetime.datetime(2026, 6, 15, 7, 20, tzinfo=datetime.UTC),
+            ),
+            (
+                "PGM A",
+                datetime.datetime(2026, 6, 17, 6, 0, tzinfo=datetime.UTC),
+                datetime.datetime(2026, 6, 17, 6, 25, tzinfo=datetime.UTC),
+            ),
+            (
+                "PGM B",
+                datetime.datetime(2026, 6, 17, 7, 0, tzinfo=datetime.UTC),
+                datetime.datetime(2026, 6, 17, 7, 20, tzinfo=datetime.UTC),
+            ),
+        ]
+
+
+@pytest.mark.asyncio
+async def test_universal_multi_chunk_station_schedule_esp_2wire() -> None:
+    """Verify Universal schedule retrieval preserves runtimes across >25-station chunks."""
+    async with (
+        RainbirdFakeServer(password=PASSWORD, model="ESP_2WIRE") as server,
+        aiohttp.ClientSession() as session,
+    ):
+        write_resp = server.device.handle_sip(
+            _cdt_set_packet(
+                ("1300", 1, "04030505", [(0, 3)]),
+                ("1200", 1, "03", [(0, 0)]),
+                ("1100", 1, "01", [(0, 0)]),
+                ("1D00", 2, struct.pack("<H", 330).hex(), [(0, 0), (0, 0), (0, 0)]),
+                ("1D00", 2, struct.pack("<H", 390).hex(), [(1, 1), (0, 0), (0, 0)]),
+                ("1500", 4, struct.pack("<I", 720).hex(), [(0, 0), (0, 0)]),
+                ("1500", 4, struct.pack("<I", 1080).hex(), [(0, 0), (29, 29)]),
+                ("1500", 4, struct.pack("<I", 600).hex(), [(1, 1), (49, 49)]),
+            )
+        )
+        assert write_resp.endswith("060B00")
+
+        ctrl = await async_client.create_controller(session, server.host_port, PASSWORD)
+        sched = await ctrl.get_schedule()
+        assert len(sched.programs) == 4
+        assert sched.programs[0].frequency == ProgramFrequency.CYCLIC
+        assert sched.programs[0].period == 3
+        assert sched.programs[0].synchro == 1
+        assert [(d.zone, d.duration) for d in sched.programs[0].durations] == [
+            (1, datetime.timedelta(minutes=12)),
+            (30, datetime.timedelta(minutes=18)),
+        ]
+        assert sched.programs[1].frequency == ProgramFrequency.EVEN
+        assert [(d.zone, d.duration) for d in sched.programs[1].durations] == [
+            (50, datetime.timedelta(minutes=10)),
+        ]
+        assert sched.programs[2].frequency == ProgramFrequency.OFF
+        assert sched.programs[3].frequency == ProgramFrequency.OFF

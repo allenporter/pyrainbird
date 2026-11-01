@@ -42,6 +42,22 @@ _LCR_START_RESOLUTION = 10
 # reported as 0x90 (1440 minutes) by the ESP-RZXe and as 0xFF by other devices.
 _MINUTES_PER_DAY = 24 * 60
 
+# Program-based SIP controllers (ESP-ME, ESP-TM2, ESP-TM2v2/v3, TRU) encode the
+# program water cycle in schedule subpage 0x10..0x13 byte 5 as:
+# 0=Custom, 1=Cyclic, 2=Odd (or Odd excluding 31st), 3=Even, 4=Off, 5=Odd.
+_PROGRAM_FREQUENCY: dict[int, int] = {
+    0: ProgramFrequency.CUSTOM,
+    1: ProgramFrequency.CYCLIC,
+    2: ProgramFrequency.ODD,
+    3: ProgramFrequency.EVEN,
+    4: ProgramFrequency.OFF,
+    5: ProgramFrequency.ODD,
+}
+
+# Universal controllers (ARC8, RC2, ESP-ME3, ESP-2WIRE, LX*) store schedules in
+# an indexed Controller Data Table (CDT) accessed via SIP command 0x0C -> 0x8C
+# (batch read 0x070B -> 0x080B). Each table is addressed by a 2-byte little-endian
+# Data ID and 0D-3D index ranges.
 _UNIVERSAL_REQUEST_HEADER = bytes.fromhex("0C200001000805000000000C000000000005000000")
 _CDT_BUNCH_GET_REQUEST = b"\x07\x0b"
 _CDT_BUNCH_GET_RESPONSE = b"\x08\x0b"
@@ -57,11 +73,15 @@ _CDI_RUN_TIMES = 0x15
 _CDI_SEASONAL_ADJUST_BY_PROGRAM = 0x18
 _CDI_START_TIMES = 0x1D
 
+# Universal CDT table 0x13 encodes program water cycle types as:
+# 0=Custom, 1=Odd, 2=Odd (excluding 31st), 3=Even, 4=Cyclic, 5=Off (disabled).
 _UNIVERSAL_FREQUENCY: dict[int, int] = {
     0: ProgramFrequency.CUSTOM,
+    1: ProgramFrequency.ODD,
     2: ProgramFrequency.ODD,
     3: ProgramFrequency.EVEN,
     4: ProgramFrequency.CYCLIC,
+    5: ProgramFrequency.OFF,
 }
 
 
@@ -114,7 +134,7 @@ def decode_schedule(data: str, cmd_template: dict[str, Any]) -> dict[str, Any]:
                 "synchro": fields[2],
                 "permanentDaysOff": fields[3],
                 "reserved": fields[4],
-                "frequency": fields[5],
+                "frequency": _PROGRAM_FREQUENCY.get(fields[5], ProgramFrequency.OFF),
             }
         }
 
@@ -420,7 +440,7 @@ def decode_universal(data: str, cmd_template: dict[str, Any]) -> dict[str, Any]:
                 prog = program_info_by_id.setdefault(
                     p_start + i, {"program": p_start + i}
                 )
-                prog["frequency"] = _UNIVERSAL_FREQUENCY.get(val, val)
+                prog["frequency"] = _UNIVERSAL_FREQUENCY.get(val, ProgramFrequency.OFF)
         elif table_id == _CDI_PROGRAM_CYCLE_DAYS and rank == 1:
             p_start, _ = ranges[0]
             for i, val in enumerate(values):

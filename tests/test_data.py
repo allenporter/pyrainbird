@@ -1,15 +1,21 @@
+import datetime
 import unittest
 from typing import Any
 
 import pytest
+from freezegun import freeze_time
 from parameterized import parameterized
 
+from pyrainbird.const import ProgramFrequency
 from pyrainbird.data import (
     Feature,
     ModelAndVersion,
     ModelInfo,
     ModelLimits,
+    Program,
+    Schedule,
     States,
+    ZoneDuration,
 )
 
 
@@ -405,3 +411,69 @@ def test_battery_bluetooth_series_capabilities() -> None:
     assert bat_pro_flow.code == "ESP_BAT_PRO_FLOW"
     assert bat_pro_flow.limits.max_programs == 12
     assert bat_pro_flow.is_feature_supported(Feature.FLOW_SENSOR)
+
+
+@freeze_time("2026-06-15 09:00:00")
+@pytest.mark.parametrize(
+    "program",
+    [
+        Program(
+            program=0,
+            frequency=ProgramFrequency.OFF,
+            starts=[datetime.time(6, 0)],
+            durations=[ZoneDuration(zone=1, duration=datetime.timedelta(minutes=15))],
+        ),
+        Program(
+            program=0,
+            frequency=ProgramFrequency.CUSTOM,
+            days_of_week=set(),
+            starts=[datetime.time(6, 0)],
+            durations=[ZoneDuration(zone=1, duration=datetime.timedelta(minutes=15))],
+        ),
+        Program(
+            program=0,
+            frequency=ProgramFrequency.CYCLIC,
+            period=0,
+            synchro=0,
+            starts=[datetime.time(6, 0)],
+            durations=[ZoneDuration(zone=1, duration=datetime.timedelta(minutes=15))],
+        ),
+        Program(
+            program=0,
+            frequency=ProgramFrequency.ODD,
+            starts=[datetime.time(6, 0)],
+            durations=[],
+        ),
+    ],
+)
+def test_program_timeline_inactive_cases_emit_no_events(program: Program) -> None:
+    """Verify disabled, zero-day custom, zero-interval cyclic, and zero-duration programs emit no events."""
+    start = datetime.datetime(2026, 6, 15, 0, 0, 0)
+    end = datetime.datetime(2026, 7, 15, 0, 0, 0)
+    assert list(program.timeline.overlapping(start, end)) == []
+    assert list(program.zone_timeline.overlapping(start, end)) == []
+    schedule = Schedule(controller_info=None, programs=[program])
+    assert list(schedule.timeline.overlapping(start, end)) == []
+
+
+def test_schedule_merges_multi_chunk_universal_program_durations() -> None:
+    """Verify Schedule.__pre_deserialize__ merges multiple programDurations station chunks."""
+    schedule = Schedule.from_dict(
+        {
+            "controllerInfo": {"rainDelay": 0, "rainSensor": 0},
+            "programInfo": [
+                {"program": 0, "frequency": ProgramFrequency.ODD},
+            ],
+            "programStartInfo": [
+                {"program": 0, "startTime": [360, 1440, 1440, 1440]},
+            ],
+            "programDurations": [
+                {"program": 0, "durations": [{"zone": 1, "duration": 10}]},
+                {"program": 0, "durations": [{"zone": 30, "duration": 20}]},
+            ],
+        }
+    )
+    assert [(d.zone, d.duration) for d in schedule.programs[0].durations] == [
+        (1, datetime.timedelta(minutes=10)),
+        (30, datetime.timedelta(minutes=20)),
+    ]

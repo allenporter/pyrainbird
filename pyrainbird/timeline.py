@@ -91,6 +91,13 @@ def create_recurrence(
     delay_days: int = 0,
 ) -> Iterable[SortableItem[Timespan, ProgramEvent]]:
     """Create a timeline using a recurrence rule."""
+    if frequency == ProgramFrequency.OFF or duration <= datetime.timedelta(0):
+        return ()
+    if frequency == ProgramFrequency.CYCLIC and interval <= 0:
+        return ()
+    if frequency == ProgramFrequency.CUSTOM and not days_of_week:
+        return ()
+
     # These weekday or day of month refinemens ared used in specific scenarios
     byweekday = [RRULE_WEEKDAY[day_of_week] for day_of_week in days_of_week]
     odd_days = frequency == ProgramFrequency.ODD

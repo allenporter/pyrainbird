@@ -42,3 +42,6 @@ class ProgramFrequency(IntEnum):
 
     EVEN = 3
     """A schedule that runs on event days."""
+
+    OFF = 4
+    """A disabled schedule that does not run."""
