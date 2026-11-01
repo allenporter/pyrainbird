@@ -84,6 +84,8 @@ def decrypt_lnk2_envelope(packet: bytes, password: str) -> tuple[bool, bytes | N
 
 def encode_sip_wire_frame(payload: bytes) -> bytes:
     """Encode raw SIP payload bytes into a byte-stuffed LNK2 UART/Manchester wire frame."""
+    if len(payload) > 255:
+        raise ValueError(f"SIP wire payload exceeds 255 bytes: {len(payload)}")
     length_byte = len(payload) & 0xFF
     checksum_byte = (length_byte + sum(payload)) & 0xFF
     body = bytes([length_byte]) + payload + bytes([checksum_byte])

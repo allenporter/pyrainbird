@@ -28,3 +28,6 @@ combined_controller_state: false
 stack_manual_run_station: true
 master_valves_settings: true
 is_lx_controller: true
+minimum_frequency_cycle_days: 1
+maximum_frequency_cycle_days: 31
+maximum_station_delay_seconds: 3600
