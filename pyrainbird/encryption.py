@@ -90,7 +90,7 @@ class PayloadCoder:
         self._password = password or None
         self._logger = logger
 
-    def encode_command(self, method: str, params: dict[str, Any]) -> str | bytes:
+    def encode_command(self, method: str, params: dict[str, Any]) -> str:
         """Encode a request payload."""
         request_id = _request_id()
         data = {
@@ -105,30 +105,26 @@ class PayloadCoder:
             return send_data
         return encrypt(send_data, self._password)
 
-    def decode_command(self, content: bytes | str) -> str | dict[str, Any]:
+    def decode_command(self, content: bytes) -> str | dict[str, Any]:
         """Decode a response payload."""
         try:
             if self._password is not None:
-                raw_bytes = (
-                    content.encode("UTF-8") if isinstance(content, str) else content
-                )
-                if len(raw_bytes) < 48 or (len(raw_bytes) - 48) % BLOCK_SIZE != 0:
+                if len(content) < 48 or (len(content) - 48) % BLOCK_SIZE != 0:
                     raise ValueError("Invalid encrypted payload length")
-                decoded_text = (
-                    decrypt(raw_bytes, self._password)
+                decrypted_data = (
+                    decrypt(content, self._password)
                     .decode("UTF-8")
                     .rstrip("\x10")
                     .rstrip("\x0a")
                     .rstrip("\x00")
                     .rstrip()
                 )
+                self._logger.debug(f"Response: {decrypted_data!r}")
+                response = json.loads(decrypted_data)
             else:
-                decoded_text = (
-                    content.decode("UTF-8") if isinstance(content, bytes) else content
-                )
-            self._logger.debug(f"Response: {decoded_text!r}")
-            response = json.loads(decoded_text)
-        except (ValueError, UnicodeDecodeError, json.JSONDecodeError) as err:
+                self._logger.debug(f"Response: {content!r}")
+                response = json.loads(content)
+        except ValueError as err:
             raise RainbirdApiException(
                 "Unable to decode response from Rain Bird device"
             ) from err
