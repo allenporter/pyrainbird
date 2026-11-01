@@ -17,6 +17,10 @@ class RainbirdAuthException(RainbirdApiException):
     """Authentication exception from rainbird API."""
 
 
+class RainbirdAuthLockoutException(RainbirdApiException):
+    """Authentication temporarily locked out due to repeated failed password attempts."""
+
+
 class RainbirdCertificateError(RainbirdApiException):
     """TLS certificate verification error when communicating with the device."""
 

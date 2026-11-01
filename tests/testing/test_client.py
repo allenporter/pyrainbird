@@ -1,19 +1,38 @@
 """Tests for high-level local controller client commands using the testing server."""
 
+import asyncio
 import datetime
+import json
+import logging
+import time
 from collections.abc import AsyncIterator
 from typing import Any
 
 import aiohttp
 import pytest
+from aiohttp import web
 from freezegun import freeze_time
 
 from pyrainbird import async_client
-from pyrainbird.async_client import AsyncRainbirdController
+from pyrainbird.async_client import (
+    AsyncRainbirdClient,
+    AsyncRainbirdController,
+    CreateController,
+)
 from pyrainbird.const import DayOfWeek, ProgramFrequency
-from pyrainbird.exceptions import RainbirdDeviceNackError
+from pyrainbird.encryption import ErrorCode, PayloadCoder, encrypt
+from pyrainbird.exceptions import (
+    RainbirdApiException,
+    RainbirdAuthException,
+    RainbirdAuthLockoutException,
+    RainbirdConnectionError,
+    RainbirdDeviceBusyException,
+    RainbirdDeviceNackError,
+)
 from pyrainbird.testing.emulator import RainbirdDeviceEmulator
 from pyrainbird.testing.server import RainbirdFakeServer
+
+from .test_server import create_self_signed_ssl_context
 
 PASSWORD = "keepsecret"
 
@@ -552,3 +571,274 @@ def test_emulator_set_program_validation(
     emulator = RainbirdDeviceEmulator(model_name)
     with pytest.raises(exc_type, match=match):
         emulator.set_program(program, **kwargs)
+
+
+@pytest.mark.asyncio
+async def test_arc8_https_single_socket_concurrent_gather() -> None:
+    """Verify ARC8 HTTPS requests serialize over a single socket with default min_delay=0.0."""
+    ssl_ctx = create_self_signed_ssl_context()
+    async with (
+        RainbirdFakeServer(
+            password=PASSWORD,
+            model="ARC8",
+            ssl_context=ssl_ctx,
+            max_concurrent_requests=1,
+            request_delay=0.02,
+        ) as server,
+        aiohttp.ClientSession() as session,
+    ):
+        ctrl = await async_client.create_controller(session, server.host_port, PASSWORD)
+        serial, wifi, sched = await asyncio.gather(
+            ctrl.get_serial_number(),
+            ctrl.get_wifi_params(),
+            ctrl.get_schedule(),
+        )
+        assert serial == 0x12635436566
+        assert wifi.mac_address == "D8:B6:73:01:02:03"
+        assert len(sched.programs) == 3
+        assert server.max_observed_concurrency == 1
+
+
+@pytest.mark.asyncio
+async def test_unprimed_controller_concurrent_model_init_and_monotonic_pacing() -> None:
+    """Verify CreateController deduplicates concurrent ModelAndVersionRequest and shares min_delay pacing."""
+    async with (
+        RainbirdFakeServer(
+            password=PASSWORD,
+            model="ARC8",
+            max_concurrent_requests=1,
+        ) as server,
+        aiohttp.ClientSession() as session,
+    ):
+        ctrl = CreateController(session, server.host_port, PASSWORD, min_delay=0.05)
+        start = time.monotonic()
+        stations, wifi, serial = await asyncio.gather(
+            ctrl.get_available_stations(),
+            ctrl.get_wifi_params(),
+            ctrl.get_serial_number(),
+        )
+        elapsed = time.monotonic() - start
+        # 4 total RPCs (1 deduplicated ModelAndVersionRequest + AvailableStations + getWifiParams + SerialNumber)
+        # require 3 inter-request sleeps of 0.05s = >= 0.15s total
+        assert stations.active_set == set(range(1, 9))
+        assert wifi.mac_address == "D8:B6:73:01:02:03"
+        assert serial == 0x12635436566
+        assert server.max_observed_concurrency == 1
+        assert len(server.device.request_log) == 4
+        assert elapsed >= 0.14
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("client_pwd", ["", None])
+async def test_arc8_https_empty_password(client_pwd: str | None) -> None:
+    """Verify ARC8 with an empty local password accepts unencrypted /stick over HTTPS."""
+    ssl_ctx = create_self_signed_ssl_context()
+    async with (
+        RainbirdFakeServer(
+            password="",
+            model="ARC8",
+            ssl_context=ssl_ctx,
+            max_concurrent_requests=1,
+        ) as server,
+        aiohttp.ClientSession() as session,
+    ):
+        ctrl = await async_client.create_controller(
+            session, server.host_port, client_pwd
+        )
+        model_info = await ctrl.get_model_and_version()
+        assert model_info.model_code == "ARC8"
+        serial, wifi = await asyncio.gather(
+            ctrl.get_serial_number(),
+            ctrl.get_wifi_params(),
+        )
+        assert serial == 0x12635436566
+        assert wifi.mac_address == "D8:B6:73:01:02:03"
+        assert server.max_observed_concurrency == 1
+
+
+@pytest.mark.asyncio
+async def test_create_controller_omitted_default_password() -> None:
+    """Verify create_controller and CreateController work when password argument is omitted."""
+    async with (
+        RainbirdFakeServer(password="", model="ARC8") as server,
+        aiohttp.ClientSession() as session,
+    ):
+        ctrl = await async_client.create_controller(session, server.host_port)
+        assert (await ctrl.get_model_and_version()).model_code == "ARC8"
+
+        legacy_ctrl = CreateController(session, server.host_port)
+        assert (await legacy_ctrl.get_serial_number()) == 0x12635436566
+
+
+@pytest.mark.asyncio
+async def test_create_controller_https_abort_falls_back_to_http() -> None:
+    """Verify create_controller falls back from HTTPS to HTTP when TLS socket is aborted."""
+    ssl_ctx = create_self_signed_ssl_context()
+    async with (
+        RainbirdFakeServer(password=PASSWORD, model="ESP-TM2") as http_server,
+        aiohttp.ClientSession() as session,
+    ):
+        # Stand up an HTTPS listener that immediately aborts the connection mid-request
+        async def _abort_handler(request: web.Request) -> web.Response:
+            assert request.transport is not None
+            request.transport.abort()
+            return web.Response(status=503)
+
+        abort_app = web.Application()
+        abort_app.router.add_post("/stick", _abort_handler)
+        runner = web.AppRunner(abort_app)
+        await runner.setup()
+        site = web.TCPSite(runner, "127.0.0.1", 0, ssl_context=ssl_ctx)
+        await site.start()
+        https_port = runner.addresses[0][1]
+        try:
+            # Verify raw HTTPS abort raises RainbirdConnectionError
+            https_client = AsyncRainbirdClient(
+                session,
+                f"https://127.0.0.1:{https_port}/stick",
+                PASSWORD,
+                ssl_context=False,
+            )
+            with pytest.raises(RainbirdConnectionError):
+                await https_client.request("getWifiParams")
+
+            # Verify create_controller falls back cleanly to HTTP server
+            ctrl = await async_client.create_controller(
+                session, http_server.host_port, PASSWORD
+            )
+            assert (await ctrl.get_model_and_version()).model_code == "ESP_TM2"
+        finally:
+            await site.stop()
+            await runner.cleanup()
+
+
+@pytest.mark.asyncio
+async def test_arc8_https_wrong_password_and_430_lockout() -> None:
+    """Verify ARC8 raises RainbirdAuthException on 403 and RainbirdAuthLockoutException on 430."""
+    assert issubclass(RainbirdAuthLockoutException, RainbirdApiException)
+    assert not issubclass(RainbirdAuthLockoutException, RainbirdAuthException)
+
+    ssl_ctx = create_self_signed_ssl_context()
+    async with (
+        RainbirdFakeServer(
+            password="123456",
+            model="ARC8",
+            ssl_context=ssl_ctx,
+        ) as server,
+        aiohttp.ClientSession() as session,
+    ):
+        server.device.device.lockout_tries = 2
+
+        with pytest.raises(RainbirdAuthException) as err_1:
+            await async_client.create_controller(session, server.host_port, "000000")
+        assert not isinstance(err_1.value, RainbirdAuthLockoutException)
+        assert server.device.device.failed_attempts == 1
+        assert len(server.device.request_log) == 1
+
+        with pytest.raises(RainbirdAuthException):
+            await async_client.create_controller(session, server.host_port, "000000")
+        assert server.device.device.failed_attempts == 2
+        assert len(server.device.request_log) == 2
+
+        with pytest.raises(
+            RainbirdAuthLockoutException, match="temporarily locked out"
+        ) as err_lockout:
+            await async_client.create_controller(session, server.host_port, "123456")
+        assert isinstance(err_lockout.value, RainbirdApiException)
+        assert not isinstance(err_lockout.value, RainbirdAuthException)
+        assert len(server.device.request_log) == 2
+
+
+@pytest.mark.parametrize(
+    ("pwd", "raw_payload", "exc_type", "match"),
+    [
+        ("123456", b"too-short", RainbirdApiException, "Unable to decode response"),
+        ("123456", b"A" * 48, RainbirdApiException, "Unable to decode response"),
+        ("123456", b"A" * 50, RainbirdApiException, "Unable to decode response"),
+        (
+            "123456",
+            encrypt(json.dumps({"result": {"ok": 1}}), "wrong-key"),
+            RainbirdApiException,
+            "Unable to decode response",
+        ),
+        (
+            "123456",
+            b"\x00" * 32 + encrypt(json.dumps({"result": {"ok": 1}}), "123456")[32:],
+            RainbirdApiException,
+            "Unable to decode response",
+        ),
+        (None, b"\xff\xfe", RainbirdApiException, "Unable to decode response"),
+        ("", b"not-json", RainbirdApiException, "Unable to decode response"),
+        ("", b"null", RainbirdApiException, "Unable to decode response"),
+        ("", b"[]", RainbirdApiException, "Unable to decode response"),
+        ("", b"123", RainbirdApiException, "Unable to decode response"),
+        ("", b"{}", RainbirdApiException, "Unable to decode response"),
+        (
+            "",
+            b'{"error": "string-error"}',
+            RainbirdApiException,
+            "string-error",
+        ),
+        (
+            "123456",
+            encrypt(
+                json.dumps(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": 1,
+                        "error": {
+                            "code": ErrorCode.LOCKOUT_ACTIVE,
+                            "message": "Password protected",
+                        },
+                    }
+                ),
+                "123456",
+            ),
+            RainbirdAuthException,
+            "Password protected",
+        ),
+        (
+            "",
+            json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "error": {
+                        "code": ErrorCode.CONTROLLER_BUSY,
+                        "message": "Busy",
+                    },
+                }
+            ).encode("utf-8"),
+            RainbirdDeviceBusyException,
+            "Busy",
+        ),
+    ],
+)
+def test_payload_coder_decode_errors_and_lockout(
+    pwd: str | None,
+    raw_payload: bytes,
+    exc_type: type[Exception],
+    match: str,
+) -> None:
+    """Verify PayloadCoder handles malformed payloads, bad digests, empty passwords, and lockout errors."""
+    coder = PayloadCoder(pwd, logging.getLogger(__name__))
+    with pytest.raises(exc_type, match=match):
+        coder.decode_command(raw_payload)
+
+
+@pytest.mark.asyncio
+async def test_client_connection_reset_maps_to_rainbird_connection_error() -> None:
+    """Verify mid-request socket disconnects map to RainbirdConnectionError."""
+    async with (
+        RainbirdFakeServer(
+            password=PASSWORD,
+            model="ARC8",
+            max_concurrent_requests=0,
+        ) as server,
+        aiohttp.ClientSession() as session,
+    ):
+        client = AsyncRainbirdClient(
+            session, f"http://{server.host_port}/stick", PASSWORD
+        )
+        with pytest.raises(RainbirdConnectionError):
+            await client.request("getWifiParams")

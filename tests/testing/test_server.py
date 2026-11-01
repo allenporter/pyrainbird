@@ -19,7 +19,7 @@ from pyrainbird.encryption import decrypt, encrypt
 from pyrainbird.testing.server import RainbirdFakeServer
 
 
-def _create_self_signed_ssl_context() -> ssl.SSLContext:
+def create_self_signed_ssl_context() -> ssl.SSLContext:
     """Create an ephemeral self-signed EC P-256 server SSLContext for local HTTPS testing."""
     key = ec.generate_private_key(ec.SECP256R1())
     subject = issuer = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "127.0.0.1")])
@@ -269,7 +269,7 @@ async def test_fake_server_empty_password_octet_stream(empty_pwd: str | None) ->
 @pytest.mark.asyncio
 async def test_fake_server_https_and_single_socket_concurrency() -> None:
     """Verify RainbirdFakeServer serves self-signed HTTPS and enforces max_concurrent_requests=1."""
-    ssl_ctx = _create_self_signed_ssl_context()
+    ssl_ctx = create_self_signed_ssl_context()
     async with (
         RainbirdFakeServer(
             password="123456",

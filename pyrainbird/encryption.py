@@ -1,6 +1,7 @@
 """Libraries related to encoding and decoding requests."""
 
 import enum
+import hmac
 import json
 import logging
 import sys
@@ -18,6 +19,8 @@ from .exceptions import (
 )
 
 BLOCK_SIZE = 16
+HEADER_SIZE = 48
+MIN_ENCRYPTED_SIZE = HEADER_SIZE + BLOCK_SIZE
 INTERRUPT = "\x00"
 PAD = "\x00"
 
@@ -87,7 +90,7 @@ class PayloadCoder:
 
     def __init__(self, password: str | None, logger: logging.Logger):
         """Initialize RainbirdSession."""
-        self._password = password
+        self._password = password or None
         self._logger = logger
 
     def encode_command(self, method: str, params: dict[str, Any]) -> str:
@@ -107,19 +110,50 @@ class PayloadCoder:
 
     def decode_command(self, content: bytes) -> str | dict[str, Any]:
         """Decode a response payload."""
-        if self._password is not None:
-            decrypted_data = (
-                decrypt(content, self._password)
-                .decode("UTF-8")
-                .rstrip("\x10")
-                .rstrip("\x0a")
-                .rstrip("\x00")
-                .rstrip()
+        try:
+            if self._password is not None:
+                if (
+                    len(content) < MIN_ENCRYPTED_SIZE
+                    or (len(content) - HEADER_SIZE) % BLOCK_SIZE != 0
+                ):
+                    raise ValueError("Invalid encrypted payload length")
+                raw_decrypted = decrypt(content, self._password)
+                expected_digest = bytes(content[:32])
+                valid_digests = (
+                    SHA256.new(raw_decrypted).digest(),
+                    SHA256.new(raw_decrypted.rstrip(b"\x00")).digest(),
+                    SHA256.new(raw_decrypted.rstrip(b"\x00\x10")).digest(),
+                )
+                if not any(
+                    hmac.compare_digest(expected_digest, digest)
+                    for digest in valid_digests
+                ):
+                    raise ValueError("Invalid encrypted payload digest")
+                decrypted_data = (
+                    raw_decrypted.decode("UTF-8")
+                    .rstrip("\x10")
+                    .rstrip("\x0a")
+                    .rstrip("\x00")
+                    .rstrip()
+                )
+                self._logger.debug("Response: %r", decrypted_data)
+                response = json.loads(decrypted_data)
+            else:
+                self._logger.debug("Response: %r", content)
+                response = json.loads(content)
+        except ValueError as err:
+            raise RainbirdApiException(
+                "Unable to decode response from Rain Bird device"
+            ) from err
+        if not isinstance(response, dict):
+            raise RainbirdApiException(
+                "Unable to decode response from Rain Bird device"
             )
-            content = decrypted_data
-        self._logger.debug(f"Response: {content!r}")
-        response = json.loads(content)
         if error := response.get("error"):
+            if not isinstance(error, dict):
+                raise RainbirdApiException(
+                    f"Rain Bird responded with an error: {error}"
+                )
             msg = ["Error from controller"]
             code = error.get("code")
             message = error.get("message", "")
@@ -131,8 +165,7 @@ class PayloadCoder:
                 msg.append(f"Code: {value!s}({code})")
             if message:
                 msg.append(f"Message: {message}")
-            ", ".join(msg)
-            self._logger.debug("Error from controller: %s", msg)
+            self._logger.debug("Error from controller: %s", ", ".join(msg))
             if code == ErrorCode.CONTROLLER_BUSY:
                 raise RainbirdDeviceBusyException(
                     f"Rain Bird responded with an error: {message}"
@@ -142,4 +175,8 @@ class PayloadCoder:
                     f"Rain Bird responded with an error: {message}"
                 )
             raise RainbirdApiException(f"Rain Bird responded with an error: {message}")
+        if "result" not in response:
+            raise RainbirdApiException(
+                "Unable to decode response from Rain Bird device"
+            )
         return response["result"]
