@@ -31,6 +31,7 @@ import math
 import ssl
 import time
 from collections.abc import Callable
+from dataclasses import dataclass, field
 from http import HTTPStatus
 from typing import Any, TypeVar
 
@@ -208,6 +209,14 @@ def _device_busy_retry() -> JitterRetry:
 HTTP_STATUS_PASSWORD_LOCKOUT = 430
 
 
+@dataclass
+class _RequestGate:
+    """Shared lock and monotonic timestamp across client retry wrappers."""
+
+    lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+    last_request_time: float | None = None
+
+
 class AsyncRainbirdClient:
     """An asyncio rainbird client.
 
@@ -222,7 +231,7 @@ class AsyncRainbirdClient:
         *,
         ssl_context: ssl.SSLContext | bool | None = None,
         min_delay: float = 0.0,
-        lock: asyncio.Lock | None = None,
+        _gate: _RequestGate | None = None,
     ) -> None:
         self._websession = websession
         self._url = url
@@ -230,32 +239,28 @@ class AsyncRainbirdClient:
         _LOGGER.debug("Using Rain Bird API endpoint: %s", self._url)
         self._password = password
         self._coder = encryption.PayloadCoder(password, _LOGGER)
-        self._last_request_time = 0.0
         self._min_delay = min_delay
-        self._lock = lock or asyncio.Lock()
+        self._gate = _gate or _RequestGate()
 
     def with_retry_options(self, retry_options: RetryOptions) -> "AsyncRainbirdClient":  # type: ignore[valid-type]
         """Create a new AsyncRainbirdClient with retry options."""
-        client = AsyncRainbirdClient(
+        return AsyncRainbirdClient(
             RetryClient(client_session=self._websession, retry_options=retry_options),  # type: ignore[arg-type]
             self._url,
             self._password,
             ssl_context=self._ssl_context,
             min_delay=self._min_delay,
-            lock=self._lock,
+            _gate=self._gate,
         )
-        client._last_request_time = self._last_request_time
-        return client
 
     async def request(
         self, method: str, params: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         """Send a request for any command."""
-        async with self._lock:
+        async with self._gate.lock:
             # Enforce inter-request cooldown pacing if configured
-            if self._min_delay > 0.0:
-                now = time.time()
-                elapsed = now - self._last_request_time
+            if self._min_delay > 0.0 and self._gate.last_request_time is not None:
+                elapsed = time.monotonic() - self._gate.last_request_time
                 if elapsed < self._min_delay:
                     sleep_time = self._min_delay - elapsed
                     _LOGGER.debug(
@@ -278,7 +283,7 @@ class AsyncRainbirdClient:
                     content = await resp.read()
                 finally:
                     if self._min_delay > 0.0:
-                        self._last_request_time = time.time()
+                        self._gate.last_request_time = time.monotonic()
             except ClientConnectorCertificateError as err:
                 _LOGGER.debug("Certificate verification failed: %s", err)
                 raise RainbirdCertificateError(
@@ -388,24 +393,26 @@ class AsyncRainbirdController(RainbirdController):
         self._cloud_client = cloud_client
         self._cache: dict[str, Any] = {}
         self._model: ModelAndVersion | None = None
+        self._model_lock = asyncio.Lock()
 
     async def get_model_and_version(self) -> ModelAndVersion:
         """Return the model and version."""
-        response = await self._cacheable_command(
-            lambda response: ModelAndVersion(
-                response["modelID"],
-                response["protocolRevisionMajor"],
-                response["protocolRevisionMinor"],
-            ),
-            "ModelAndVersionRequest",
-        )
-        if self._model is None:
-            self._model = response
-            if self._model.model_info.retries:
-                self._local_client = self._local_client.with_retry_options(
-                    _device_busy_retry()
-                )
-        return response
+        async with self._model_lock:
+            response = await self._cacheable_command(
+                lambda response: ModelAndVersion(
+                    response["modelID"],
+                    response["protocolRevisionMajor"],
+                    response["protocolRevisionMinor"],
+                ),
+                "ModelAndVersionRequest",
+            )
+            if self._model is None:
+                self._model = response
+                if self._model.model_info.retries:
+                    self._local_client = self._local_client.with_retry_options(
+                        _device_busy_retry()
+                    )
+            return response
 
     async def get_available_stations(self) -> AvailableStations:
         """Get the available stations."""
