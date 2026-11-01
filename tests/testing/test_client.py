@@ -2,6 +2,7 @@
 
 import datetime
 from collections.abc import AsyncIterator
+from typing import Any
 
 import aiohttp
 import pytest
@@ -424,16 +425,37 @@ async def test_universal_multi_chunk_station_schedule_esp_2wire() -> None:
         assert sched.programs[3].frequency == ProgramFrequency.OFF
 
 
-def test_emulator_set_program_validation() -> None:
+@pytest.mark.parametrize(
+    ("model_name", "program", "kwargs", "exc_type", "match"),
+    [
+        ("ESP_RZXe", 0, {}, TypeError, "does not support program schedules"),
+        ("IQ_GATEWAY", 0, {}, TypeError, "does not support program schedules"),
+        ("ESP_TM2", 3, {}, ValueError, "Program index 3 out of range"),
+        ("ARC8", 3, {}, ValueError, "Program index 3 out of range"),
+        (
+            "ARC8",
+            0,
+            {"starts": [datetime.time(h, 0) for h in range(5)]},
+            ValueError,
+            "Too many start times",
+        ),
+        (
+            "ARC8",
+            0,
+            {"durations": {9: datetime.timedelta(minutes=5)}},
+            ValueError,
+            "Zone 9 out of range",
+        ),
+    ],
+)
+def test_emulator_set_program_validation(
+    model_name: str,
+    program: int,
+    kwargs: dict[str, Any],
+    exc_type: type[Exception],
+    match: str,
+) -> None:
     """Verify set_program validates controller family and model limits."""
-    rzx = RainbirdDeviceEmulator("ESP_RZXe")
-    with pytest.raises(TypeError, match="does not support program schedules"):
-        rzx.set_program(0)
-
-    arc8 = RainbirdDeviceEmulator("ARC8")
-    with pytest.raises(ValueError, match="Program index 3 out of range"):
-        arc8.set_program(3)
-    with pytest.raises(ValueError, match="Too many start times"):
-        arc8.set_program(0, starts=[datetime.time(h, 0) for h in range(5)])
-    with pytest.raises(ValueError, match="Zone 9 out of range"):
-        arc8.set_program(0, durations={9: datetime.timedelta(minutes=5)})
+    emulator = RainbirdDeviceEmulator(model_name)
+    with pytest.raises(exc_type, match=match):
+        emulator.set_program(program, **kwargs)
