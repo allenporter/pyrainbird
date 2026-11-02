@@ -506,6 +506,7 @@ def test_program_name_formatting(
     program = Program(
         program=program_idx, frequency=ProgramFrequency.OFF, numbered=numbered
     )
+    assert program.program_id == ProgramId(program=program_idx, numbered=numbered)
     assert program.name == expected_pgm_name
     assert (
         ProgramId(program=program_idx, zone=zone, numbered=numbered).name
@@ -541,11 +542,17 @@ def test_schedule_numbered_program_names(
     schedule = Schedule(controller_info=None, programs=programs)
     assert schedule.programs[0].name == expected_first
     assert schedule.programs[-1].name == expected_last
+    assert schedule.programs[0].program_id == ProgramId(0, numbered=program_count > 4)
+    assert schedule.programs[-1].program_id == ProgramId(
+        program_count - 1, numbered=program_count > 4
+    )
 
     start = datetime.datetime(2026, 6, 15, 0, 0, 0)
     end = datetime.datetime(2026, 6, 16, 0, 0, 0)
     sched_events = list(schedule.timeline.overlapping(start, end))
+    assert sched_events[0].program_id == schedule.programs[0].program_id
     assert sched_events[0].program_id.name == expected_first
+    assert sched_events[-1].program_id == schedule.programs[-1].program_id
     assert sched_events[-1].program_id.name == expected_last
 
     prog_events = list(schedule.programs[-1].timeline.overlapping(start, end))
