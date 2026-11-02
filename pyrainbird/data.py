@@ -20,7 +20,6 @@ from .timeline import (
     ProgramId,
     ProgramTimeline,
     create_recurrence,
-    format_program_name,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -175,6 +174,17 @@ class ModelInfo:
     def max_programs(self) -> int:
         """The maximum number of programs supported by the device."""
         return self.limits.max_programs
+
+    @property
+    def programs(self) -> list[ProgramId]:
+        """Return the program identifiers supported by the device."""
+        if not self.is_feature_supported(Feature.PROGRAM_BASED):
+            return []
+        numbered = self.max_programs > MAX_LETTER_PROGRAMS
+        return [
+            ProgramId(program, numbered=numbered)
+            for program in range(self.max_programs)
+        ]
 
     @property
     def max_run_times(self) -> int:
@@ -715,9 +725,14 @@ class Program(DataClassDictMixin):
     """Whether all programs on the controller use 1-based numbers instead of letters."""
 
     @property
+    def program_id(self) -> ProgramId:
+        """Identifier of the program."""
+        return ProgramId(self.program, numbered=self.numbered)
+
+    @property
     def name(self) -> str:
         """Name of the program."""
-        return format_program_name(self.program, numbered=self.numbered)
+        return self.program_id.name
 
     @property
     def timeline(self) -> ProgramTimeline:
@@ -732,7 +747,7 @@ class Program(DataClassDictMixin):
             dtstart = now.replace(hour=start.hour, minute=start.minute, second=0)
             iters.append(
                 create_recurrence(
-                    ProgramId(self.program, numbered=self.numbered),
+                    self.program_id,
                     self.frequency,
                     dtstart,
                     self.duration,
@@ -915,7 +930,7 @@ class Schedule(DataClassDictMixin):
                 dtstart = now.replace(hour=start.hour, minute=start.minute, second=0)
                 iters.append(
                     create_recurrence(
-                        ProgramId(program.program, numbered=program.numbered),
+                        program.program_id,
                         program.frequency,
                         dtstart,
                         program.duration,

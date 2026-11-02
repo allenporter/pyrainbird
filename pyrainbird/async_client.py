@@ -76,7 +76,6 @@ from .exceptions import (
     RainbirdDeviceNackError,
 )
 from .resources import LENGTH, RAINBIRD_COMMANDS, RESPONSE
-from .timeline import MAX_LETTER_PROGRAMS
 
 
 class ControllerFeature(enum.StrEnum):
@@ -681,7 +680,8 @@ class AsyncRainbirdController(RainbirdController):
         """Return the device schedule."""
 
         model = await self.get_model_and_version()
-        max_programs = model.model_info.max_programs
+        programs = model.model_info.programs
+        programs_by_id = {prog.program: prog for prog in programs}
         stations = await self.get_available_stations()
         max_stations = model.model_info.max_stations
         if not max_stations:
@@ -693,23 +693,20 @@ class AsyncRainbirdController(RainbirdController):
         )
         if use_universal:
             commands = rainbird.encode_universal_schedule_commands(
-                max_programs,
+                len(programs),
                 model.model_info.max_run_times,
                 max_stations,
             )
         else:
             commands = ["00"]
-            if (
-                model.model_info.is_feature_supported(Feature.PROGRAM_BASED)
-                and max_programs > 0
-            ):
+            if programs:
                 # Legacy ESP-ME / TM2 Schedule Loop
                 # Program details
-                for program in range(max_programs):
-                    commands.append("%04x" % (0x10 | program))
+                for program_id in programs:
+                    commands.append("%04x" % (0x10 | program_id.program))
                 # Start times
-                for program in range(max_programs):
-                    commands.append("%04x" % (0x60 | program))
+                for program_id in programs:
+                    commands.append("%04x" % (0x60 | program_id.program))
                 # Run times per zone
                 _LOGGER.debug("Loading schedule for %d zones", max_stations)
                 for zone_page in range(math.ceil(max_stations / 2)):
@@ -775,9 +772,11 @@ class AsyncRainbirdController(RainbirdController):
                     elif key == "programInfo":
                         items = value if isinstance(value, list) else [value]
                         for item in items:
-                            if max_programs > MAX_LETTER_PROGRAMS:
-                                item.setdefault("numbered", True)
                             prog_id = item.get("program")
+                            if prog_id is not None and (
+                                model_prog := programs_by_id.get(prog_id)
+                            ):
+                                item.setdefault("numbered", model_prog.numbered)
                             if prog_id is not None and prog_id in program_info_by_id:
                                 program_info_by_id[prog_id].update(item)
                             else:
