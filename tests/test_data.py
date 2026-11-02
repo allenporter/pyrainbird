@@ -553,3 +553,59 @@ def test_schedule_numbered_program_names(
 
     zone_events = list(schedule.programs[-1].zone_timeline.overlapping(start, end))
     assert zone_events[0].program_id.name == expected_last_zone
+
+
+@pytest.mark.parametrize(
+    ("model_id", "expected_programs", "expected_names"),
+    [
+        pytest.param(0x9999, [], [], id="unknown"),
+        pytest.param(0x0003, [], [], id="esp_rzxe_zone_based"),
+        pytest.param(0x0103, [], [], id="esp_rzxe2_zone_based"),
+        pytest.param(0x0008, [], [], id="st8x_wf2_zone_based"),
+        pytest.param(
+            0x0813,
+            [ProgramId(0), ProgramId(1), ProgramId(2)],
+            ["PGM A", "PGM B", "PGM C"],
+            id="arc8_three_letter_programs",
+        ),
+        pytest.param(
+            0x0005,
+            [ProgramId(0), ProgramId(1), ProgramId(2)],
+            ["PGM A", "PGM B", "PGM C"],
+            id="esp_tm2_three_letter_programs",
+        ),
+        pytest.param(
+            0x0009,
+            [ProgramId(0), ProgramId(1), ProgramId(2), ProgramId(3)],
+            ["PGM A", "PGM B", "PGM C", "PGM D"],
+            id="esp_me3_four_letter_programs",
+        ),
+        pytest.param(
+            0x000D,
+            [ProgramId(idx, numbered=True) for idx in range(10)],
+            [f"PGM {idx + 1}" for idx in range(10)],
+            id="lx_ivm_ten_numbered_programs",
+        ),
+        pytest.param(
+            0x0016,
+            [ProgramId(idx, numbered=True) for idx in range(12)],
+            [f"PGM {idx + 1}" for idx in range(12)],
+            id="esp_bat_pro_twelve_numbered_programs",
+        ),
+        pytest.param(
+            0x000C,
+            [ProgramId(idx, numbered=True) for idx in range(40)],
+            [f"PGM {idx + 1}" for idx in range(40)],
+            id="lxme2_forty_numbered_programs",
+        ),
+    ],
+)
+def test_model_info_programs(
+    model_id: int,
+    expected_programs: list[ProgramId],
+    expected_names: list[str],
+) -> None:
+    """Verify ModelInfo.programs returns lettered or numbered ProgramIds for program-based models."""
+    model_info = ModelAndVersion(model_id, 1, 0).model_info
+    assert model_info.programs == expected_programs
+    assert [prog.name for prog in model_info.programs] == expected_names

@@ -177,6 +177,17 @@ class ModelInfo:
         return self.limits.max_programs
 
     @property
+    def programs(self) -> list[ProgramId]:
+        """Return the program identifiers supported by the device."""
+        if not self.is_feature_supported(Feature.PROGRAM_BASED):
+            return []
+        numbered = self.max_programs > MAX_LETTER_PROGRAMS
+        return [
+            ProgramId(program, numbered=numbered)
+            for program in range(self.max_programs)
+        ]
+
+    @property
     def max_run_times(self) -> int:
         """The maximum number of run times supported by the device."""
         return self.limits.max_run_times
