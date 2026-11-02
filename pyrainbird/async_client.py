@@ -842,6 +842,91 @@ class AsyncRainbirdController(RainbirdController):
             schedule,
         )
 
+    async def set_program_days(
+        self,
+        program: int,
+        frequency: ProgramFrequency,
+        days_of_week: set[DayOfWeek] | None = None,
+        period: int | None = None,
+        synchro: int | None = None,
+    ) -> None:
+        """Set the days a program runs on.
+
+        This applies to program based devices (ESP-Me, ESP-TM2), the ones that
+        report `Schedule.programs`, with programs numbered from 0 like
+        `Program.program`. `days_of_week` only applies to a CUSTOM frequency,
+        `period` and `synchro`, the days remaining of the current interval, only
+        to a CYCLIC one. Any of them left out, and the other settings of the
+        program, are kept as they are since the device rejects a period of 0.
+        """
+        page = 0x10 | program
+        info = (await self._get_schedule_page(page))["programInfo"]
+        days_of_week_mask = info["daysOfWeekMask"]
+        if days_of_week is not None:
+            days_of_week_mask = sum(1 << day for day in days_of_week)
+        await self._set_schedule_page(
+            page,
+            rainbird.encode_program_info(
+                days_of_week_mask=days_of_week_mask,
+                period=info["period"] if period is None else period,
+                synchro=info["synchro"] if synchro is None else synchro,
+                permanent_days_off=info["permanentDaysOff"],
+                reserved=info["reserved"],
+                frequency=frequency,
+            ),
+        )
+
+    async def set_program_start_times(
+        self, program: int, starts: list[datetime.time]
+    ) -> None:
+        """Set the start times of a program.
+
+        This applies to program based devices (ESP-Me, ESP-TM2), with programs
+        numbered from 0 like `Program.program`. A program holds as many start
+        times as the device has slots for, four on an ESP-TM2.
+        """
+        page = 0x60 | program
+        slots = (await self._get_schedule_page(page))["programStartInfo"]["startTime"]
+        await self._set_schedule_page(
+            page,
+            rainbird.encode_program_start_times(
+                [start.hour * 60 + start.minute for start in starts], len(slots)
+            ),
+        )
+
+    async def set_program_zone_duration(
+        self, program: int, zone: int, duration: datetime.timedelta
+    ) -> None:
+        """Set how long a program runs a zone, or 0 to leave the zone out.
+
+        This applies to program based devices (ESP-Me, ESP-TM2), with programs
+        numbered from 0 like `Program.program` and zones from 1 like
+        `ZoneDuration.zone`. The device stores the run times of two zones for
+        every program together, so the others are kept.
+        """
+        page = 0x80 | ((zone - 1) // 2)
+        entries = (await self._get_schedule_page(page))["durations"]
+        programs = len(entries[0]["durations"])
+        durations = [value for entry in entries for value in entry["durations"]]
+        durations[(zone - 1) % 2 * programs + program] = int(
+            duration.total_seconds() // 60
+        )
+        await self._set_schedule_page(
+            page, rainbird.encode_program_run_times(durations)
+        )
+
+    async def _get_schedule_page(self, page: int) -> dict[str, Any]:
+        """Return a decoded page of the schedule of a program based device."""
+        return await self._process_command(
+            lambda resp: resp, "RetrieveScheduleRequest", page
+        )
+
+    async def _set_schedule_page(self, page: int, body: str) -> None:
+        """Write a page of the schedule of a program based device."""
+        await self._process_command(
+            lambda resp: True, "SetSchedulePageRequest", f"{page:04X}{body}"
+        )
+
     async def test_command_support(self, command_id: int) -> bool:
         """Debugging command to test if the device supports the specified command."""
         return await self._process_command(

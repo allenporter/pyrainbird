@@ -1,4 +1,5 @@
 import unittest
+from collections.abc import Callable
 
 import pytest
 from parameterized import parameterized
@@ -9,6 +10,9 @@ from pyrainbird.exceptions import RainbirdCodingException
 from pyrainbird.rainbird import (
     decode,
     encode,
+    encode_program_info,
+    encode_program_run_times,
+    encode_program_start_times,
     encode_universal_schedule_commands,
     encode_zone_schedule,
 )
@@ -159,6 +163,67 @@ def test_encode_zone_schedule_invalid(kwargs: dict, message: str) -> None:
     """Test values a zone schedule cannot hold."""
     with pytest.raises(RainbirdCodingException, match=message):
         encode_zone_schedule(**kwargs)
+
+
+def test_encode_program_schedule_round_trip() -> None:
+    """Test that encoded program schedule pages decode back to the same values."""
+    info = encode_program_info(
+        days_of_week_mask=0x12,
+        period=3,
+        synchro=1,
+        permanent_days_off=5,
+        reserved=120,
+        frequency=ProgramFrequency.CYCLIC,
+    )
+    assert decode(f"A00011{info}")["programInfo"] == {
+        "program": 1,
+        "daysOfWeekMask": 0x12,
+        "period": 3,
+        "synchro": 1,
+        "permanentDaysOff": 5,
+        "reserved": 120,
+        "frequency": ProgramFrequency.CYCLIC,
+    }
+
+    starts = encode_program_start_times([4 * 60, 21 * 60], 4)
+    assert decode(f"A00061{starts}")["programStartInfo"] == {
+        "program": 1,
+        "startTime": [240, 1260, 0xFFFF, 0xFFFF],
+    }
+
+    run_times = encode_program_run_times([25, 0, 7, 20, 0, 0])
+    assert decode(f"A00081{run_times}")["durations"] == [
+        {"zone": 2, "durations": [25, 0, 7]},
+        {"zone": 3, "durations": [20, 0, 0]},
+    ]
+
+
+@pytest.mark.parametrize(
+    ("encoder", "kwargs", "message"),
+    [
+        (encode_program_start_times, {"starts": [0] * 5, "slots": 4}, "start times"),
+        (encode_program_start_times, {"starts": [1440], "slots": 4}, "time of day"),
+        (encode_program_run_times, {"durations": [0x10000]}, "run time"),
+        (
+            encode_program_info,
+            {
+                "days_of_week_mask": 0,
+                "period": 0,
+                "synchro": 0,
+                "permanent_days_off": 0,
+                "reserved": 100,
+                "frequency": 9,
+            },
+            "frequency",
+        ),
+    ],
+)
+def test_encode_program_schedule_invalid(
+    encoder: Callable[..., str], kwargs: dict, message: str
+) -> None:
+    """Test values a program schedule cannot hold."""
+    with pytest.raises(RainbirdCodingException, match=message):
+        encoder(**kwargs)
 
 
 def test_encode_universal_schedule_commands() -> None:

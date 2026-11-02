@@ -31,6 +31,7 @@ from pyrainbird.exceptions import (
     RainbirdAuthException,
     RainbirdConnectionError,
     RainbirdDeviceBusyException,
+    RainbirdDeviceNackError,
 )
 from pyrainbird.rainbird import encode_universal_schedule_commands
 
@@ -580,6 +581,88 @@ async def test_set_zone_schedule(
         r for r in fake_device.request_log if type(r).__name__ == "RequestLogEntry"
     ]
     assert requests[-1].raw_data == "2100010A18909090909002120000"
+
+
+async def test_set_program_days(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    fake_device: FakeRainbirdDevice,
+) -> None:
+    """Test setting the days of a program, keeping its other settings."""
+    fake_device.set_model("ESP_TM2")
+    # PGM A: Tuesday and Wednesday, period 6, synchro 2, 5 permanent days off,
+    # seasonal adjust 120
+    fake_device.schedule = {"0010": "A00010060602057800"}
+    controller = await rainbird_controller()
+
+    await controller.set_program_days(
+        0,
+        ProgramFrequency.CUSTOM,
+        days_of_week={DayOfWeek.MONDAY, DayOfWeek.THURSDAY},
+    )
+    await controller.set_program_days(0, ProgramFrequency.CYCLIC, period=4, synchro=1)
+
+    requests = [
+        r.raw_data
+        for r in fake_device.request_log
+        if type(r).__name__ == "RequestLogEntry" and r.raw_data.startswith("21")
+    ]
+    # The device rejects a period of 0, so the current one is kept
+    assert requests == ["210010120602057800", "210010060401057801"]
+
+
+async def test_set_program_start_times(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    fake_device: FakeRainbirdDevice,
+) -> None:
+    """Test setting the start times of a program."""
+    fake_device.set_model("ESP_TM2")
+    # PGM A: starts at 04:00, with four start time slots
+    fake_device.schedule = {"0060": "A0006000F0FFFFFFFFFFFF"}
+    controller = await rainbird_controller()
+
+    await controller.set_program_start_times(
+        0, [datetime.time(5, 30), datetime.time(20, 30)]
+    )
+
+    requests = [
+        r for r in fake_device.request_log if type(r).__name__ == "RequestLogEntry"
+    ]
+    assert requests[-1].raw_data == "210060014A04CEFFFFFFFF"
+
+
+async def test_set_program_zone_duration(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    fake_device: FakeRainbirdDevice,
+) -> None:
+    """Test setting how long a program runs a zone, keeping the other run times."""
+    fake_device.set_model("ESP_TM2")
+    # Zones 3 and 4: PGM A runs zone 3 for 7 minutes and zone 4 for 20 minutes
+    fake_device.schedule = {"0081": "A00081000700000000001400000000"}
+    controller = await rainbird_controller()
+
+    await controller.set_program_zone_duration(1, 4, datetime.timedelta(minutes=15))
+
+    requests = [
+        r for r in fake_device.request_log if type(r).__name__ == "RequestLogEntry"
+    ]
+    assert requests[-1].raw_data == "2100810007000000000014000F0000"
+
+
+async def test_set_program_start_times_not_supported(
+    rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
+    fake_device: FakeRainbirdDevice,
+) -> None:
+    """Test a device without the schedule pages is left unchanged."""
+    fake_device.set_model("ESP_ME3")
+    controller = await rainbird_controller()
+
+    with pytest.raises(RainbirdDeviceNackError):
+        await controller.set_program_start_times(0, [datetime.time(4, 0)])
+
+    requests = [
+        r for r in fake_device.request_log if type(r).__name__ == "RequestLogEntry"
+    ]
+    assert not any(r.raw_data.startswith("21") for r in requests if r.raw_data)
 
 
 async def test_set_water_budget(

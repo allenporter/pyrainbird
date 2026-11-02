@@ -54,6 +54,9 @@ _PROGRAM_FREQUENCY: dict[int, int] = {
     5: ProgramFrequency.ODD,
 }
 
+# The value program based devices use for the start time slots left unused.
+_PROGRAM_UNUSED_START = 0xFFFF
+
 # Universal controllers (ARC8, RC2, ESP-ME3, ESP-2WIRE, LX*) store schedules in
 # an indexed Controller Data Table (CDT) accessed via SIP command 0x0C -> 0x8C
 # (batch read 0x070B -> 0x080B). Each table is addressed by a 2-byte little-endian
@@ -240,6 +243,65 @@ def encode_zone_schedule(
         [duration, *slots, frequency_code, days_of_week_mask & 0x7F, period, synchro]
     )
     return body.hex().upper()
+
+
+def encode_program_info(
+    days_of_week_mask: int,
+    period: int,
+    synchro: int,
+    permanent_days_off: int,
+    reserved: int,
+    frequency: int,
+) -> str:
+    """Encode the information page of a program of a program based device.
+
+    This is the counterpart of the `programInfo` returned by `decode_schedule`
+    and is passed to a `SetSchedulePageRequest`.
+    """
+    if frequency not in set(ProgramFrequency):
+        raise RainbirdCodingException(f"Unsupported frequency: {frequency}")
+    body = bytes(
+        [
+            days_of_week_mask & 0x7F,
+            period,
+            synchro,
+            permanent_days_off,
+            reserved,
+            frequency,
+        ]
+    )
+    return body.hex().upper()
+
+
+def encode_program_start_times(starts: list[int], slots: int) -> str:
+    """Encode the start times page of a program of a program based device.
+
+    This is the counterpart of the `programStartInfo` returned by
+    `decode_schedule`. Start times are in minutes from midnight, and the slots
+    of the program they do not fill are left unused.
+    """
+    if len(starts) > slots:
+        raise RainbirdCodingException(
+            f"A program holds at most {slots} start times: {starts}"
+        )
+    for start in starts:
+        if not 0 <= start < _MINUTES_PER_DAY:
+            raise RainbirdCodingException(f"Start time must be a time of day: {start}")
+    values = [*starts, *[_PROGRAM_UNUSED_START] * (slots - len(starts))]
+    return "".join(f"{value:04X}" for value in values)
+
+
+def encode_program_run_times(durations: list[int]) -> str:
+    """Encode a run times page of a program based device.
+
+    This is the counterpart of the `durations` returned by `decode_schedule`:
+    the run time in minutes of each program for the first zone of the page,
+    followed by those of the second zone.
+    """
+    for duration in durations:
+        if not 0 <= duration <= 0xFFFF:
+            raise RainbirdCodingException(f"Unsupported run time: {duration}")
+    return "".join(f"{duration:04X}" for duration in durations)
 
 
 def decode_queue(data: str, cmd_template: dict[str, Any]) -> dict[str, Any]:
@@ -562,9 +624,12 @@ def encode_command(command_set: dict[str, Any], *args) -> str:
         frame = _UNIVERSAL_REQUEST_HEADER + len(inner).to_bytes(2, "little") + inner
         return frame.hex().upper()
     if not (length := command_set.get(LENGTH)):
-        raise RainbirdCodingException(
-            f"Unable to encode command missing length: {command_set}"
-        )
+        # The body of a command without a fixed length is already encoded
+        if len(args) != 1 or not isinstance(args[0], str):
+            raise RainbirdCodingException(
+                f"Unable to encode command missing length: {command_set}"
+            )
+        return cmd_code + args[0].upper()
     if len(args) > length:
         raise RainbirdCodingException(
             f"Too many parameters. {length} expected: {command_set}"
