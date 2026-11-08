@@ -344,14 +344,22 @@ class LegacyProgramDevice(BaseControllerDevice):
                 f"{self.mv_on_byte & 0xFF:02X}"
             )
         entries_hex = ""
-        for idx in range(11):
+        start_idx = (page - 1) * 11
+        for offset in range(11):
+            idx = start_idx + offset
             if idx < len(self.queued_entries):
                 ent = self.queued_entries[idx]
-                stn = int(ent.get("station_id", 0)) & 0x0F
                 prog = int(ent.get("program_id", -1))
-                prog_nibble = (prog + 1) & 0x0F if prog >= 0 else 0
+                if is_14b_queue:
+                    stn = int(ent.get("station_id", 0)) & 0x0F
+                    prog_bits = (prog + 1) & 0x0F if prog >= 0 else 0
+                    header_byte = (prog_bits << 4) | stn
+                else:
+                    stn = int(ent.get("station_id", 0)) & 0x1F
+                    prog_bits = (prog + 1) & 0x07 if prog >= 0 else 0
+                    header_byte = (prog_bits << 5) | stn
                 rem = int(ent.get("remaining_seconds", 0)) & 0xFFFF
-                entries_hex += f"{(prog_nibble << 4) | stn:02X}{rem:04X}"
+                entries_hex += f"{header_byte:02X}{rem:04X}"
             else:
                 entries_hex += "000000"
         return f"BB{page & 0xFF:02X}{entries_hex}"

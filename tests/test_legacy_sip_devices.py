@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pyrainbird import rainbird
 from pyrainbird.testing.devices.lcr import LCRZoneDevice, ST8ZoneDevice
 from pyrainbird.testing.devices.legacy_sip import (
     LegacyProgramDevice,
@@ -67,6 +68,15 @@ def test_program_centric_schedules_and_current_queue() -> None:
     assert tm2v3.active_station == 1
     assert tm2v3.remaining_runtime_sec == 720  # 10 min * 60 * 120% = 720s
     assert tm2v3.auto_queue_count == 2
+    tm2_q1 = tm2v3.handle_sip("3B01")
+    assert tm2_q1.startswith("BB012102D0220168")
+    assert rainbird.decode(tm2_q1) == {
+        "type": "CurrentQueueResponse",
+        "zones": [
+            {"zone": 1, "seconds": 720},
+            {"zone": 2, "seconds": 360},
+        ],
+    }
     assert tm2v3.handle_sip("4200") == "0142"
     assert tm2v3.active_station == 2
     assert tm2v3.remaining_runtime_sec == 360  # 5 min * 60 * 120% = 360s
@@ -86,6 +96,14 @@ def test_program_centric_schedules_and_current_queue() -> None:
     me = LegacyProgramDevice("ESP_ME")
     assert me.handle_sip("210060012C0474FFFFFFFFFFFFFFFF") == "0121"
     assert me.handle_sip("200060") == "A00060012C0474FFFFFFFFFFFFFFFF"
+    for stn in range(1, 13):
+        assert me.handle_sip(f"4B{stn + 10:04X}05") == "014B"
+    # Stations 11..21 on page 1 (5-bit station IDs >= 16 preserved) and station 22 on page 2
+    me_q1 = me.handle_sip("3B01")
+    assert rainbird.decode(me_q1)["zones"][5] == {"zone": 16, "seconds": 300}
+    assert rainbird.decode(me_q1)["zones"][10] == {"zone": 21, "seconds": 300}
+    me_q2 = me.handle_sip("3B02")
+    assert me_q2.startswith("BB0216012C")
 
     # BLE schedule subpages (6-byte page 0000, 8-byte program config, calendar days off 0084/0085)
     bat = LegacyProgramDevice("ESP_BAT_PRO")
@@ -96,3 +114,8 @@ def test_program_centric_schedules_and_current_queue() -> None:
     days_off_15b = "0C191A" + "000000" * 4
     assert bat.handle_sip("210085" + days_off_15b) == "0121"
     assert bat.handle_sip("200085") == "A00085" + days_off_15b
+    # BLE CBOS queue page 1 packs 4-bit program nibble (1..12) in upper nibble + 4-bit station in lower nibble
+    bat.queued_entries = [
+        {"station_id": 3, "program_id": 9, "remaining_seconds": 600},
+    ]
+    assert bat.handle_sip("3B01").startswith("BB01A30258")
