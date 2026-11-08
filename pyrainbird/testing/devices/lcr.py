@@ -97,21 +97,45 @@ class LCRZoneDevice(BaseControllerDevice):
             self.seasonal_adjust = vals[0]
         return self._ack(d)
 
+    def _pending_queue_entries(self) -> list[dict[str, int]]:
+        if self.active_station <= 0:
+            return []
+        if self.queued_entries:
+            return list(self.queued_entries[1:])
+        return [
+            {
+                "station_id": int(item["station"]),
+                "remaining_seconds": int(item.get("seconds", 0)),
+                "irrigation_type": int(item.get("irrigation_type", 2)),
+            }
+            for item in self.queue
+            if isinstance(item, dict)
+        ]
+
     def _handle_current_queue(self, page: int) -> str:
-        """Format LCR/ST8 10-byte queue page 0 response and 4-byte entry pages (0x3B -> 0xBB)."""
+        """Format LCR/ST8 10-byte queue page 0 response and 4-byte pending entry pages (0x3B -> 0xBB)."""
+        pending = self._pending_queue_entries()
         if page == 0:
-            queued = self.manual_queue_count + self.auto_queue_count
             active_flag = 1 if self.active_station > 0 else 0
+            queued = len(pending) if active_flag else 0
+            if not active_flag:
+                irrig_type = 0
+            elif self.queued_entries and "irrigation_type" in self.queued_entries[0]:
+                irrig_type = int(self.queued_entries[0]["irrigation_type"]) & 0xFF
+            elif self.manual_queue_count > 0 or self.active_program == 0xFF:
+                irrig_type = 2
+            else:
+                irrig_type = 1
             return (
                 f"BB00{queued & 0xFF:02X}{active_flag:02X}0000"
-                f"{self.active_station & 0xFF:02X}01"
+                f"{self.active_station & 0xFF:02X}{irrig_type:02X}"
                 f"{self.remaining_runtime_sec & 0xFFFF:04X}"
             )
         entries_hex = ""
-        count = max(2, len(self.queued_entries))
+        count = max(2, len(pending))
         for idx in range(count):
-            if idx < len(self.queued_entries):
-                ent = self.queued_entries[idx]
+            if idx < len(pending):
+                ent = pending[idx]
                 irrig_type = int(ent.get("irrigation_type", 1)) & 0xFF
                 stn = int(ent.get("station_id", 0)) & 0xFF
                 rem = int(ent.get("remaining_seconds", 0)) & 0xFFFF

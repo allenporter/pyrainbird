@@ -331,12 +331,24 @@ class BaseControllerDevice:
     def _enqueue_manual_run(self, stn: int, dur_sec: int) -> None:
         if self.active_station == 0:
             self.active_station = stn
+            self.active_program = 0xFF
             self.remaining_runtime_sec = dur_sec
             self.manual_queue_count = 1
+            self.auto_queue_count = 0
+            self.queue.clear()
+            self.queued_entries.clear()
         else:
-            self.queue.append({"station": stn, "seconds": dur_sec})
+            self.queue.append(
+                {"station": stn, "seconds": dur_sec, "irrigation_type": 2}
+            )
             self.manual_queue_count += 1
-        self.queued_entries.append({"station_id": stn, "remaining_seconds": dur_sec})
+        self.queued_entries.append(
+            {
+                "station_id": stn,
+                "remaining_seconds": dur_sec,
+                "irrigation_type": 2,
+            }
+        )
 
     def _valid_manual_run(self, stn: int, dur_sec: int) -> bool:
         p = self.profile
@@ -356,11 +368,24 @@ class BaseControllerDevice:
     def _op_test_all_stations_seconds(self, d: str, bl: int, _t: str | None) -> str:
         if bl != 3:
             return self._nak(d, 2)
+        dur_sec = int(d[2:6], 16)
         stns = sorted(self.available_stations)
-        if stns:
-            self.active_station = stns[0]
-            self.remaining_runtime_sec = int(d[2:6], 16)
-            self.manual_queue_count = len(stns)
+        if stns and dur_sec > 0:
+            self.active_station, self.active_program = stns[0], 0xFF
+            self.remaining_runtime_sec = dur_sec
+            self.manual_queue_count, self.auto_queue_count = len(stns), 0
+            self.queued_entries = [
+                {
+                    "station_id": s,
+                    "remaining_seconds": dur_sec,
+                    "irrigation_type": 2,
+                }
+                for s in stns
+            ]
+            self.queue = [
+                {"station": s, "seconds": dur_sec, "irrigation_type": 2}
+                for s in stns[1:]
+            ]
         return self._ack(d)
 
     def _op_pause_irrigation(self, d: str, bl: int, _t: str | None) -> str:
@@ -456,11 +481,20 @@ class BaseControllerDevice:
             return False
         self.active_station, self.remaining_runtime_sec = runnable[0]
         self.queued_entries = [
-            {"station_id": s, "program_id": prog, "remaining_seconds": sec}
+            {
+                "station_id": s,
+                "program_id": prog,
+                "remaining_seconds": sec,
+                "irrigation_type": 1,
+            }
             for s, sec in runnable
         ]
+        self.manual_queue_count = 0
         self.auto_queue_count = len(runnable)
-        self.queue = [{"station": s, "seconds": sec} for s, sec in runnable[1:]]
+        self.queue = [
+            {"station": s, "seconds": sec, "irrigation_type": 1}
+            for s, sec in runnable[1:]
+        ]
         return True
 
     def _op_manually_run_station(self, d: str, bl: int, _t: str | None) -> str:
@@ -469,18 +503,47 @@ class BaseControllerDevice:
         stn, mins = int(d[2:6], 16), int(d[6:8], 16)
         if not self._valid_manual_run(stn, mins * 60):
             return self._nak(d, 4)
-        self.active_station, self.active_program = stn, 0xFF
-        self.remaining_runtime_sec, self.manual_queue_count = mins * 60, 1
+        self.queue.clear()
+        self.auto_queue_count = 0
+        if mins > 0:
+            dur_sec = mins * 60
+            self.active_station, self.active_program = stn, 0xFF
+            self.remaining_runtime_sec, self.manual_queue_count = dur_sec, 1
+            self.queued_entries = [
+                {
+                    "station_id": stn,
+                    "remaining_seconds": dur_sec,
+                    "irrigation_type": 2,
+                }
+            ]
+        else:
+            self.active_station = self.remaining_runtime_sec = (
+                self.manual_queue_count
+            ) = 0
+            self.queued_entries.clear()
         return self._ack(d)
 
     def _op_test_all_stations(self, d: str, bl: int, _t: str | None) -> str:
         if bl != 2:
             return self._nak(d, 2)
+        dur_sec = int(d[2:4], 16) * 60
         stns = sorted(self.available_stations)
-        if stns:
-            self.active_station = stns[0]
-            self.remaining_runtime_sec = int(d[2:4], 16) * 60
-            self.manual_queue_count = len(stns)
+        if stns and dur_sec > 0:
+            self.active_station, self.active_program = stns[0], 0xFF
+            self.remaining_runtime_sec = dur_sec
+            self.manual_queue_count, self.auto_queue_count = len(stns), 0
+            self.queued_entries = [
+                {
+                    "station_id": s,
+                    "remaining_seconds": dur_sec,
+                    "irrigation_type": 2,
+                }
+                for s in stns
+            ]
+            self.queue = [
+                {"station": s, "seconds": dur_sec, "irrigation_type": 2}
+                for s in stns[1:]
+            ]
         return self._ack(d)
 
     def _op_current_queue(self, d: str, bl: int, _t: str | None) -> str:
@@ -526,10 +589,15 @@ class BaseControllerDevice:
             return self._nak(d, 2)
         if len(self.queued_entries) > 1:
             self.queued_entries.pop(0)
+            if self.queue:
+                self.queue.pop(0)
             nxt = self.queued_entries[0]
             self.active_station = int(nxt["station_id"])
             self.remaining_runtime_sec = int(nxt["remaining_seconds"])
-            self.manual_queue_count = len(self.queued_entries)
+            if self.active_program == 0xFF:
+                self.manual_queue_count = len(self.queued_entries)
+            else:
+                self.auto_queue_count = len(self.queued_entries)
         elif self.queue:
             item = self.queue.pop(0)
             self.active_station = int(

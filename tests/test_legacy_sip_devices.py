@@ -26,28 +26,35 @@ def test_lcr_zone_schedule_and_st8_rain_sensor() -> None:
     assert rzxe.handle_sip("33FF00780064006400640064006400640064") == "0133"
     assert rzxe.handle_sip("32FF") == "B2FF00780064006400640064006400640064"
 
-    # LCR queue page 0 (10B) and page 1 (4B station entries) + ManuallyRunProgram (0x38)
+    # LCR queue page 0 (10B) and page 1 (4B pending station entries)
+    assert rzxe.handle_sip("3B00") == "BB000000000000000000"
+    assert rzxe.handle_sip("3900010A") == "0139"
+    assert rzxe.handle_sip("3B00") == "BB000001000001020258"
+    assert rzxe.handle_sip("40") == "0140"
+    assert rzxe.handle_sip("3B00") == "BB000000000000000000"
+
+    # ManuallyRunProgram (0x38) with Zone 2 (20m * 100% = 1200s) and Zone 3 (10m * 100% = 600s)
+    assert rzxe.handle_sip("2100030A219090909090037F0302") == "0121"
     assert rzxe.handle_sip("3800") == "0138"
     assert rzxe.active_station == 2
     assert rzxe.remaining_runtime_sec == 1200
     rzxe_q0 = rzxe.handle_sip("3B00")
     assert rzxe_q0 == "BB0001010000020104B0"
     rzxe_q1 = rzxe.handle_sip("3B01")
-    assert rzxe_q1.startswith("BB01010204B0")
-    assert len(rzxe_q1) >= 20
+    assert rzxe_q1 == "BB010103025800000000"
 
     st8 = ST8ZoneDevice("ST8X_WF2")
     assert st8.handle_sip("21000080") == "0121"
     assert st8.rain_sensor_bypassed is True
     assert st8.handle_sip("200000") == "A0000080"
 
-    # ST8 10-byte queue page 0 response (0x3B00 -> 0xBB00...) and page 1 entries
+    # ST8 10-byte queue page 0 response (0x3B00 -> 0xBB00...) and pending-only page 1 entries
     st8.handle_sip("4B000305")
     st8.handle_sip("4B00040A")
     q_resp = st8.handle_sip("3B00")
-    assert q_resp == "BB00020100000301012C"
+    assert q_resp == "BB00010100000302012C"
     q_page1 = st8.handle_sip("3B01")
-    assert q_page1 == "BB010103012C01040258"
+    assert q_page1 == "BB010204025800000000"
 
 
 def test_program_centric_schedules_and_current_queue() -> None:
