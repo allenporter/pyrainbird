@@ -198,6 +198,32 @@ class FlowAndExtendedSIPMixin(UpgradedTM2Device):
 class BLEBatteryDevice(FlowAndExtendedSIPMixin):
     """BLE CBOS battery-powered controller emulator for ESP-BAT-BT* and ESP-BAT-PRO*."""
 
+    def _build_sip_handlers(self) -> dict[str, SipHandler]:
+        handlers = super()._build_sip_handlers()
+        handlers["32"] = self._op_monthly_water_budget
+        handlers["33"] = self._op_set_monthly_water_budget
+        return handlers
+
+    def _op_monthly_water_budget(self, d: str, bl: int, _t: str | None) -> str:
+        """Handle BLE CBOS 4-byte MonthlyWaterBudget query (0x32 <month_0..11> -> 0xB2)."""
+        if bl != 2:
+            return self._nak(d, 2)
+        month = int(d[2:4], 16)
+        if month >= 12:
+            return self._nak(d, 4)
+        pct = self.monthly_water_budget.get(month, 100)
+        return f"B2{month:02X}{pct & 0xFFFF:04X}"
+
+    def _op_set_monthly_water_budget(self, d: str, bl: int, _t: str | None) -> str:
+        """Handle BLE CBOS SetMonthlyWaterBudget command (0x33 <month_0..11> <pct> -> 0x0133)."""
+        if bl != 4:
+            return self._nak(d, 2)
+        month = int(d[2:4], 16)
+        if month >= 12:
+            return self._nak(d, 4)
+        self.monthly_water_budget[month] = int(d[4:8], 16)
+        return self._ack(d)
+
     def handle_gatt_write(
         self, gatt_write_uuid: str, payload_hex: str
     ) -> tuple[str, str]:
@@ -262,3 +288,9 @@ class BLEBatteryDevice(FlowAndExtendedSIPMixin):
 
 class SolemTBOSDevice(BLEBatteryDevice):
     """Solem TBOS-BT / TBOS-BT-LT controller emulator supporting F4780001/863A0001 Solem frames."""
+
+    def _build_sip_handlers(self) -> dict[str, SipHandler]:
+        handlers = super()._build_sip_handlers()
+        handlers.pop("32", None)
+        handlers.pop("33", None)
+        return handlers
