@@ -181,27 +181,30 @@ If runtime > 0, the station is marked as enabled.
 
 ## Queue Response Parsing (Command `3B` / Response `BB`)
 
-### Legacy ESP-ME Queue (`interpretCurrentQueueResponse`)
+### ESP-TM2 / Legacy ESP-ME Queue (12 bytes / 24 hex chars)
 
-#### Page 0 — Active Irrigation
+#### Page 0 — Active Irrigation (`3B 00`)
 
+```text
+BB 00 QQ 00 RRRR 0000 SS PP 0001
 ```
-BB 00 .... RRRR .... SS PP ....
-```
+Example: `BB00050005D0000001000001` (5 stations queued, `0x05D0` = 1488 seconds remaining on Station 1, Program A).
 
-| Offset | Field | Size | Description |
-|--------|-------|------|-------------|
-| 2-4 | page | 2 | `00` |
-| 8-12 | remainingTime | 4 | Remaining time (big-endian, minutes) |
-| 16-18 | station | 2 | Active station number |
-| 18-20 | program | 2 | Active program number. Capped to maxPrograms |
+| Hex Offset | Field | Size (hex chars) | Description |
+|------------|-------|------------------|-------------|
+| 0–2 | `BB` | 2 | `CurrentQueueResponse` code |
+| 2–4 | `page` | 2 | Page number (`00`) |
+| 4–6 | `queuedZones` | 2 | Number of queued stations (`QQ`) |
+| 8–12 | `remainingTime` | 4 | Remaining runtime in **seconds** (big-endian `RRRR`, e.g. `05D0` = 1488 s, `0167` = 359 s) |
+| 16–18 | `station` | 2 | Active station number (`SS`, `00` = none) |
+| 18–20 | `program` | 2 | Active program number (`PP`, capped to `maxPrograms`) |
 
 **Active irrigation**: `remainingTime > 0 AND (station > 0 OR program > 0)`
 
-#### Page 1+ — Pending Queue Entries
+#### Page 1+ — Pending Queue Entries (35 bytes / 70 hex chars)
 
 11 entries per page, each 6 hex chars (3 bytes):
-```
+```text
 [S1 R1R1] [S2 R2R2] ...
 ```
 - `SS` (2 chars) = station number (masked: `& 0x1F` = lower 5 bits)
@@ -210,39 +213,55 @@ BB 00 .... RRRR .... SS PP ....
 
 ### Upgraded TM2 / ME3 Queue (`interpretCurrentQueueResponseME2`)
 
-#### Page 0 — Running State
+#### Page 0 — Running State (7 bytes / 14 hex chars)
+```text
+BB 00 TT SS RRRRRR
 ```
-BB 00 TT SS
-```
-- `TT` = irrigation type
-- `SS` = stations running count
+- `TT` (offset 4–6) = irrigation type (`01` = program, `02` = manual)
+- `SS` (offset 6–8) = stations running count
 
 #### Page 1 — Pending Entries (old format, 8 entries × 8 chars)
-```
+```text
 [PP SS RRRR] ×8
 ```
-- `PP` = program, `SS` = station, `RRRR` = remaining time
+- `PP` = program (`01`..`04` for A..D, `05` for manual), `SS` = station, `RRRR` = remaining time in seconds (little-endian / byte-swapped)
 - **Byte swap on remaining time**: `((R & 0xFF00) >> 8) | ((R & 0x00FF) << 8)`
 
 #### Page 1 — Pending Entries (new ME3 format, response length = 100 chars)
-```
+```text
 [PP SS RRRR 0000] ×8
 ```
 12 hex chars per entry (6 bytes), same byte-swap on remaining time.
 
 #### Page 2+ — Simple Pending Entries (17 entries × 4 chars)
-```
+```text
 [PP SS] ×17
 ```
 - Program and station only, no remaining time.
 
 ---
 
+## Hardware-Verified Examples (ESP-TM2 + LNK2, [Discussion #611](https://github.com/allenporter/pyrainbird/discussions/611#discussioncomment-19031360))
+
+| Operation | Request | Response | Decoded Meaning |
+|-----------|---------|----------|-----------------|
+| Manual run Zone 1 (6 min) | `39 00 01 06` | `01 39` | ACK `ManuallyRunStationRequest` (page `00`, zone `01`, `06` min) |
+| Stack manual run Zone 1 (1 min) | `4B 00 01 01` | `01 4B` | ACK `StackManuallyRunStationRequest` (page `00`, zone `01`, `01` min) |
+| Stop irrigation | `40` | `01 40` | ACK `StopIrrigationRequest` |
+| Current date | `12` | `92 13 A7 EA` | Day `0x13` = 19, Month `0xA` = 10, Year `0x7EA` = 2026 (`2026-10-19`) |
+| Current time | `10` | `90 0C 0A 28` | `12:10:40` (`0x0C` = 12, `0x0A` = 10, `0x28` = 40) |
+| Active stations (page 0) | `3F 00` | `BF 00 01 00 00 00` | Zone 1 active (`0x01000000` little-endian bitmask) |
+| Station errors (pages 0–2) | `3D 00`..`02` | `BD 00 00 00 00 00` | Page `00` echoed, no station errors |
+| Water budget (Program A) | `30 00` | `B0 00 00 64` | Program `00` (A), `0x0064` = 100% |
+| Combined state / Queue | `4C` / `3B 00` | `CC ...` / `BB ...` | Reports active zone `01` and remaining runtime in **seconds** (`0x0167` = 359 s at start of 6-min run) |
+
+---
+
 ## Key Implementation Notes
 
 1. **Station numbering**: Stations are 1-indexed throughout. Station 0 means "none".
-2. **Runtime units**: All runtimes in schedule pages are in **minutes**. Queue remaining times are also minutes.
-3. **Runtime byte-swapping**: The upgraded TM2 family swaps bytes on queue remaining time fields. This is a critical difference from legacy ESP-ME.
+2. **Runtime units**: Runtimes in schedule pages (`20`/`A0`, `21`) and manual run commands (`39`, `4B`) are in **minutes**. Remaining runtime in `CurrentQueueResponse` (`BB`) and `CombinedControllerStateResponse` (`CC`) is in **seconds**.
+3. **Runtime byte-swapping**: The ME3 queue Page 1 format swaps bytes (little-endian) on queue remaining time fields, whereas the 12-byte TM2/ME Page 0 format (`BB 00 ...`) is big-endian.
 4. **Page number mapping**: `floor(station / 2) + 128` for runtime pages. Programs map to pages 16+ and 96+.
 5. **Program numbering**: Programs are 1-indexed in the domain model but the page offset uses 0-indexed math (page 16 = program 1, page 96 = program 1).
-6. **ESP-TM2 vs ESP-ME**: Only difference is `maxPrograms` (3 vs 4) and `runTimePages` (6 vs 11). All parsing logic is shared between the two families.
+6. **ESP-TM2 vs ESP-ME**: Only difference in legacy schedule pages is `maxPrograms` (3 vs 4) and `runTimePages` (6 vs 11). All parsing logic is shared between the two families.

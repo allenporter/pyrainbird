@@ -1,10 +1,10 @@
 # RainBird SIP Protocol — Common Specification
 
-> Based on analysis of RainBird controller behavior and companion app v2.17.14
+> Based on analysis of RainBird controller behavior, companion app v2.17.14, LNK2 firmware v4.136.0 (`sip_manchester.cpp`), and hardware captures ([Discussion #611](https://github.com/allenporter/pyrainbird/discussions/611))
 
 ## Transport Layer
 
-SIP commands are binary data encoded as **hex strings** and transported via **JSON-RPC** over HTTP or WebSocket.
+SIP commands are binary data encoded as **hex strings** when transported over the network via **JSON-RPC** (HTTP or WebSocket), and transmitted as **framed binary bytes** over the 5-pin accessory port between the LNK/LNK2 WiFi module and the irrigation controller faceplate.
 
 ### JSON-RPC Wrapper
 
@@ -40,6 +40,59 @@ Response:
 - The first byte of a command/response is the **command code** (e.g., `02` = ModelAndVersionRequest)
 - Positions in the schema below are in **nibble offsets** (hex char positions)
 - Lengths in the schema are in **nibble counts** (hex char counts)
+
+### Physical Layer & Serial Wire Framing (LNK / LNK2 Accessory Port)
+
+Between the LNK/LNK2 WiFi module and the controller faceplate (verified via oscilloscope capture on ESP-TM2 + LNK2 and LNK2 firmware `./components/ctrl_comm/sip_manchester.cpp`):
+
+#### 5-Pin Accessory Connector Pinout
+| Pin | Signal | Direction / Notes |
+|-----|--------|-------------------|
+| J1 | 24 VAC | Power |
+| J2 | Controller TX | Controller to LNK2 ESP32 GPIO 25 (via optocoupler) |
+| J3 | Signal Return | Common reference for optocoupler LEDs |
+| J4 | Controller RX | LNK2 ESP32 GPIO 26 to Controller (via optocoupler) |
+| J5 | 24 VAC | Power |
+
+#### Baseline Manchester Encoding (2400 bit/s)
+- **Bit rate**: 2400 bit/s (half-bit period $\approx 208\ \mu\text{s}$, full-bit period $\approx 416\ \mu\text{s}$; LNK2 RMT receiver discriminates half vs. full bit widths using a 391-tick threshold `0x187`).
+- **Line coding**: Differential/Manchester encoding, MSB first, no start/stop/parity bits, line idles low (`0`):
+  - `1` = High-then-Low transition (`10`)
+  - `0` = Low-then-High transition (`01`)
+
+#### Wire Frame Structure
+```text
+Module -> Controller (TX):  F5 F5    1C <len> <payload...> <chk> 1D
+Controller -> Module (RX):  F5 F5 F5 1C <len> <payload...> <chk> 1D
+```
+- **Sync Preamble (`F5`)**: 2 bytes (`F5 F5`) from LNK module to controller; 3 bytes (`F5 F5 F5`) from controller to LNK module. The receiver synchronizes its byte boundary on `0xF5` before waiting for `0x1C`.
+- **Start of Frame (`1C`)**: Unescaped byte `0x1C` marks the start of the frame.
+- **Length (`<len>`)**: 1 byte — number of unescaped SIP `<payload>` bytes (matches the JSON-RPC `length` field).
+- **Payload (`<payload...>`)**: Raw SIP command or response bytes (matches the JSON-RPC `data` hex string).
+- **Checksum (`<chk>`)**: 1 byte — 8-bit unsigned sum of the unescaped `<len>` byte and all unescaped `<payload>` bytes:
+  $$\text{chk} = \left(\text{len} + \sum_{i} \text{payload}[i]\right) \bmod 256$$
+- **End of Frame (`1D`)**: Unescaped byte `0x1D` marks the end of the frame.
+
+#### Byte Stuffing (Escape Sequences)
+Because `0x1C` (STX) and `0x1D` (ETX) are framing delimiters, any occurrence of `0x1B`, `0x1C`, or `0x1D` inside `<len>`, `<payload>`, or `<chk>` is escaped on the wire using `0x1B` (ESC):
+
+| Unescaped Byte | Wire Representation | Meaning |
+|----------------|---------------------|---------|
+| `0x1C` | `1B 01` | Escaped `0x1C` (STX) |
+| `0x1B` | `1B 02` | Escaped `0x1B` (ESC) |
+| `0x1D` | `1B 03` | Escaped `0x1D` (ETX) |
+
+> **Note**: Length and checksum calculations are performed on the **unescaped** bytes before TX byte-stuffing / after RX unescaping.
+
+#### High-Speed UART Mode & Inter-Controller Handshake
+LNK2 firmware also includes a secondary UART transport driver on UART2 (GPIO 26 TX, GPIO 25 RX):
+- Negotiated via `09` (`AlternateBitRateSupportRequest` / `0A`) or `0D` / `0E` baud-rate negotiation commands.
+- Uses `1C` (STX), `1D` (ETX), and the same `1B 01` / `1B 02` / `1B 03` byte-stuffing rules, but replaces the 1-byte length with a 2-byte little-endian length and replaces the additive checksum with an 8-bit table-driven CRC.
+- During link initialization, LNK2 tests command support (`04 04` → `84 04 01`) and can perform a challenge-response handshake using commands `06` (response `86`) and `07` (response `87`).
+
+#### LNK2 Background Polling Sequence
+When connected to a controller (such as ESP-TM2), the LNK2 module periodically polls controller state in the background (~every 10 seconds when idle, ~every 1 second while irrigating) to synchronize state with the Rain Bird cloud (`0xF9` binary property reports):
+`12` → `3F 00` → `3F 01` → `3D 00`..`02` → `36` → `3E` → `4A 01` → `30 00`..`02` → `4C` → `3B 00` → `0B` → `10`.
 
 ---
 
@@ -78,7 +131,7 @@ These commands are defined in the controller's embedded command schema (`sipcomm
 
 | Command | Code | Response | Description |
 |---------|------|----------|-------------|
-| AlternateBitRateSupportRequest | `09` | — | Bit rate support check |
+| AlternateBitRateSupportRequest | `09` | `0A` | Bit rate support check / negotiation |
 | ControllerFirmwareVersionRequest | `0B` | `8B` | Get firmware version |
 | UniversalMessageRequest | `0C` | `8C` | **Universal/CDT message transport** |
 | SetTimeRequest | `11` | `01` | Set current time |
@@ -89,7 +142,8 @@ These commands are defined in the controller's embedded command schema (`sipcomm
 | ZonesSeasonalAdjustFactorSet | `33` | `01` | Set per-zone seasonal adjust |
 | RainDelaySetRequest | `37` | `01` | Set rain delay |
 | ManuallyRunProgramRequest | `38` | `01` | Run program |
-| CurrentStationErrorRequest | `3D` | — | Get station error (auto-increment) |
+| CurrentQueueRequest | `3B` | `BB` | Get current active / queued station status |
+| CurrentStationErrorRequest | `3D` | `BD` | Get station electrical/short/open error bitmask (paged `3D PP` on ESP-TM2/ME3) |
 | CurrentControllerStateSet | `49` | `01` | Set controller state |
 | StackManuallyRunStationRequest | `4B` | `01` | Stack manual station |
 | CombinedControllerStateRequest | `4C` | `CC` | Combined state request |
@@ -160,7 +214,16 @@ These commands are defined in the controller's embedded command schema (`sipcomm
 
 | Field | Position | Length | Description |
 |-------|----------|--------|-------------|
-| serialNumber | 2 | 16 | Controller serial number |
+| serialNumber | 2 | 16 | Controller serial number (note: ESP-RZXe hardware returns `0000000000000000`) |
+
+### `8B` — ControllerFirmwareVersionResponse
+- **Length**: 5 bytes
+
+| Field | Position | Length | Description |
+|-------|----------|--------|-------------|
+| major | 2 | 2 | Firmware major version |
+| minor | 4 | 2 | Firmware minor version |
+| patch | 6 | 4 | Firmware patch / build version |
 
 ### `90` — CurrentTimeResponse
 - **Length**: 4 bytes
@@ -203,6 +266,14 @@ These commands are defined in the controller's embedded command schema (`sipcomm
 |-------|----------|--------|-------------|
 | delaySetting | 2 | 4 | Rain delay in days |
 
+### `BD` — CurrentStationErrorResponse
+- **Length**: 6 bytes on paged controllers (`3D PP` → `BD PP EEEEEEEE`, e.g. ESP-TM2 / ESP-ME3)
+
+| Field | Position | Length | Description |
+|-------|----------|--------|-------------|
+| pageNumber | 2 | 2 | Echo of requested page (`00`..`02`) |
+| stationErrors | 4 | 8 | Bitmask of station electrical/short errors (`00000000` = no errors) |
+
 ### `BE` — CurrentRainSensorStateResponse
 - **Length**: 2 bytes
 
@@ -223,7 +294,9 @@ These commands are defined in the controller's embedded command schema (`sipcomm
 
 | Field | Position | Length | Description |
 |-------|----------|--------|-------------|
-| irrigationState | 2 | 2 | `1` = irrigating, `0` = idle |
+| irrigationState | 2 | 2 | `1` = auto-run enabled / irrigating, `0` = off / idle |
+
+> **Hardware Note (ESP-RZXe)**: On ESP-RZXe (`0x0003`), `0x48` (`C8`) reports `01` when the controller's schedule mode is enabled (armed), even when no zone is currently watering. `0x3F` (`BF`, `CurrentStationsActiveRequest`) is the authoritative source for whether a station is actively running.
 
 ### `CA` — ControllerEventTimestampResponse
 - **Length**: 6 bytes
@@ -246,10 +319,10 @@ These commands are defined in the controller's embedded command schema (`sipcomm
 | year | 11 | 3 | Current year |
 | delaySetting | 14 | 4 | Rain delay days |
 | sensorState | 18 | 2 | Rain sensor state |
-| irrigationState | 20 | 2 | Irrigation state |
+| irrigationState | 20 | 2 | Irrigation state (`1` = auto/enabled, `0` = off) |
 | seasonalAdjust | 22 | 4 | Seasonal adjust % |
-| remainingRuntime | 26 | 4 | Remaining runtime (minutes) |
-| activeStation | 30 | 2 | Currently active station number |
+| remainingRuntime | 26 | 4 | Remaining runtime in **seconds** (big-endian, e.g. `0167` = 359 s) |
+| activeStation | 30 | 2 | Currently active station number (`00` = none) |
 
 ---
 
