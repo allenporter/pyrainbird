@@ -13,7 +13,7 @@ import secrets
 import urllib.parse
 import uuid
 from collections.abc import Awaitable, Callable
-from typing import Any
+from typing import Any, cast
 
 import aiohttp
 
@@ -187,9 +187,17 @@ class RainbirdCloudTokenProvider(RainbirdTokenProvider):
             return
         sig = inspect.signature(self._token_update_callback)
         if len(sig.parameters) >= 2:
-            await self._token_update_callback(self._token, self._refresh_token)  # type: ignore[call-arg]
+            cb_two = cast(
+                Callable[[str, str | None], Awaitable[None]],
+                self._token_update_callback,
+            )
+            await cb_two(self._token, self._refresh_token)
         else:
-            await self._token_update_callback(self._token)  # type: ignore[call-arg]
+            cb_one = cast(
+                Callable[[str], Awaitable[None]],
+                self._token_update_callback,
+            )
+            await cb_one(self._token)
 
     async def async_get_token(self, force_refresh: bool = False) -> str:
         """Return a valid Bearer token, refreshing if necessary or forced."""
@@ -497,7 +505,10 @@ class RainbirdCloudTokenProvider(RainbirdTokenProvider):
                         raise RainbirdAuthException(
                             f"Redirection stopped prematurely at status {resp.status}."
                         )
-                    location = resp.headers.get("Location")
+                    next_location = resp.headers.get("Location")
+                    if not next_location:
+                        break
+                    location = next_location
             except aiohttp.ClientError as err:
                 raise RainbirdConnectionError(
                     f"Connection error following login redirect: {err}"

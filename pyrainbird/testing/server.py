@@ -4,7 +4,7 @@ import asyncio
 import json
 import logging
 import ssl
-from typing import Self
+from typing import Self, cast
 
 from aiohttp import web
 
@@ -27,7 +27,7 @@ class RainbirdUDPDiscoveryProtocol(asyncio.DatagramProtocol):
         self.transport: asyncio.DatagramTransport | None = None
 
     def connection_made(self, transport: asyncio.BaseTransport) -> None:
-        self.transport = transport  # type: ignore[assignment]
+        self.transport = cast(asyncio.DatagramTransport, transport)
 
     def datagram_received(self, data: bytes, addr: tuple[str, int]) -> None:
         try:

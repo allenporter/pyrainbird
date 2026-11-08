@@ -9,6 +9,9 @@ from .state import LCRZoneSchedule, init_schedule_state
 class LCRZoneDevice(BaseControllerDevice):
     """Zone-centric LCR controller emulator for ESP-RZXe and ESP-RZXe2."""
 
+    lcr_zones: dict[int, LCRZoneSchedule]
+    zone_seasonal_adjust: list[int]
+
     def _init_device_state(self) -> None:
         super()._init_device_state()
         init_schedule_state(self)
@@ -71,32 +74,28 @@ class LCRZoneDevice(BaseControllerDevice):
             return "0121"
         return "002102"
 
-    def _op_zone_or_monthly_adjust(
-        self, data: str, byte_len: int, _transport: str | None
-    ) -> str:
+    def _op_zone_or_monthly_adjust(self, d: str, bl: int, _t: str | None) -> str:
         """Return 8-zone seasonal adjust vector (0x32 -> 0xB2)."""
-        if byte_len != 2:
-            return self._nak(data, 2)
-        param = int(data[2:4], 16)
+        if bl != 2:
+            return self._nak(d, 2)
+        param = int(d[2:4], 16)
         zones_hex = "".join(
             f"{val & 0xFFFF:04X}" for val in self.zone_seasonal_adjust[:8]
         )
         return f"B2{param:02X}{zones_hex}"
 
-    def _op_set_zone_or_monthly_adjust(
-        self, data: str, byte_len: int, _transport: str | None
-    ) -> str:
+    def _op_set_zone_or_monthly_adjust(self, d: str, bl: int, _t: str | None) -> str:
         """Set 8-zone seasonal adjust vector (0x33 -> 0x0133)."""
-        if byte_len < 4:
-            return self._nak(data, 2)
-        count = (byte_len - 2) // 2
-        vals = [int(data[4 + i * 4 : 8 + i * 4], 16) for i in range(count)]
+        if bl < 4:
+            return self._nak(d, 2)
+        count = (bl - 2) // 2
+        vals = [int(d[4 + i * 4 : 8 + i * 4], 16) for i in range(count)]
         for i, val in enumerate(vals):
             if i < len(self.zone_seasonal_adjust):
                 self.zone_seasonal_adjust[i] = val
         if vals:
             self.seasonal_adjust = vals[0]
-        return self._ack(data)
+        return self._ack(d)
 
     def _handle_current_queue(self, page: int) -> str:
         """Format LCR/ST8 10-byte queue page 0 response and 4-byte entry pages (0x3B -> 0xBB)."""
