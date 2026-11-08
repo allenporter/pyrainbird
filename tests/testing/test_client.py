@@ -70,11 +70,26 @@ async def test_get_model_and_version(
 
 @pytest.mark.asyncio
 async def test_get_serial_number(
-    controller: AsyncRainbirdController,
+    fake_server: RainbirdFakeServer, controller: AsyncRainbirdController
 ) -> None:
-    """Test getting serial number capability."""
+    """Test getting serial number capability across standard and LCR (zero-serial) models."""
     serial = await controller.get_serial_number()
     assert serial == 0x12635436566
+
+    fake_server.device.set_model("ESP_RZXe")
+    assert fake_server.device.serial_number == 0
+
+    fake_server.device.set_model("ESP_TM2")
+    assert fake_server.device.serial_number == 0x12635436566
+
+    async with (
+        RainbirdFakeServer(password=PASSWORD, model="ESP_RZXe") as rzxe_server,
+        aiohttp.ClientSession() as session,
+    ):
+        rzxe_ctrl = await async_client.create_controller(
+            session, rzxe_server.host_port, PASSWORD
+        )
+        assert await rzxe_ctrl.get_serial_number() == 0
 
 
 @pytest.mark.asyncio
