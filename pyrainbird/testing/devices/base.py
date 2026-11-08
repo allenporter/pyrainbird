@@ -159,8 +159,6 @@ class BaseControllerDevice:
             "2E": self._op_resume_irrigation,
             "30": self._op_water_budget,
             "31": self._op_set_water_budget,
-            "32": self._op_zone_or_monthly_adjust,
-            "33": self._op_set_zone_or_monthly_adjust,
             "36": self._op_rain_delay,
             "37": self._op_set_rain_delay,
             "38": self._op_manually_run_program,
@@ -428,20 +426,6 @@ class BaseControllerDevice:
 
     def _on_water_budget_updated(self, prog: int, pct: int) -> None:
         """Hook for program-based subclasses to synchronize program seasonal adjust."""
-
-    def _op_zone_or_monthly_adjust(self, d: str, bl: int, _t: str | None) -> str:
-        if bl != 2:
-            return self._nak(d, 2)
-        param = int(d[2:4], 16)
-        pct = self.monthly_water_budget.get(param, 100)
-        return f"B2{param:02X}{pct & 0xFFFF:04X}"
-
-    def _op_set_zone_or_monthly_adjust(self, d: str, bl: int, _t: str | None) -> str:
-        if bl != 4:
-            return self._nak(d, 2)
-        param = int(d[2:4], 16)
-        self.monthly_water_budget[param] = int(d[4:8], 16)
-        return self._ack(d)
 
     def _op_rain_delay(self, d: str, bl: int, _t: str | None) -> str:
         rd = self.rain_delay_days & 0xFFFF
