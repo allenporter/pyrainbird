@@ -89,7 +89,7 @@ def encode_sip_wire_frame(payload: bytes) -> bytes:
     length_byte = len(payload) & 0xFF
     checksum_byte = (length_byte + sum(payload)) & 0xFF
     body = bytes([length_byte]) + payload + bytes([checksum_byte])
-    stuffed = bytearray([0xF5, 0x1C])
+    stuffed = bytearray([0xF5, 0xF5, 0x1C])
     for b in body:
         esc_seq = _STUFF_MAP.get(b)
         if esc_seq is not None:
@@ -102,7 +102,9 @@ def encode_sip_wire_frame(payload: bytes) -> bytes:
 
 def decode_sip_wire_frame(frame: bytes) -> bytes:
     """Decode a byte-stuffed LNK2 UART/Manchester wire frame and verify its 8-bit checksum."""
-    idx = 1 if (frame and frame[0] == 0xF5) else 0
+    idx = 0
+    while idx < len(frame) and frame[idx] == 0xF5:
+        idx += 1
     if idx >= len(frame) or frame[idx] != 0x1C:
         raise ValueError("Missing STX (0x1C) in SIP wire frame")
     idx += 1

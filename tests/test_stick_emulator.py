@@ -127,8 +127,14 @@ def test_manchester_and_uart_wire_framing() -> None:
     """Verify LNK2 UART byte-stuffed framing and Differential Manchester encoding/decoding."""
     payload = bytes.fromhex("02")
     frame = encode_manchester_frame(payload)
-    assert frame.hex().upper() == "F51C0102031D"
+    assert frame.hex().upper() == "F5F51C0102031D"
     assert decode_manchester_frame(frame) == payload
+    # Verify 0 (UART), 1, 2 (LNK2 TX), and 3 (Controller RX) leading 0xF5 sync bytes
+    for preamble_count in (0, 1, 2, 3):
+        raw_frame = (b"\xf5" * preamble_count) + bytes.fromhex("1C0102031D")
+        assert decode_manchester_frame(raw_frame) == payload
+    with pytest.raises(ValueError, match="Missing STX"):
+        decode_manchester_frame(b"\xf5\xf5")
 
     special_payload = bytes([0x1C, 0x1B, 0x1D])
     stuffed_frame = encode_manchester_frame(special_payload)
@@ -299,7 +305,7 @@ def test_stick_jsonrpc_methods() -> None:
         }
     )
     assert res_sip["result"] == {"data": "8200090100", "length": 5}
-    assert dev.last_uart_tx_frame_hex == "F51C0102031D"
+    assert dev.last_uart_tx_frame_hex == "F5F51C0102031D"
 
     # Password and WiFi params
     stick.handle_jsonrpc(
