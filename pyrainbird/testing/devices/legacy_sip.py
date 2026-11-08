@@ -26,6 +26,14 @@ _SIP_PROGRAM_FREQUENCY_CODE: dict[ProgramFrequency, int] = {
 class LegacyProgramDevice(BaseControllerDevice):
     """Program-centric SIP controller emulator for ESP-ME, ESP-MEv2, and ESP-TM2."""
 
+    programs: dict[int, ProgramScheduleConfig]
+    station_run_times: dict[int, list[int]]
+    page_run_times_sec: dict[int, list[int]]
+    station_rain_sensor_obey: list[bool]
+    station_mv_enable: list[bool]
+    station_cycle_soak: list[dict[str, int]]
+    calendar_days_off: list[dict[str, int] | None]
+
     def _init_device_state(self) -> None:
         super()._init_device_state()
         init_schedule_state(self)

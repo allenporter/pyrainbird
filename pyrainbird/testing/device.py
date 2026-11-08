@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+import datetime
 import json
 import logging
 import os
 from dataclasses import dataclass
-from datetime import date, time
 from typing import Any
 
 import aiohttp
@@ -98,8 +98,8 @@ class FakeRainbirdDevice(RainbirdDeviceEmulator):
         self.zone_states: dict[str, str] = {}
         self._update_task: asyncio.Task[None] | None = None
         self.serial_number = 0x12635436566
-        self.time = time(12, 34, 56)
-        self.date = date(2023, 1, 1)
+        self.time = datetime.time(12, 34, 56)
+        self.date = datetime.date(2023, 1, 1)
 
     @property
     def stations(self) -> set[int]:
@@ -118,11 +118,11 @@ class FakeRainbirdDevice(RainbirdDeviceEmulator):
         self.device.serial_number_hex = f"{int(val):016X}"
 
     @property
-    def time(self) -> time:
-        return time(self.device.hour, self.device.minute, self.device.second)
+    def time(self) -> datetime.time:
+        return datetime.time(self.device.hour, self.device.minute, self.device.second)
 
     @time.setter
-    def time(self, val: time) -> None:
+    def time(self, val: datetime.time) -> None:
         self.device.hour, self.device.minute, self.device.second = (
             val.hour,
             val.minute,
@@ -130,11 +130,11 @@ class FakeRainbirdDevice(RainbirdDeviceEmulator):
         )
 
     @property
-    def date(self) -> date:
-        return date(self.device.year, self.device.month, self.device.day)
+    def date(self) -> datetime.date:
+        return datetime.date(self.device.year, self.device.month, self.device.day)
 
     @date.setter
-    def date(self, val: date) -> None:
+    def date(self, val: datetime.date) -> None:
         self.device.year, self.device.month, self.device.day = (
             val.year,
             val.month,
@@ -177,27 +177,27 @@ class FakeRainbirdDevice(RainbirdDeviceEmulator):
 
     @property
     def update_status(self) -> int:
-        return self.device.fw_update_status
+        return self.device.update_status
 
     @update_status.setter
     def update_status(self, val: int) -> None:
-        self.device.fw_update_status = int(val)
+        self.device.update_status = int(val)
 
     @property
     def lnk_progress(self) -> int:
-        return self.device.fw_lnk_progress
+        return self.device.lnk_progress
 
     @lnk_progress.setter
     def lnk_progress(self, val: int) -> None:
-        self.device.fw_lnk_progress = int(val)
+        self.device.lnk_progress = int(val)
 
     @property
     def unv_progress(self) -> int:
-        return self.device.fw_unv_progress
+        return self.device.unv_progress
 
     @unv_progress.setter
     def unv_progress(self, val: int) -> None:
-        self.device.fw_unv_progress = int(val)
+        self.device.unv_progress = int(val)
 
     def set_model(self, model_identifier: str | int) -> None:
         """Switch the underlying device emulator to the specified controller model."""

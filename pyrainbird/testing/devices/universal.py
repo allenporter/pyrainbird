@@ -83,6 +83,34 @@ _CDT_SET_RESP_MAP = {"050B": "060B", "010B": "020B", "0507": "0607"}
 class UniversalCDTDevice(BaseControllerDevice):
     """Universal controller emulator routing Core SIP and 0x0C subsystem/CDT commands."""
 
+    cdt_store: dict[str, Any]
+    cdt_1500: dict[str, Any]
+    cdt_1d00: dict[str, Any]
+    uni_irrigation_queue: list[dict[str, Any]]
+    flow_stations_learned: list[int]
+    mv_manual_open_duration_minutes: int
+    mv_open_status: bool
+    current_flow_rates_gpm: list[float]
+    flow_totalizer: dict[str, int]
+    front_panel_locked: bool
+    session_id: str
+    uni_raster_test: dict[str, Any]
+    ping_polling_target: Any
+    last_ping: dict[str, Any]
+    weather_sensor_status: list[str]
+    discovery: dict[str, Any]
+    segment_info: dict[str, Any]
+    ac_current_test: dict[str, Any]
+    not_responding: dict[str, list[int]]
+    alarms: list[str]
+    module_info_address: str
+    line_survey: dict[str, Any]
+    flow_learn_active: bool
+    flow_learn_state: int
+    learning_stations_mask: str
+    flow_monitor_enabled: bool
+    current_flow_rate_milli: int
+
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self.cdt_engine: CDTStore = CDTStore(self)
         self._universal_handlers: dict[str, UniHandler] = (

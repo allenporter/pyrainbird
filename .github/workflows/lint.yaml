@@ -49,3 +49,7 @@ jobs:
       - name: Run Ruff Format
         run: |
           ruff format --check .
+
+      - name: Static typing with ty
+        run: |
+          ty check . --ignore import-not-found

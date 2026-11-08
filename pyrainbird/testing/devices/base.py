@@ -15,6 +15,103 @@ SipHandler = Callable[[str, int, str | None], str]
 class BaseControllerDevice:
     """Base Rain Bird controller device implementing core SIP opcodes (0x00-0x4D / 0x82-0xCD)."""
 
+    # Core SIP state attributes (initialized via init_core_state)
+    fw_major: int
+    fw_minor: int
+    fw_build: int
+    fw_submodules: list[str]
+    serial_number_hex: str
+    hour: int
+    minute: int
+    second: int
+    year: int
+    month: int
+    day: int
+    posix_timezone: str
+    prevent_sntp_updates: bool
+    installed_stations_count: int
+    available_stations: set[int]
+    available_stations_page_overrides: dict[int, str]
+    supported_commands: set[str] | list[str] | None
+    sensor_state: int
+    rain_sensor_bypassed: bool
+    master_valve_enable: bool
+    rain_settling_time_minutes: int
+    inter_station_delay_seconds: int
+    rain_delay_days: int
+    controller_state: int
+    controller_state_str: str
+    seasonal_adjust: int
+    water_budget: dict[int, int]
+    monthly_water_budget: dict[int, int]
+    zone_count: int
+    event_timestamps: dict[int, int]
+    active_station: int
+    active_program: int
+    remaining_runtime_sec: int
+    paused: bool
+    manual_queue_count: int
+    auto_queue_count: int
+    status_flags: int
+    mv_on_byte: int
+    queue: list[dict[str, Any]]
+    queued_entries: list[dict[str, Any]]
+    program_0_stations: list[dict[str, Any]]
+    short_mask_by_page: dict[int, int]
+    open_mask_by_page: dict[int, int]
+    stats_page0: dict[int, dict[str, int]]
+    stats_monthly: dict[tuple[int, int], list[int]]
+
+    # Stick transport & JSON-RPC state attributes (initialized via init_stick_state)
+    password: str | None
+    encryption_required: bool
+    request_encrypted: bool
+    lockout_active: bool
+    lockout_tries: int
+    lockout_timeout: float
+    lockout_until: float
+    failed_attempts: int
+    mac_address: str
+    local_ip_address: str
+    local_netmask: str
+    local_gateway: str
+    wifi_rssi: int
+    wifi_ssid: str
+    wifi_password: str
+    wifi_security: str
+    ap_timeout_no_lan: int
+    ap_timeout_idle: int
+    ap_security: str
+    stick_id: str
+    stick_version: str
+    visible_aps: list[dict[str, Any]]
+    network_up: bool
+    internet_up: bool
+    server_check_in_rsp: bool
+    server_open_socket: bool
+    ap_mode: bool
+    server_mode: bool
+    check_in_interval: int
+    server_url: str
+    missed_check_ins: int
+    relay_timeout: int
+    country: str
+    zip_code: str
+    global_disable: bool
+    num_programs: int
+    program_opt_out_mask: str
+    soil_types: list[int]
+    flow_rates: list[int]
+    flow_units: list[int]
+    auto_queue: list[dict[str, Any]]
+    manual_rpc_queue: list[dict[str, Any]]
+    auto_queue_interval: int
+    update_status: int
+    lnk_progress: int
+    unv_progress: int
+    reboot_scheduled: bool
+    last_uart_tx_frame_hex: str
+
     def __init__(
         self,
         model: str | int,
@@ -223,10 +320,12 @@ class BaseControllerDevice:
             return self._nak(d, 2)
         return self._handle_set_schedule(int(d[2:6], 16), bytes.fromhex(d[6:]))
 
-    def _handle_retrieve_schedule(self, _page_id: int) -> str:
+    def _handle_retrieve_schedule(self, page_id: int) -> str:
+        del page_id
         return "002002"
 
-    def _handle_set_schedule(self, _page_id: int, _payload: bytes) -> str:
+    def _handle_set_schedule(self, page_id: int, payload: bytes) -> str:
+        del page_id, payload
         return "002102"
 
     def _enqueue_manual_run(self, stn: int, dur_sec: int) -> None:

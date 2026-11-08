@@ -22,6 +22,29 @@ from .state import init_ble_state
 class FlowAndExtendedSIPMixin(UpgradedTM2Device):
     """Mixin implementing extended SIP opcodes 0x55-0x65 (battery status, BLE OTA, and flow learn/monitor)."""
 
+    raster_test_run: bool
+    is_pin_set: bool
+    is_pin_corrected: bool
+    pin_code: str
+    transition_is_processing: bool
+    gatt_notifications_enabled: bool
+    battery_voltage_mv: int
+    battery_source_type: str
+    ble_snr: int
+    ble_rssi: int
+    lora_snr: int
+    lora_rssi: int
+    ota_active: bool
+    ota_last_fragment: int
+    ota_total_fragments: int
+    flow_learn_active: bool
+    flow_learn_state: int
+    learning_stations_mask: str
+    flow_monitor_enabled: bool
+    current_flow_rate_milli: int
+    solem_authenticated: bool
+    solem_install_code: str
+
     def _init_device_state(self) -> None:
         super()._init_device_state()
         init_ble_state(self)

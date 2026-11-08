@@ -33,7 +33,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from http import HTTPStatus
-from typing import Any, TypeVar
+from typing import Any, TypeVar, cast
 
 import aiohttp
 from aiohttp.client_exceptions import (
@@ -42,7 +42,7 @@ from aiohttp.client_exceptions import (
     ClientError,
     ClientResponseError,
 )
-from aiohttp_retry import JitterRetry, RetryClient, RetryOptions
+from aiohttp_retry import JitterRetry, RetryClient, RetryOptionsBase
 
 from . import encryption, rainbird
 from .const import DayOfWeek, ProgramFrequency
@@ -241,10 +241,17 @@ class AsyncRainbirdClient:
         self._min_delay = min_delay
         self._gate = _gate or _RequestGate()
 
-    def with_retry_options(self, retry_options: RetryOptions) -> "AsyncRainbirdClient":  # type: ignore[valid-type]
+    def with_retry_options(
+        self, retry_options: RetryOptionsBase
+    ) -> "AsyncRainbirdClient":
         """Create a new AsyncRainbirdClient with retry options."""
         return AsyncRainbirdClient(
-            RetryClient(client_session=self._websession, retry_options=retry_options),  # type: ignore[arg-type]
+            cast(
+                aiohttp.ClientSession,
+                RetryClient(
+                    client_session=self._websession, retry_options=retry_options
+                ),
+            ),
             self._url,
             self._password,
             ssl_context=self._ssl_context,
@@ -892,7 +899,7 @@ class AsyncRainbirdController(RainbirdController):
             return result
         result = await self._process_command(funct, command, *args)
         self._cache[key] = result
-        return result  # type: ignore
+        return result
 
     @property
     def supported_features(self) -> set[ControllerFeature]:

@@ -392,10 +392,10 @@ class ProgramInfo(DataClassDictMixin):
     )
 
     @classmethod
-    def __pre_deserialize__(cls, values: dict[Any, Any]) -> dict[Any, Any]:
-        if soil_type := values.get("soilTypes"):
-            values["SoilTypes"] = soil_type
-        return values
+    def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
+        if soil_type := d.get("soilTypes"):
+            d["SoilTypes"] = soil_type
+        return d
 
 
 @dataclass
@@ -424,10 +424,10 @@ class Settings(DataClassDictMixin):
     )
 
     @classmethod
-    def __pre_deserialize__(cls, values: dict[Any, Any]) -> dict[Any, Any]:
-        if soil_type := values.get("soilTypes"):
-            values["SoilTypes"] = soil_type
-        return values
+    def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
+        if soil_type := d.get("soilTypes"):
+            d["SoilTypes"] = soil_type
+        return d
 
 
 @dataclass
@@ -562,18 +562,18 @@ class DeviceTime(SerializationStrategy):
     def serialize(self, value: Any) -> Any:
         raise ValueError("serialize not implemented")
 
-    def deserialize(self, values: dict[str, Any]) -> datetime.datetime:
+    def deserialize(self, value: dict[str, Any]) -> datetime.datetime:
         """Deserialize the device time fields."""
         for f in ("year", "month", "day", "hour", "minute", "second"):
-            if f not in values:
+            if f not in value:
                 raise ValueError(f"Missing field '{f}' in values")
         return datetime.datetime(
-            int(values["year"]),
-            int(values["month"]),
-            int(values["day"]),
-            int(values["hour"]),
-            int(values["minute"]),
-            int(values["second"]),
+            int(value["year"]),
+            int(value["month"]),
+            int(value["day"]),
+            int(value["hour"]),
+            int(value["minute"]),
+            int(value["second"]),
         )
 
 
@@ -637,10 +637,10 @@ class ZoneDuration(DataClassDictMixin):
         return f"Zone {self.zone}"
 
     @classmethod
-    def __pre_deserialize__(cls, values: dict[Any, Any]) -> dict[Any, Any]:
-        if duration := values.get("duration"):
-            values["duration"] = duration * 60  # datetime.timedelta(minutes=duration)
-        return values
+    def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
+        if duration := d.get("duration"):
+            d["duration"] = duration * 60  # datetime.timedelta(minutes=duration)
+        return d
 
 
 class TimeSerializationStrategy(SerializationStrategy):
@@ -650,10 +650,10 @@ class TimeSerializationStrategy(SerializationStrategy):
         """Serialize the start times, matching the default for ZoneSchedule."""
         return [start.isoformat() for start in value]
 
-    def deserialize(self, starts: list[int]) -> list[datetime.time]:
+    def deserialize(self, value: list[int]) -> list[datetime.time]:
         """Deserialize the device time fields."""
         result: list[datetime.time] = []
-        for start in starts:
+        for start in value:
             if start >= 1440:
                 continue
             result.append(datetime.time(hour=int(start / 60), minute=start % 60))
@@ -667,12 +667,12 @@ class DayOfWeekSerializationStrategy(SerializationStrategy):
         """Serialize the days of the week, matching the default for ZoneSchedule."""
         return sorted(day.value for day in value)
 
-    def deserialize(self, mask: int) -> set[DayOfWeek]:
+    def deserialize(self, value: int) -> set[DayOfWeek]:
         """Deserialize the device time fields."""
-        _LOGGER.debug("DayOfWeekSerializationStrategy=%s", mask)
+        _LOGGER.debug("DayOfWeekSerializationStrategy=%s", value)
         result: set[DayOfWeek] = set()
         for day in range(7):
-            if mask & (1 << day):
+            if value & (1 << day):
                 result.add(DayOfWeek(day))
         return result
 
@@ -849,10 +849,10 @@ class ZoneSchedule(DataClassDictMixin):
     """Controller settings that apply to this zone."""
 
     @classmethod
-    def __pre_deserialize__(cls, values: dict[Any, Any]) -> dict[Any, Any]:
-        if duration := values.get("duration"):
-            values["duration"] = duration * 60
-        return values
+    def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
+        if duration := d.get("duration"):
+            d["duration"] = duration * 60
+        return d
 
     @property
     def timeline(self) -> ProgramTimeline:
@@ -955,28 +955,28 @@ class Schedule(DataClassDictMixin):
                 program.numbered = True
 
     @classmethod
-    def __pre_deserialize__(cls, values: dict[Any, Any]) -> dict[Any, Any]:
+    def __pre_deserialize__(cls, d: dict[Any, Any]) -> dict[Any, Any]:
         """Parse the input values from the response into a usable format."""
-        program_info = values.get("programInfo", [])
+        program_info = d.get("programInfo", [])
         numbered = len(program_info) > MAX_LETTER_PROGRAMS
         for prog in program_info:
             prog.setdefault("frequency", ProgramFrequency.CUSTOM)
             prog.setdefault("durations", [])
-            prog.setdefault("controllerInfo", values.get("controllerInfo"))
+            prog.setdefault("controllerInfo", d.get("controllerInfo"))
             if numbered:
                 prog.setdefault("numbered", True)
-        programs = values.get("programStartInfo", [])
+        programs = d.get("programStartInfo", [])
         if not programs:
-            return values
+            return d
         for program_start_info in programs:
             program = program_start_info.get("program")
             if program is None or program >= len(program_info):
                 continue
             program_info[program]["starts"] = program_start_info.get("startTime", [])
-            program_info[program]["controllerInfo"] = values.get("controllerInfo")
+            program_info[program]["controllerInfo"] = d.get("controllerInfo")
         for program in range(min(len(programs), len(program_info))):
             program_info[program]["durations"] = []
-        for zone_durations in values.get("durations", []):
+        for zone_durations in d.get("durations", []):
             zone = zone_durations.get("zone")
             if zone is None:
                 continue
@@ -986,7 +986,7 @@ class Schedule(DataClassDictMixin):
                     "Mismatched number of program durations: %d != %d: %s",
                     len(duration_values),
                     len(programs),
-                    values,
+                    d,
                 )
                 continue
             for program in range(len(programs)):
@@ -999,14 +999,14 @@ class Schedule(DataClassDictMixin):
                         "duration": duration,
                     }
                 )
-        for prog_durations in values.get("programDurations", []):
+        for prog_durations in d.get("programDurations", []):
             program = prog_durations.get("program")
             if program is None or program >= len(program_info):
                 continue
             program_info[program]["durations"].extend(
                 prog_durations.get("durations", [])
             )
-        return values
+        return d
 
 
 @dataclass
