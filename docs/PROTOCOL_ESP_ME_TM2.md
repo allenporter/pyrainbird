@@ -34,58 +34,75 @@ The response code is `A0`. The page number determines the data type:
 
 | Page Range | Type | Per-Device Count |
 |------------|------|-----------------|
-| `00` | Global info | 1 |
-| `10`-`13` (16-19) | Program info | 1 per program (max 4) |
-| `20` (32) | Sensor bypass per station | 1 |
-| `60`-`63` (96-99) | Program start times | 1 per program (max 4) |
-| `80`-`8A` (128-138) | Station runtimes | Variable (ME: 11 pages, TM2: 6 pages) |
+| `0000` | Global info | 1 |
+| `0008` | Cycle & soak per station (optional / supported models) | 1 |
+| `0010`-`0013` (16-19) | Program info | 1 per program (max 4) |
+| `0020` (32) | Sensor obey/bypass per station | 1 |
+| `0040` (64) | Master valve enable per station (optional) | 1 |
+| `0060`-`0063` (96-99) | Program start times | 1 per program (max 4) |
+| `0080`-`008A` (128-138) | Station runtimes | Variable (ME: 11 pages, TM2: 6 pages; `0084`/`0085` reused for calendar days off on BLE/CBOS/ISK) |
 
 ---
 
-### Page 0 — Global Info
+### Page 0 (`0000`) — Global Info
 
-**Get response:**
+**Get response (7 bytes / 14 hex chars on legacy SIP; 9 bytes / 18 hex chars on BLE/CBOS):**
 ```
-A0 PPPP 00 DDDD SS RR
+A0 0000 DDDD SS RR [MM TT]
 ```
 
-| Offset | Field | Size (hex chars) | Description |
-|--------|-------|-----------------|-------------|
-| 6 | interStationDelay | 4 | Inter-station delay (hex, in seconds) |
-| 10 | snooze | 2 | Rain delay / snooze (days) |
-| 12 | rainSensor | 2 | `00` = rain sensor enabled, `01` = sensor bypassed |
+| Hex Offset | Field | Size (hex chars) | Description |
+|------------|-------|-----------------|-------------|
+| 0–2 | `A0` | 2 | `RetrieveScheduleResponse` code |
+| 2–6 | `page` | 4 | Page ID (`0000`) |
+| 6–10 | `interStationDelay` | 4 | Inter-station delay in seconds (`DDDD`, big-endian) |
+| 10–12 | `snooze` | 2 | Rain delay / snooze in days (`SS`) |
+| 12–14 | `rainSensor` | 2 | `00` = rain sensor enabled (active), `01` = sensor bypassed (`RR`) |
+| 14–16 | `masterValveEnable` | 2 | *(BLE/CBOS only)* `01` = master valve enabled, `00` = disabled (`MM`) |
+| 16–18 | `rainSettlingTime` | 2 | *(BLE/CBOS only)* Rain settling time in minutes (`TT`) |
 
 **Set command:**
 ```
-21 00 00 DDDD SS RR
+21 0000 DDDD SS RR [MM TT]
 ```
-Same field layout as the response data portion.
+Same field layout as the response data portion (`01 21` ACK).
 
 ---
 
-### Pages 16-19 (`10`-`13`) — Program Info
+### Page 8 (`0008`) — Per-Station Cycle & Soak (Where Supported)
 
-One page per program. Page `10` = Program 1, `11` = Program 2, etc.
-
-**Get response (data after `A0 PPPP`):**
+**Get response / Set payload (after `A0 0008` / `21 0008`):**
 ```
-PP DD CC RR OO SS FF
+[SSSS CCCC] × N
 ```
+4 bytes (8 hex chars) per station: `SSSS` = soak duration in seconds (2 bytes big-endian), `CCCC` = cycle duration in seconds (2 bytes big-endian).
 
-| Offset (from data start) | Field | Size | Description |
-|--------------------------|-------|------|-------------|
-| 0-2 | customDays | 2 | Days-of-week bitmask (7 bits: Sun-Sat) |
-| 2-4 | cyclicDays | 2 | Cycle interval in days |
-| 4-6 | daysRemaining | 2 | Days remaining in current cycle |
-| 6-8 | permanentDaysOff | 2 | Permanent off-days bitmask |
-| 8-10 | seasonalAdjust | 2 | Seasonal adjust percentage |
-| 10-12 | frequencyType | 2 | Frequency type code |
+---
+
+### Pages 16-19 (`0010`-`0013`) — Program Info
+
+One page per program. Page `0010` = Program 1 (A), `0011` = Program 2 (B), etc.
+
+**Get response (9 bytes / 18 hex chars on legacy SIP):**
+```
+A0 001P DD CC RR OO SS FF
+```
+*(Note: BLE/CBOS controllers use an 11-byte / 22-hex-char variant `A0 001P DD CC RR OO SSSS FF AA` with a 2-byte `seasonalAdjust` `SSSS` and trailing `autoRestart` byte `AA`.)*
+
+| Offset (from data start, char 6) | Field | Size (hex chars) | Description |
+|----------------------------------|-------|------------------|-------------|
+| 0-2 | `customDays` | 2 | Days-of-week bitmask (7 bits: bit 0 = Sun .. bit 6 = Sat; or Mon-Sun per model convention) |
+| 2-4 | `cyclicDays` | 2 | Cycle interval in days (`CC`) |
+| 4-6 | `daysRemaining` | 2 | Days remaining in current cycle (`RR`) |
+| 6-8 | `permanentDaysOff` | 2 | Permanent off-days bitmask (`OO`) |
+| 8-10 | `seasonalAdjust` | 2 | Seasonal adjust percentage (`SS`, e.g. `64` = 100%) |
+| 10-12 | `frequencyType` | 2 | Frequency type code (`FF`) |
 
 **Set command:**
 ```
-21 00 PP DD CC RR OO 64 FF
+21 001P DD CC RR OO 64 FF
 ```
-Note: seasonal adjust is always set to `64` (100 = 100%) when writing.
+Note: the mobile app sets `seasonalAdjust` in Page `001P` to `64` (100%) when writing and adjusts per-program budget via `31 PP SSSS`.
 
 **Frequency Type values:**
 | Value | Type |
@@ -94,19 +111,20 @@ Note: seasonal adjust is always set to `64` (100 = 100%) when writing.
 | 1 | CYCLIC (every N days) |
 | 2 | ODD days |
 | 3 | EVEN days |
+| 4 | OFF (program disabled, BLE/SIP extensions) |
 
 ---
 
-### Page 32 (`20`) — Sensor Bypass Per Station
+### Pages 32 (`0020`) & 64 (`0040`) — Per-Station Sensor & Master Valve Flags
 
-**Get response (data after `A0 PPPP`):**
+**Get response (data after `A0 0020` or `A0 0040`):**
 
-Pairs of hex digits, one per station:
+Pairs of hex digits (1 byte per station):
 ```
 S1 S2 S3 ... SN
 ```
-- `01` = sensor enabled for this station
-- `00` = sensor bypassed for this station
+- Page `0020`: `01` = rain sensor obeyed for this station, `00` = rain sensor bypassed.
+- Page `0040`: `01` = master valve enabled for this station, `00` = disabled.
 
 ---
 
@@ -186,30 +204,35 @@ If runtime > 0, the station is marked as enabled.
 #### Page 0 — Active Irrigation (`3B 00`)
 
 ```text
-BB 00 QQ 00 RRRR 0000 SS PP 0001
+BB 00 MQ AQ RRRR DDDD SS PP FL MV
 ```
-Example: `BB00050005D0000001000001` (5 stations queued, `0x05D0` = 1488 seconds remaining on Station 1, Program A).
+Example: `BB00050005D0000001000001` (5 manual stations queued, `0x05D0` = 1488 seconds remaining on Station 1, Program `00`, MV active `01`); `BB0001000255000001FF0000` (1 manual station running, `0x0255` = 597 s remaining on Station 1, `FF` = manual / no program).
 
 | Hex Offset | Field | Size (hex chars) | Description |
 |------------|-------|------------------|-------------|
 | 0–2 | `BB` | 2 | `CurrentQueueResponse` code |
 | 2–4 | `page` | 2 | Page number (`00`) |
-| 4–6 | `queuedZones` | 2 | Number of queued stations (`QQ`) |
+| 4–6 | `manualQueueCount` | 2 | Number of manual queue entries (`MQ`; 2 bytes / 4 hex chars on 14-byte BLE/CBOS queue) |
+| 6–8 | `autoQueueCount` | 2 | Number of automatic/program queue entries (`AQ`; 2 bytes / 4 hex chars on 14-byte BLE/CBOS queue) |
 | 8–12 | `remainingTime` | 4 | Remaining runtime in **seconds** (big-endian `RRRR`, e.g. `05D0` = 1488 s, `0167` = 359 s) |
+| 12–16 | `interStationDelay` | 4 | Remaining inter-station delay in seconds (`DDDD`) |
 | 16–18 | `station` | 2 | Active station number (`SS`, `00` = none) |
-| 18–20 | `program` | 2 | Active program number (`PP`, capped to `maxPrograms`) |
+| 18–20 | `program` | 2 | Active program (`PP`: `01`..`04` for A..D, `FF` = manual / none; app caps values `> maxPrograms` to `0`) |
+| 20–22 | `statusFlags` | 2 | Controller queue status flags (`FL`, e.g. bit 3 `0x08` = paused) |
+| 22–24 | `masterValve` | 2 | Master valve state (`MV`, `01` = open, `00` = closed) |
 
 **Active irrigation**: `remainingTime > 0 AND (station > 0 OR program > 0)`
 
 #### Page 1+ — Pending Queue Entries (35 bytes / 70 hex chars)
 
-11 entries per page, each 6 hex chars (3 bytes):
+11 entries per page, each 6 hex chars (3 bytes), following `BB PP`:
 ```text
-[S1 R1R1] [S2 R2R2] ...
+BB PP [PS1 R1R1] [PS2 R2R2] ... (×11 entries)
 ```
-- `SS` (2 chars) = station number (masked: `& 0x1F` = lower 5 bits)
-- `RRRR` (4 chars) = remaining time
-- Entry with station = 0 terminates the list
+- `PSi` (2 chars = 1 byte):
+  - **Bits 4–0 (`byte & 0x1F`)**: Station number (`1`..`22`; `0` terminates the list — verified in `ESPMESIPProcessing.interpretCurrentQueueResponse`)
+  - **Bits 7–5 (`byte >> 5`)**: Program index (`0` = manual, `1`..`4` = Program A..D)
+- `RRRR` (4 chars = 2 bytes): Remaining runtime in seconds (big-endian)
 
 ### Upgraded TM2 / ME3 Queue (`interpretCurrentQueueResponseME2`)
 

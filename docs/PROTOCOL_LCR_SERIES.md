@@ -166,14 +166,14 @@ Although `RZXSIPProcessing.java` in the legacy Android app does not implement `p
 
 #### Page 1+ — Pending Queue Entries
 
-Entries are packed sequentially:
+Entries are packed sequentially (`ST8SIPProcessing.interpretCurrentQueueResponse` → `ST8QueueCommandResponse.addStationEntry`):
 ```text
-BB PP [S1 T1 R1R1] [S2 T2 R2R2] ...
+BB PP [T1 S1 R1R1] [T2 S2 R2R2] ...
 ```
 Where per entry (8 hex chars = 4 bytes):
-- `SS` (2 chars) = station number
-- `TT` (2 chars) = irrigation type
-- `RRRR` (4 chars) = remaining time
+- `TT` (2 chars) = irrigation type (`01` = scheduled, `02` = manual)
+- `SS` (2 chars) = station number (`01`..`08`)
+- `RRRR` (4 chars) = remaining time in seconds (big-endian)
 
 ---
 
@@ -193,6 +193,6 @@ Where per entry (8 hex chars = 4 bytes):
 | Start times per zone | 6 (in 10-minute increments; `0x90` or `0xFF` = unused) | N/A (start times per program) |
 | Frequency per zone | Yes (`00`=Custom, `01`=Odd, `02`=Even, `03`=Cyclic) | Per-program (`0`=Custom, `1`=Cyclic, `2`=Odd, `3`=Even) |
 | Seasonal adjust | Per-zone (cmd `32`/`B2`) plus controller-wide water budget (`30 FF`/`B0 FF SSSS`) | Per-program (water budget `30 PP`/`B0 PP SSSS`) |
-| Rain sensor config | Global page 0 (`20 00 00` → `A0 00 00 SS`, 4 bytes) | Global page 0 (`20 00 00` → `A0 00 00 DD SS BB`, 7 bytes) |
-| Queue response (`3B 00`) | 10 bytes (`BB 00 QQ AA 00 00 ZZ TT SSSS`, seconds) | 12 bytes (`BB 00 QQ AA PPPP SS TT MM RRRR`, seconds) |
+| Rain sensor config | Global page 0 (`20 00 00` → `A0 00 00 SS`, 4 bytes) | Global page 0 (`20 00 00` → `A0 0000 DDDD SS RR`, 7 bytes) |
+| Queue response (`3B 00`) | 10 bytes (`BB 00 QQ AA 00 00 ZZ TT SSSS`, seconds) | 12 bytes (`BB 00 MQ AQ RRRR DDDD SS PP FL MV`, seconds) |
 | Max stations | 6 or 8 | 4–22 depending on model |

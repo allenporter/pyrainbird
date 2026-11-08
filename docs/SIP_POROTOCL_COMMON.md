@@ -138,8 +138,12 @@ These commands are defined in the controller's embedded command schema (`sipcomm
 | SetDateRequest | `13` | `01` | Set current date |
 | RetrieveScheduleRequest | `20` | `A0` | Get schedule data page |
 | SetSchedule | `21` | `01` | Set schedule data page |
+| StackManuallyRunStationSecond / SetTimeZoneRequest | `2B` | `01` | Stack manual station run in seconds (`2B <stn:2B> <sec:2B>` in RB 2.0 BLE/SIP; listed as `SetTimeZoneRequest` in legacy `SIPCommandKeys`) |
+| TestAllStationsSecond | `2C` | `01` | Test all stations with duration in seconds (`2C <sec:2B>`, RB 2.0 BLE/SIP) |
+| PauseIrrigation | `2D` | `01` | Pause active irrigation (RB 2.0 BLE/SIP) |
+| ResumeIrrigation | `2E` | `01` | Resume paused irrigation (RB 2.0 BLE/SIP) |
 | WaterBudgetSet | `31` | `01` | Set water budget |
-| ZonesSeasonalAdjustFactorSet | `33` | `01` | Set per-zone seasonal adjust |
+| ZonesSeasonalAdjustFactorSet / SetMonthlyWaterBudget | `33` | `01` | Set per-zone seasonal adjust (LCR / legacy SIP) or monthly water budget (`33 <month> <pct:2B>` on BLE/CBOS) |
 | RainDelaySetRequest | `37` | `01` | Set rain delay |
 | ManuallyRunProgramRequest | `38` | `01` | Run program |
 | CurrentQueueRequest | `3B` | `BB` | Get current active / queued station status |
@@ -155,7 +159,6 @@ These commands are defined in the controller's embedded command schema (`sipcomm
 | FlowMonitorStatusSetRequest | `64` | `64` | Set flow monitor status |
 | FlowMonitorRateRequest | `65` | `E5` | Get flow monitor rate |
 | LogEntriesRequest | `70` | — | Get log entries |
-| SetTimeZoneRequest | `2B` | — | Set timezone |
 
 ---
 
@@ -251,13 +254,13 @@ These commands are defined in the controller's embedded command schema (`sipcomm
 | programCode | 2 | 2 | Program code |
 | seasonalAdjust | 4 | 4 | Seasonal adjust value (percentage) |
 
-### `B2` — ZonesSeasonalAdjustFactorResponse
-- **Length**: 18 bytes
+### `B2` — ZonesSeasonalAdjustFactorResponse / MonthlyWaterBudgetResponse
+- **Length**: 18 bytes on LCR / legacy SIP (`B2 <selector> <16B station SA>`); 4 bytes on BLE/CBOS (`B2 <month> <pct:2B>`)
 
 | Field | Position | Length | Description |
 |-------|----------|--------|-------------|
-| programCode | 2 | 2 | Program/zone selector |
-| stationsSA | 4 | 32 | Per-station seasonal adjust values |
+| programCode / month | 2 | 2 | Program/zone selector (`FF` on LCR) or month index (`00`..`0B` on BLE/CBOS) |
+| stationsSA / seasonalAdjust | 4 | 32 (or 4) | Per-station seasonal adjust values (16 bytes = 32 hex chars) or 2-byte monthly percentage (4 hex chars) |
 
 ### `B6` — RainDelaySettingResponse
 - **Length**: 3 bytes
