@@ -31,10 +31,10 @@ class LCRZoneDevice(BaseControllerDevice):
         return runnable
 
     def _format_page0_sensor_byte(self) -> int:
-        return 0x01 if self.rain_sensor_bypassed else 0x00
+        return 0x80 if self.rain_sensor_bypassed else 0x00
 
     def _parse_page0_sensor_byte(self, raw_byte: int) -> bool:
-        return raw_byte != 0
+        return (raw_byte & 0x80) != 0
 
     def _handle_retrieve_schedule(self, page_id: int) -> str:
         """Retrieve LCR global page 0x0000 or zone schedule pages 0x0001..0x0008."""
@@ -122,10 +122,4 @@ class LCRZoneDevice(BaseControllerDevice):
 
 
 class ST8ZoneDevice(LCRZoneDevice):
-    """ST8x-WiFi / ST8x-WiFi2 zone-centric controller with bit-7 sensor polarity and 10-byte queue."""
-
-    def _format_page0_sensor_byte(self) -> int:
-        return 0x80 if self.rain_sensor_bypassed else 0x00
-
-    def _parse_page0_sensor_byte(self, raw_byte: int) -> bool:
-        return (raw_byte & 0x80) != 0
+    """ST8x-WiFi / ST8x-WiFi2 zone-centric controller sharing LCR schedule, sensor, and queue behavior."""
