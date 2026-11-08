@@ -10,10 +10,15 @@ from pyrainbird.testing.devices.legacy_sip import (
 
 
 def test_lcr_zone_schedule_and_st8_rain_sensor() -> None:
-    """Verify zone-centric LCR schedule pages and ST8 bit-7 rain sensor polarity."""
+    """Verify zone-centric LCR schedule pages and bit-7 (0x80) rain sensor bypass polarity."""
     rzxe = LCRZoneDevice("ESP_RZXe")
+    assert rzxe.handle_sip("200000") == "A0000000"
     assert rzxe.handle_sip("21000001") == "0121"
-    assert rzxe.handle_sip("200000") == "A0000001"
+    assert rzxe.rain_sensor_bypassed is False
+    assert rzxe.handle_sip("200000") == "A0000000"
+    assert rzxe.handle_sip("21000080") == "0121"
+    assert rzxe.rain_sensor_bypassed is True
+    assert rzxe.handle_sip("200000") == "A0000080"
     assert rzxe.handle_sip("21000214219090909090037F0302") == "0121"
     assert rzxe.handle_sip("200002") == "A0000214219090909090037F0302"
 
