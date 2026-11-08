@@ -53,7 +53,9 @@ def init_core_state(device: Any) -> None:
     device.fw_minor = 8
     device.fw_build = 0
     device.fw_submodules = []
-    device.serial_number_hex = "0000000012345678"
+    device.serial_number_hex = (
+        "0000000012345678" if device.profile.serial_number else "0000000000000000"
+    )
     device.hour = 12
     device.minute = 0
     device.second = 0

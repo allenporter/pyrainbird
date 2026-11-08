@@ -97,7 +97,7 @@ class FakeRainbirdDevice(RainbirdDeviceEmulator):
         self.schedule: dict[str, str] = {}
         self.zone_states: dict[str, str] = {}
         self._update_task: asyncio.Task[None] | None = None
-        self.serial_number = 0x12635436566
+        self.serial_number = 0x12635436566 if self.device.profile.serial_number else 0
         self.time = datetime.time(12, 34, 56)
         self.date = datetime.date(2023, 1, 1)
 
@@ -224,7 +224,12 @@ class FakeRainbirdDevice(RainbirdDeviceEmulator):
                     break
             else:
                 raise
-        new_dev.serial_number_hex = prev.serial_number_hex
+        if not new_dev.profile.serial_number:
+            new_dev.serial_number_hex = "0000000000000000"
+        elif prev.profile.serial_number:
+            new_dev.serial_number_hex = prev.serial_number_hex
+        else:
+            new_dev.serial_number_hex = f"{0x12635436566:016X}"
         self.device = new_dev
         self.stick = new_dev.stick
 
