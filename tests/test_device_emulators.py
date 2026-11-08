@@ -79,8 +79,16 @@ def test_ble_gatt_battery_ota_flow_and_solem() -> None:
     assert bat.handle_sip("63", transport="STICK_TUNNEL_SIP") == "E30100"
     assert bat.handle_sip("6500", transport="STICK_TUNNEL_SIP") == "E500DC05"
 
-    # Solem TBOS-BT frame authentication
+    # BLE CBOS MonthlyWaterBudget (0x32 / 0x33 -> 4-byte 0xB2)
+    assert bat.handle_sip("0432", transport="BLE") == "843201"
+    assert bat.handle_sip("3302006E", transport="BLE") == "0133"
+    assert bat.handle_sip("3202", transport="BLE") == "B202006E"
+    assert bat.handle_sip("320C", transport="BLE") == "003204"
+
+    # Solem TBOS-BT frame authentication (uses Solem BLE frames, not SIP 0x32/0x33)
     tbos = SolemTBOSDevice("TBOS_BT")
+    assert tbos.handle_sip("0432", transport="BLE") == "843200"
+    assert tbos.handle_sip("3202", transport="BLE") == "003201"
     tbos.solem_install_code = "01020304"
     solem_notify, solem_resp = tbos.handle_gatt_write(
         TBOS_BT_WRITE_UUID, "190600010203042700"

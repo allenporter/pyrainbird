@@ -45,11 +45,13 @@ def test_core_sip_time_date_budget_and_irrigation() -> None:
     assert dev.handle_sip("12") == "920F37EA"
     assert dev.handle_sip("130007EA") == "001304"
 
-    # Set/Get Water Budget (0x31 / 0x30) and Monthly Adjust (0x33 / 0x32)
+    # Set/Get Water Budget (0x31 / 0x30); 0x32 / 0x33 are not supported on base/program Wi-Fi controllers
     assert dev.handle_sip("3101007D") == "0131"
     assert dev.handle_sip("3001") == "B001007D"
-    assert dev.handle_sip("3302006E") == "0133"
-    assert dev.handle_sip("3202") == "B202006E"
+    assert dev.handle_sip("0432") == "843200"
+    assert dev.handle_sip("0433") == "843300"
+    assert dev.handle_sip("3202") == "003201"
+    assert dev.handle_sip("3302006E") == "003301"
 
     # Set/Get Rain Delay (0x37 / 0x36) and Rain Sensor (0x3E)
     assert dev.handle_sip("370005") == "0137"

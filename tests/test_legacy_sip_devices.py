@@ -17,9 +17,13 @@ def test_lcr_zone_schedule_and_st8_rain_sensor() -> None:
     assert rzxe.handle_sip("21000214219090909090037F0302") == "0121"
     assert rzxe.handle_sip("200002") == "A0000214219090909090037F0302"
 
-    # 8-zone seasonal adjust vector (0x33 / 0x32)
-    assert rzxe.handle_sip("33FF00780064006400640064006400640064") == "0133"
-    assert rzxe.handle_sip("32FF") == "B2FF00780064006400640064006400640064"
+    # v1 ESP-RZXe rejects per-zone 0x32/0x33; v2 ESP-RZXe2 / ST8X-WF2 support 18-byte 0xB2
+    assert rzxe.handle_sip("0432") == "843200"
+    assert rzxe.handle_sip("32FF") == "003201"
+    rzxe2 = LCRZoneDevice("ESP_RZXe2")
+    assert rzxe2.handle_sip("0432") == "843201"
+    assert rzxe2.handle_sip("33FF00780064006400640064006400640064") == "0133"
+    assert rzxe2.handle_sip("32FF") == "B2FF00780064006400640064006400640064"
 
     # LCR queue page 0 (10B) and page 1 (4B station entries) + ManuallyRunProgram (0x38)
     assert rzxe.handle_sip("3800") == "0138"
@@ -84,6 +88,8 @@ def test_program_centric_schedules_and_current_queue() -> None:
     assert tm2v3.active_station == 0
 
     me = LegacyProgramDevice("ESP_ME")
+    assert me.handle_sip("0432") == "843200"
+    assert me.handle_sip("3200") == "003201"
     assert me.handle_sip("210060012C0474FFFFFFFFFFFFFFFF") == "0121"
     assert me.handle_sip("200060") == "A00060012C0474FFFFFFFFFFFFFFFF"
 

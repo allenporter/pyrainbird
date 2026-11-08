@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .base import BaseControllerDevice
+from .base import BaseControllerDevice, SipHandler
 from .state import LCRZoneSchedule, init_schedule_state
 
 
@@ -15,6 +15,13 @@ class LCRZoneDevice(BaseControllerDevice):
     def _init_device_state(self) -> None:
         super()._init_device_state()
         init_schedule_state(self)
+
+    def _build_sip_handlers(self) -> dict[str, SipHandler]:
+        handlers = super()._build_sip_handlers()
+        if self.profile.controller_type in ("ESP_RZXe2", "ST8X_WF2"):
+            handlers["32"] = self._op_zones_seasonal_adjust
+            handlers["33"] = self._op_set_zones_seasonal_adjust
+        return handlers
 
     def _collect_program_runnable_stations(self, prog: int) -> list[tuple[int, int]]:
         runnable: list[tuple[int, int]] = []
@@ -74,8 +81,8 @@ class LCRZoneDevice(BaseControllerDevice):
             return "0121"
         return "002102"
 
-    def _op_zone_or_monthly_adjust(self, d: str, bl: int, _t: str | None) -> str:
-        """Return 8-zone seasonal adjust vector (0x32 -> 0xB2)."""
+    def _op_zones_seasonal_adjust(self, d: str, bl: int, _t: str | None) -> str:
+        """Return 8-zone seasonal adjust vector on v2 LCR models (0x32 -> 0xB2)."""
         if bl != 2:
             return self._nak(d, 2)
         param = int(d[2:4], 16)
@@ -84,8 +91,8 @@ class LCRZoneDevice(BaseControllerDevice):
         )
         return f"B2{param:02X}{zones_hex}"
 
-    def _op_set_zone_or_monthly_adjust(self, d: str, bl: int, _t: str | None) -> str:
-        """Set 8-zone seasonal adjust vector (0x33 -> 0x0133)."""
+    def _op_set_zones_seasonal_adjust(self, d: str, bl: int, _t: str | None) -> str:
+        """Set 8-zone seasonal adjust vector on v2 LCR models (0x33 -> 0x0133)."""
         if bl < 4:
             return self._nak(d, 2)
         count = (bl - 2) // 2

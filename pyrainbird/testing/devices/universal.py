@@ -141,7 +141,7 @@ class UniversalCDTDevice(BaseControllerDevice):
 
     def _build_sip_handlers(self) -> dict[str, SipHandler]:
         handlers = super()._build_sip_handlers()
-        for unsupported in ("20", "21", "32", "33"):
+        for unsupported in ("20", "21"):
             handlers.pop(unsupported, None)
         for cmd, ok in (
             ("49", self.profile.controller_state_set),
