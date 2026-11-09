@@ -184,6 +184,9 @@ def test_encode_program_schedule_round_trip() -> None:
         "reserved": 120,
         "frequency": ProgramFrequency.CYCLIC,
     }
+    off = encode_program_info(0x7F, 3, 0, 0, 100, ProgramFrequency.OFF)
+    assert off == "7F0300006404"
+    assert decode(f"A00011{off}")["programInfo"]["frequency"] == ProgramFrequency.OFF
 
     starts = encode_program_start_times([4 * 60, 21 * 60], 4)
     assert decode(f"A00061{starts}")["programStartInfo"] == {
@@ -215,6 +218,30 @@ def test_encode_program_schedule_round_trip() -> None:
                 "frequency": 9,
             },
             "frequency",
+        ),
+        (
+            encode_program_info,
+            {
+                "days_of_week_mask": 0x7F,
+                "period": 0,
+                "synchro": 0,
+                "permanent_days_off": 0,
+                "reserved": 100,
+                "frequency": ProgramFrequency.CUSTOM,
+            },
+            "Period",
+        ),
+        (
+            encode_program_info,
+            {
+                "days_of_week_mask": 0x7F,
+                "period": 3,
+                "synchro": 0,
+                "permanent_days_off": 0,
+                "reserved": 256,
+                "frequency": ProgramFrequency.CUSTOM,
+            },
+            "out of range",
         ),
     ],
 )

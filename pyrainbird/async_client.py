@@ -859,6 +859,7 @@ class AsyncRainbirdController(RainbirdController):
         to a CYCLIC one. Any of them left out, and the other settings of the
         program, are kept as they are since the device rejects a period of 0.
         """
+        await self._check_program(program)
         page = 0x10 | program
         info = (await self._get_schedule_page(page))["programInfo"]
         days_of_week_mask = info["daysOfWeekMask"]
@@ -885,6 +886,7 @@ class AsyncRainbirdController(RainbirdController):
         numbered from 0 like `Program.program`. A program holds as many start
         times as the device has slots for, four on an ESP-TM2.
         """
+        await self._check_program(program)
         page = 0x60 | program
         slots = (await self._get_schedule_page(page))["programStartInfo"]["startTime"]
         await self._set_schedule_page(
@@ -904,6 +906,14 @@ class AsyncRainbirdController(RainbirdController):
         `ZoneDuration.zone`. The device stores the run times of two zones for
         every program together, so the others are kept.
         """
+        await self._check_program(program, zone)
+        model = await self.get_model_and_version()
+        max_sec = model.model_info.limits.max_runtime_seconds
+        if max_sec > 0 and duration.total_seconds() > max_sec:
+            raise RainbirdDeviceNackError(
+                f"Run time of {duration} exceeds the {max_sec // 60}-minute limit "
+                f"for {model.model_name}"
+            )
         page = 0x80 | ((zone - 1) // 2)
         entries = (await self._get_schedule_page(page))["durations"]
         programs = len(entries[0]["durations"])
@@ -914,6 +924,29 @@ class AsyncRainbirdController(RainbirdController):
         await self._set_schedule_page(
             page, rainbird.encode_program_run_times(durations)
         )
+
+    async def _check_program(self, program: int, zone: int | None = None) -> None:
+        """Raise unless the device is program based and has the program and zone.
+
+        A program or zone out of range would otherwise address the schedule
+        page, or the run time, of another one.
+        """
+        model = await self.get_model_and_version()
+        info = model.model_info
+        if info.is_feature_supported(Feature.UNIVERSAL_MESSAGES) or not (
+            info.max_programs
+        ):
+            raise RainbirdDeviceNackError(
+                f"Editing programs is not supported by {model.model_name}"
+            )
+        if not 0 <= program < info.max_programs:
+            raise RainbirdDeviceNackError(
+                f"Program {program} is out of range for {model.model_name}"
+            )
+        if zone is not None and not 1 <= zone <= info.max_stations:
+            raise RainbirdDeviceNackError(
+                f"Zone {zone} is out of range for {model.model_name}"
+            )
 
     async def _get_schedule_page(self, page: int) -> dict[str, Any]:
         """Return a decoded page of the schedule of a program based device."""

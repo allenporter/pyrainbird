@@ -648,21 +648,57 @@ async def test_set_program_zone_duration(
     assert requests[-1].raw_data == "2100810007000000000014000F0000"
 
 
-async def test_set_program_start_times_not_supported(
+@pytest.mark.parametrize(
+    ("model", "method", "args", "message"),
+    [
+        ("ESP_ME3", "set_program_start_times", (0, []), "not supported"),
+        ("ESP_TM2", "set_program_start_times", (3, []), "Program 3"),
+        ("ESP_TM2", "set_program_days", (-1, ProgramFrequency.CUSTOM), "Program -1"),
+        (
+            "ESP_TM2",
+            "set_program_zone_duration",
+            (3, 1, datetime.timedelta(minutes=5)),
+            "Program 3",
+        ),
+        (
+            "ESP_TM2",
+            "set_program_zone_duration",
+            (0, 0, datetime.timedelta(minutes=5)),
+            "Zone 0",
+        ),
+        (
+            "ESP_TM2",
+            "set_program_zone_duration",
+            (0, 13, datetime.timedelta(minutes=5)),
+            "Zone 13",
+        ),
+        (
+            "ESP_TM2",
+            "set_program_zone_duration",
+            (0, 1, datetime.timedelta(hours=7)),
+            "360-minute limit",
+        ),
+    ],
+)
+async def test_set_program_invalid(
     rainbird_controller: Callable[[], Awaitable[AsyncRainbirdController]],
     fake_device: FakeRainbirdDevice,
+    model: str,
+    method: str,
+    args: tuple[Any, ...],
+    message: str,
 ) -> None:
-    """Test a device without the schedule pages is left unchanged."""
-    fake_device.set_model("ESP_ME3")
+    """Test the schedule is left untouched for programs a device can't edit."""
+    fake_device.set_model(model)
     controller = await rainbird_controller()
 
-    with pytest.raises(RainbirdDeviceNackError):
-        await controller.set_program_start_times(0, [datetime.time(4, 0)])
+    with pytest.raises(RainbirdDeviceNackError, match=message):
+        await getattr(controller, method)(*args)
 
     requests = [
         r for r in fake_device.request_log if type(r).__name__ == "RequestLogEntry"
     ]
-    assert not any(r.raw_data.startswith("21") for r in requests if r.raw_data)
+    assert not any(r.raw_data.startswith(("20", "21")) for r in requests if r.raw_data)
 
 
 async def test_set_water_budget(

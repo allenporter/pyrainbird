@@ -53,6 +53,13 @@ _PROGRAM_FREQUENCY: dict[int, int] = {
     4: ProgramFrequency.OFF,
     5: ProgramFrequency.ODD,
 }
+_PROGRAM_FREQUENCY_CODE: dict[int, int] = {
+    ProgramFrequency.CUSTOM: 0,
+    ProgramFrequency.CYCLIC: 1,
+    ProgramFrequency.ODD: 2,
+    ProgramFrequency.EVEN: 3,
+    ProgramFrequency.OFF: 4,
+}
 
 # The value program based devices use for the start time slots left unused.
 _PROGRAM_UNUSED_START = 0xFFFF
@@ -256,20 +263,17 @@ def encode_program_info(
     """Encode the information page of a program of a program based device.
 
     This is the counterpart of the `programInfo` returned by `decode_schedule`
-    and is passed to a `SetSchedulePageRequest`.
+    and is passed to a `SetSchedulePageRequest`. The device rejects a period
+    of 0, whatever the frequency.
     """
-    if frequency not in set(ProgramFrequency):
+    if (code := _PROGRAM_FREQUENCY_CODE.get(frequency)) is None:
         raise RainbirdCodingException(f"Unsupported frequency: {frequency}")
-    body = bytes(
-        [
-            days_of_week_mask & 0x7F,
-            period,
-            synchro,
-            permanent_days_off,
-            reserved,
-            frequency,
-        ]
-    )
+    if period == 0:
+        raise RainbirdCodingException("Period must be at least 1")
+    values = [period, synchro, permanent_days_off, reserved]
+    if not all(0 <= value <= 0xFF for value in values):
+        raise RainbirdCodingException(f"Program info out of range: {values}")
+    body = bytes([days_of_week_mask & 0x7F, *values, code])
     return body.hex().upper()
 
 
