@@ -253,6 +253,13 @@ def test_encode_program_schedule_invalid(
         encoder(**kwargs)
 
 
+def test_encode_schedule_page() -> None:
+    """Test a command without a fixed length takes its already encoded body."""
+    assert encode("SetSchedulePageRequest", "0060f0ffff") == "210060F0FFFF"
+    with pytest.raises(RainbirdCodingException, match="missing length"):
+        encode("SetSchedulePageRequest", 0x60, "F0FFFF")
+
+
 def test_encode_universal_schedule_commands() -> None:
     """Test generating Universal (0x0C) schedule commands for ESP-ME3 and ARC8/RC2."""
     me3_cmds = encode_universal_schedule_commands(
