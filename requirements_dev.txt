@@ -19,5 +19,5 @@ pytest-aiohttp==1.1.1
 pytest-asyncio==1.4.1.post1
 pytest-golden==1.0.2
 python-dateutil==4.0.0
-types-PyYAML==6.0.12.20261111
+types-PyYAML==6.0.12.20261113
 syrupy==7.0.0
