@@ -81,6 +81,31 @@ class LCRZoneDevice(BaseControllerDevice):
             return "0121"
         return "002102"
 
+    def _op_water_budget(self, d: str, bl: int, _t: str | None) -> str:
+        """Return controller-wide water budget for selector 0xFF (0x30 -> 0xB0)."""
+        if bl != 2:
+            return self._nak(d, 2)
+        prog = int(d[2:4], 16)
+        if prog != 0xFF:
+            return self._nak(d, 4)
+        pct = self.water_budget.get(0xFF, self.seasonal_adjust)
+        return f"B0FF{pct & 0xFFFF:04X}"
+
+    def _op_set_water_budget(self, d: str, bl: int, _t: str | None) -> str:
+        """Set controller-wide water budget for selector 0xFF (0x31 -> 0x0131)."""
+        if bl != 4:
+            return self._nak(d, 2)
+        prog, pct = int(d[2:4], 16), int(d[4:8], 16)
+        if prog != 0xFF or not (
+            self.profile.minimum_seasonal_adjust
+            <= pct
+            <= max(200, self.profile.maximum_seasonal_adjust)
+        ):
+            return self._nak(d, 4)
+        self.water_budget[0xFF] = pct
+        self.seasonal_adjust = pct
+        return self._ack(d)
+
     def _op_zones_seasonal_adjust(self, d: str, bl: int, _t: str | None) -> str:
         """Return 8-zone seasonal adjust vector on v2 LCR models (0x32 -> 0xB2)."""
         if bl != 2:

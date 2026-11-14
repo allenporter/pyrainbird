@@ -34,58 +34,75 @@ The response code is `A0`. The page number determines the data type:
 
 | Page Range | Type | Per-Device Count |
 |------------|------|-----------------|
-| `00` | Global info | 1 |
-| `10`-`13` (16-19) | Program info | 1 per program (max 4) |
-| `20` (32) | Sensor bypass per station | 1 |
-| `60`-`63` (96-99) | Program start times | 1 per program (max 4) |
-| `80`-`8A` (128-138) | Station runtimes | Variable (ME: 11 pages, TM2: 6 pages) |
+| `0000` | Global info | 1 |
+| `0008` | Cycle & soak per station (optional / supported models) | 1 |
+| `0010`-`0013` (16-19) | Program info | 1 per program (max 4) |
+| `0020` (32) | Sensor obey/bypass per station | 1 |
+| `0040` (64) | Master valve enable per station (optional) | 1 |
+| `0060`-`0063` (96-99) | Program start times | 1 per program (max 4) |
+| `0080`-`008A` (128-138) | Station runtimes | Variable (ME: 11 pages, TM2: 6 pages; `0084`/`0085` reused for calendar days off on BLE/CBOS/ISK) |
 
 ---
 
-### Page 0 — Global Info
+### Page 0 (`0000`) — Global Info
 
-**Get response:**
+**Get response (7 bytes / 14 hex chars on legacy SIP; 9 bytes / 18 hex chars on BLE/CBOS):**
 ```
-A0 PPPP 00 DDDD SS RR
+A0 0000 DDDD SS RR [MM TT]
 ```
 
-| Offset | Field | Size (hex chars) | Description |
-|--------|-------|-----------------|-------------|
-| 6 | interStationDelay | 4 | Inter-station delay (hex, in seconds) |
-| 10 | snooze | 2 | Rain delay / snooze (days) |
-| 12 | rainSensor | 2 | `00` = rain sensor enabled, `01` = sensor bypassed |
+| Hex Offset | Field | Size (hex chars) | Description |
+|------------|-------|-----------------|-------------|
+| 0–2 | `A0` | 2 | `RetrieveScheduleResponse` code |
+| 2–6 | `page` | 4 | Page ID (`0000`) |
+| 6–10 | `interStationDelay` | 4 | Inter-station delay in seconds (`DDDD`, big-endian) |
+| 10–12 | `snooze` | 2 | Rain delay / snooze in days (`SS`) |
+| 12–14 | `rainSensor` | 2 | `00` = rain sensor enabled (active), `01` = sensor bypassed (`RR`) |
+| 14–16 | `masterValveEnable` | 2 | *(BLE/CBOS only)* `01` = master valve enabled, `00` = disabled (`MM`) |
+| 16–18 | `rainSettlingTime` | 2 | *(BLE/CBOS only)* Rain settling time in minutes (`TT`) |
 
 **Set command:**
 ```
-21 00 00 DDDD SS RR
+21 0000 DDDD SS RR [MM TT]
 ```
-Same field layout as the response data portion.
+Same field layout as the response data portion (`01 21` ACK).
 
 ---
 
-### Pages 16-19 (`10`-`13`) — Program Info
+### Page 8 (`0008`) — Per-Station Cycle & Soak (Where Supported)
 
-One page per program. Page `10` = Program 1, `11` = Program 2, etc.
-
-**Get response (data after `A0 PPPP`):**
+**Get response / Set payload (after `A0 0008` / `21 0008`):**
 ```
-PP DD CC RR OO SS FF
+[SSSS CCCC] × N
 ```
+4 bytes (8 hex chars) per station: `SSSS` = soak duration in seconds (2 bytes big-endian), `CCCC` = cycle duration in seconds (2 bytes big-endian).
 
-| Offset (from data start) | Field | Size | Description |
-|--------------------------|-------|------|-------------|
-| 0-2 | customDays | 2 | Days-of-week bitmask (7 bits: Sun-Sat) |
-| 2-4 | cyclicDays | 2 | Cycle interval in days |
-| 4-6 | daysRemaining | 2 | Days remaining in current cycle |
-| 6-8 | permanentDaysOff | 2 | Permanent off-days bitmask |
-| 8-10 | seasonalAdjust | 2 | Seasonal adjust percentage |
-| 10-12 | frequencyType | 2 | Frequency type code |
+---
+
+### Pages 16-19 (`0010`-`0013`) — Program Info
+
+One page per program. Page `0010` = Program 1 (A), `0011` = Program 2 (B), etc.
+
+**Get response (9 bytes / 18 hex chars on legacy SIP):**
+```
+A0 001P DD CC RR OO SS FF
+```
+*(Note: BLE/CBOS controllers use an 11-byte / 22-hex-char variant `A0 001P DD CC RR OO SSSS FF AA` with a 2-byte `seasonalAdjust` `SSSS` and trailing `autoRestart` byte `AA`.)*
+
+| Offset (from data start, char 6) | Field | Size (hex chars) | Description |
+|----------------------------------|-------|------------------|-------------|
+| 0-2 | `customDays` | 2 | Days-of-week bitmask (7 bits: bit 0 = Sun .. bit 6 = Sat; or Mon-Sun per model convention) |
+| 2-4 | `cyclicDays` | 2 | Cycle interval in days (`CC`) |
+| 4-6 | `daysRemaining` | 2 | Days remaining in current cycle (`RR`) |
+| 6-8 | `permanentDaysOff` | 2 | Permanent off-days bitmask (`OO`) |
+| 8-10 | `seasonalAdjust` | 2 | Seasonal adjust percentage (`SS`, e.g. `64` = 100%) |
+| 10-12 | `frequencyType` | 2 | Frequency type code (`FF`) |
 
 **Set command:**
 ```
-21 00 PP DD CC RR OO 64 FF
+21 001P DD CC RR OO 64 FF
 ```
-Note: seasonal adjust is always set to `64` (100 = 100%) when writing.
+Note: the mobile app sets `seasonalAdjust` in Page `001P` to `64` (100%) when writing and adjusts per-program budget via `31 PP SSSS`.
 
 **Frequency Type values:**
 | Value | Type |
@@ -94,19 +111,20 @@ Note: seasonal adjust is always set to `64` (100 = 100%) when writing.
 | 1 | CYCLIC (every N days) |
 | 2 | ODD days |
 | 3 | EVEN days |
+| 4 | OFF (program disabled, BLE/SIP extensions) |
 
 ---
 
-### Page 32 (`20`) — Sensor Bypass Per Station
+### Pages 32 (`0020`) & 64 (`0040`) — Per-Station Sensor & Master Valve Flags
 
-**Get response (data after `A0 PPPP`):**
+**Get response (data after `A0 0020` or `A0 0040`):**
 
-Pairs of hex digits, one per station:
+Pairs of hex digits (1 byte per station):
 ```
 S1 S2 S3 ... SN
 ```
-- `01` = sensor enabled for this station
-- `00` = sensor bypassed for this station
+- Page `0020`: `01` = rain sensor obeyed for this station, `00` = rain sensor bypassed.
+- Page `0040`: `01` = master valve enabled for this station, `00` = disabled.
 
 ---
 
@@ -181,68 +199,92 @@ If runtime > 0, the station is marked as enabled.
 
 ## Queue Response Parsing (Command `3B` / Response `BB`)
 
-### Legacy ESP-ME Queue (`interpretCurrentQueueResponse`)
+### ESP-TM2 / Legacy ESP-ME Queue (12 bytes / 24 hex chars)
 
-#### Page 0 — Active Irrigation
+#### Page 0 — Active Irrigation (`3B 00`)
 
+```text
+BB 00 MQ AQ RRRR DDDD SS PP FL MV
 ```
-BB 00 .... RRRR .... SS PP ....
-```
+Example: `BB00050005D0000001000001` (5 manual stations queued, `0x05D0` = 1488 seconds remaining on Station 1, Program `00`, MV active `01`); `BB0001000255000001FF0000` (1 manual station running, `0x0255` = 597 s remaining on Station 1, `FF` = manual / no program).
 
-| Offset | Field | Size | Description |
-|--------|-------|------|-------------|
-| 2-4 | page | 2 | `00` |
-| 8-12 | remainingTime | 4 | Remaining time (big-endian, minutes) |
-| 16-18 | station | 2 | Active station number |
-| 18-20 | program | 2 | Active program number. Capped to maxPrograms |
+| Hex Offset | Field | Size (hex chars) | Description |
+|------------|-------|------------------|-------------|
+| 0–2 | `BB` | 2 | `CurrentQueueResponse` code |
+| 2–4 | `page` | 2 | Page number (`00`) |
+| 4–6 | `manualQueueCount` | 2 | Number of manual queue entries (`MQ`; 2 bytes / 4 hex chars on 14-byte BLE/CBOS queue) |
+| 6–8 | `autoQueueCount` | 2 | Number of automatic/program queue entries (`AQ`; 2 bytes / 4 hex chars on 14-byte BLE/CBOS queue) |
+| 8–12 | `remainingTime` | 4 | Remaining runtime in **seconds** (big-endian `RRRR`, e.g. `05D0` = 1488 s, `0167` = 359 s) |
+| 12–16 | `interStationDelay` | 4 | Remaining inter-station delay in seconds (`DDDD`) |
+| 16–18 | `station` | 2 | Active station number (`SS`, `00` = none) |
+| 18–20 | `program` | 2 | Active program (`PP`: `01`..`04` for A..D, `FF` = manual / none; app caps values `> maxPrograms` to `0`) |
+| 20–22 | `statusFlags` | 2 | Controller queue status flags (`FL`, e.g. bit 3 `0x08` = paused) |
+| 22–24 | `masterValve` | 2 | Master valve state (`MV`, `01` = open, `00` = closed) |
 
 **Active irrigation**: `remainingTime > 0 AND (station > 0 OR program > 0)`
 
-#### Page 1+ — Pending Queue Entries
+#### Page 1+ — Pending Queue Entries (35 bytes / 70 hex chars)
 
-11 entries per page, each 6 hex chars (3 bytes):
+11 entries per page, each 6 hex chars (3 bytes), following `BB PP`:
+```text
+BB PP [PS1 R1R1] [PS2 R2R2] ... (×11 entries)
 ```
-[S1 R1R1] [S2 R2R2] ...
-```
-- `SS` (2 chars) = station number (masked: `& 0x1F` = lower 5 bits)
-- `RRRR` (4 chars) = remaining time
-- Entry with station = 0 terminates the list
+- `PSi` (2 chars = 1 byte):
+  - **Bits 4–0 (`byte & 0x1F`)**: Station number (`1`..`22`; `0` terminates the list — verified in `ESPMESIPProcessing.interpretCurrentQueueResponse`)
+  - **Bits 7–5 (`byte >> 5`)**: Program index (`0` = manual, `1`..`4` = Program A..D)
+- `RRRR` (4 chars = 2 bytes): Remaining runtime in seconds (big-endian)
 
 ### Upgraded TM2 / ME3 Queue (`interpretCurrentQueueResponseME2`)
 
-#### Page 0 — Running State
+#### Page 0 — Running State (7 bytes / 14 hex chars)
+```text
+BB 00 TT SS RRRRRR
 ```
-BB 00 TT SS
-```
-- `TT` = irrigation type
-- `SS` = stations running count
+- `TT` (offset 4–6) = irrigation type (`01` = program, `02` = manual)
+- `SS` (offset 6–8) = stations running count
 
 #### Page 1 — Pending Entries (old format, 8 entries × 8 chars)
-```
+```text
 [PP SS RRRR] ×8
 ```
-- `PP` = program, `SS` = station, `RRRR` = remaining time
+- `PP` = program (`01`..`04` for A..D, `05` for manual), `SS` = station, `RRRR` = remaining time in seconds (little-endian / byte-swapped)
 - **Byte swap on remaining time**: `((R & 0xFF00) >> 8) | ((R & 0x00FF) << 8)`
 
 #### Page 1 — Pending Entries (new ME3 format, response length = 100 chars)
-```
+```text
 [PP SS RRRR 0000] ×8
 ```
 12 hex chars per entry (6 bytes), same byte-swap on remaining time.
 
 #### Page 2+ — Simple Pending Entries (17 entries × 4 chars)
-```
+```text
 [PP SS] ×17
 ```
 - Program and station only, no remaining time.
 
 ---
 
+## Hardware-Verified Examples (ESP-TM2 + LNK2, [Discussion #611](https://github.com/allenporter/pyrainbird/discussions/611#discussioncomment-19031360))
+
+| Operation | Request | Response | Decoded Meaning |
+|-----------|---------|----------|-----------------|
+| Manual run Zone 1 (6 min) | `39 00 01 06` | `01 39` | ACK `ManuallyRunStationRequest` (page `00`, zone `01`, `06` min) |
+| Stack manual run Zone 1 (1 min) | `4B 00 01 01` | `01 4B` | ACK `StackManuallyRunStationRequest` (page `00`, zone `01`, `01` min) |
+| Stop irrigation | `40` | `01 40` | ACK `StopIrrigationRequest` |
+| Current date | `12` | `92 13 A7 EA` | Day `0x13` = 19, Month `0xA` = 10, Year `0x7EA` = 2026 (`2026-10-19`) |
+| Current time | `10` | `90 0C 0A 28` | `12:10:40` (`0x0C` = 12, `0x0A` = 10, `0x28` = 40) |
+| Active stations (page 0) | `3F 00` | `BF 00 01 00 00 00` | Zone 1 active (`0x01000000` little-endian bitmask) |
+| Station errors (pages 0–2) | `3D 00`..`02` | `BD 00 00 00 00 00` | Page `00` echoed, no station errors |
+| Water budget (Program A) | `30 00` | `B0 00 00 64` | Program `00` (A), `0x0064` = 100% |
+| Combined state / Queue | `4C` / `3B 00` | `CC ...` / `BB ...` | Reports active zone `01` and remaining runtime in **seconds** (`0x0167` = 359 s at start of 6-min run) |
+
+---
+
 ## Key Implementation Notes
 
 1. **Station numbering**: Stations are 1-indexed throughout. Station 0 means "none".
-2. **Runtime units**: All runtimes in schedule pages are in **minutes**. Queue remaining times are also minutes.
-3. **Runtime byte-swapping**: The upgraded TM2 family swaps bytes on queue remaining time fields. This is a critical difference from legacy ESP-ME.
+2. **Runtime units**: Runtimes in schedule pages (`20`/`A0`, `21`) and manual run commands (`39`, `4B`) are in **minutes**. Remaining runtime in `CurrentQueueResponse` (`BB`) and `CombinedControllerStateResponse` (`CC`) is in **seconds**.
+3. **Runtime byte-swapping**: The ME3 queue Page 1 format swaps bytes (little-endian) on queue remaining time fields, whereas the 12-byte TM2/ME Page 0 format (`BB 00 ...`) is big-endian.
 4. **Page number mapping**: `floor(station / 2) + 128` for runtime pages. Programs map to pages 16+ and 96+.
 5. **Program numbering**: Programs are 1-indexed in the domain model but the page offset uses 0-indexed math (page 16 = program 1, page 96 = program 1).
-6. **ESP-TM2 vs ESP-ME**: Only difference is `maxPrograms` (3 vs 4) and `runTimePages` (6 vs 11). All parsing logic is shared between the two families.
+6. **ESP-TM2 vs ESP-ME**: Only difference in legacy schedule pages is `maxPrograms` (3 vs 4) and `runTimePages` (6 vs 11). All parsing logic is shared between the two families.

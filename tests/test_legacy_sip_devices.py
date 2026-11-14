@@ -24,6 +24,12 @@ def test_lcr_zone_schedule_and_st8_rain_sensor() -> None:
     assert rzxe.handle_sip("21000214219090909090037F0302") == "0121"
     assert rzxe.handle_sip("200002") == "A0000214219090909090037F0302"
 
+    # Controller-wide water budget uses selector 0xFF; program 0 returns NAK 0x04
+    assert rzxe.handle_sip("3000") == "003004"
+    assert rzxe.handle_sip("30FF") == "B0FF0064"
+    assert rzxe.handle_sip("31FF005A") == "0131"
+    assert rzxe.handle_sip("30FF") == "B0FF005A"
+
     # v1 ESP-RZXe rejects per-zone 0x32/0x33; v2 ESP-RZXe2 / ST8X-WF2 support 18-byte 0xB2
     assert rzxe.handle_sip("0432") == "843200"
     assert rzxe.handle_sip("32FF") == "003201"
