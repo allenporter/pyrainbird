@@ -82,6 +82,11 @@ ControllerCommands:
     schedule:
       position: 6
       length: 22
+  SetSchedulePageRequest:
+    command: '21'
+    response: '01'
+    # The 2 byte page followed by the body built by one of the
+    # rainbird.encode_program_* functions. Its length depends on the device.
   WaterBudgetRequest:
     command: '30'
     parameter: 0
