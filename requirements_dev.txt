@@ -20,4 +20,4 @@ pytest-asyncio==1.5.0
 pytest-golden==1.0.2
 python-dateutil==4.0.0
 types-PyYAML==6.0.12.20261113
-syrupy==7.0.0
+syrupy==7.0.1
