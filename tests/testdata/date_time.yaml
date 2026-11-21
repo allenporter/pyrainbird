@@ -6,6 +6,10 @@ data:
   - "11162F13"
   - "130917E7"
   - "0111"
+  - "90143228"
+  - "920E97EA"
+  - "900C0A28"
+  - "9213A7EA"
 decoded_data:
   - type: CurrentTimeRequest
   - type: CurrentTimeResponse
@@ -27,3 +31,19 @@ decoded_data:
     year: 2023
   - type: AcknowledgeResponse
     commandEcho: 17
+  - type: CurrentTimeResponse
+    hour: 20
+    minute: 50
+    second: 40
+  - type: CurrentDateResponse
+    year: 2026
+    month: 9
+    day: 14
+  - type: CurrentTimeResponse
+    hour: 12
+    minute: 10
+    second: 40
+  - type: CurrentDateResponse
+    year: 2026
+    month: 10
+    day: 19
