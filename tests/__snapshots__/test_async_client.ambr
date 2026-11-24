@@ -9543,6 +9543,414 @@
   }
   '''
 # ---
+# name: test_set_program_days
+  '''
+  [client >]
+  Intent: ModelAndVersionRequest (02)
+  Payload: {
+    "id": 1,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "02",
+      "length": 1
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "8200050103"
+    },
+    "id": 1
+  }
+  
+  [client >]
+  Intent: RetrieveScheduleRequest (200010)
+  Payload: {
+    "id": 2,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "200010",
+      "length": 3
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "A00010060602057800"
+    },
+    "id": 2
+  }
+  
+  [client >]
+  Intent: SetScheduleRequest (210010120602057800)
+  Payload: {
+    "id": 3,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "210010120602057800",
+      "length": 9
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "0121"
+    },
+    "id": 3
+  }
+  
+  [client >]
+  Intent: RetrieveScheduleRequest (200010)
+  Payload: {
+    "id": 4,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "200010",
+      "length": 3
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "A00010060602057800"
+    },
+    "id": 4
+  }
+  
+  [client >]
+  Intent: SetScheduleRequest (210010060401057801)
+  Payload: {
+    "id": 5,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "210010060401057801",
+      "length": 9
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "0121"
+    },
+    "id": 5
+  }
+  '''
+# ---
+# name: test_set_program_invalid[ESP_ME3-set_program_start_times-args0-not supported]
+  '''
+  [client >]
+  Intent: ModelAndVersionRequest (02)
+  Payload: {
+    "id": 1,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "02",
+      "length": 1
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "8200090103"
+    },
+    "id": 1
+  }
+  '''
+# ---
+# name: test_set_program_invalid[ESP_TM2-set_program_days-args2-Program -1]
+  '''
+  [client >]
+  Intent: ModelAndVersionRequest (02)
+  Payload: {
+    "id": 1,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "02",
+      "length": 1
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "8200050103"
+    },
+    "id": 1
+  }
+  '''
+# ---
+# name: test_set_program_invalid[ESP_TM2-set_program_start_times-args1-Program 3]
+  '''
+  [client >]
+  Intent: ModelAndVersionRequest (02)
+  Payload: {
+    "id": 1,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "02",
+      "length": 1
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "8200050103"
+    },
+    "id": 1
+  }
+  '''
+# ---
+# name: test_set_program_invalid[ESP_TM2-set_program_zone_duration-args3-Program 3]
+  '''
+  [client >]
+  Intent: ModelAndVersionRequest (02)
+  Payload: {
+    "id": 1,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "02",
+      "length": 1
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "8200050103"
+    },
+    "id": 1
+  }
+  '''
+# ---
+# name: test_set_program_invalid[ESP_TM2-set_program_zone_duration-args4-Zone 0]
+  '''
+  [client >]
+  Intent: ModelAndVersionRequest (02)
+  Payload: {
+    "id": 1,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "02",
+      "length": 1
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "8200050103"
+    },
+    "id": 1
+  }
+  '''
+# ---
+# name: test_set_program_invalid[ESP_TM2-set_program_zone_duration-args5-Zone 13]
+  '''
+  [client >]
+  Intent: ModelAndVersionRequest (02)
+  Payload: {
+    "id": 1,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "02",
+      "length": 1
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "8200050103"
+    },
+    "id": 1
+  }
+  '''
+# ---
+# name: test_set_program_invalid[ESP_TM2-set_program_zone_duration-args6-360-minute limit]
+  '''
+  [client >]
+  Intent: ModelAndVersionRequest (02)
+  Payload: {
+    "id": 1,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "02",
+      "length": 1
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "8200050103"
+    },
+    "id": 1
+  }
+  '''
+# ---
+# name: test_set_program_start_times
+  '''
+  [client >]
+  Intent: ModelAndVersionRequest (02)
+  Payload: {
+    "id": 1,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "02",
+      "length": 1
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "8200050103"
+    },
+    "id": 1
+  }
+  
+  [client >]
+  Intent: RetrieveScheduleRequest (200060)
+  Payload: {
+    "id": 2,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "200060",
+      "length": 3
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "A0006000F0FFFFFFFFFFFF"
+    },
+    "id": 2
+  }
+  
+  [client >]
+  Intent: SetScheduleRequest (210060014A04CEFFFFFFFF)
+  Payload: {
+    "id": 3,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "210060014A04CEFFFFFFFF",
+      "length": 11
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "0121"
+    },
+    "id": 3
+  }
+  '''
+# ---
+# name: test_set_program_zone_duration
+  '''
+  [client >]
+  Intent: ModelAndVersionRequest (02)
+  Payload: {
+    "id": 1,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "02",
+      "length": 1
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "8200050103"
+    },
+    "id": 1
+  }
+  
+  [client >]
+  Intent: RetrieveScheduleRequest (200081)
+  Payload: {
+    "id": 2,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "200081",
+      "length": 3
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "A00081000700000000001400000000"
+    },
+    "id": 2
+  }
+  
+  [client >]
+  Intent: SetScheduleRequest (2100810007000000000014000F0000)
+  Payload: {
+    "id": 3,
+    "jsonrpc": "2.0",
+    "method": "tunnelSip",
+    "params": {
+      "data": "2100810007000000000014000F0000",
+      "length": 15
+    }
+  }
+  
+  [server <]
+  Payload: {
+    "jsonrpc": "2.0",
+    "result": {
+      "data": "0121"
+    },
+    "id": 3
+  }
+  '''
+# ---
 # name: test_set_rain_delay
   '''
   [client >]
