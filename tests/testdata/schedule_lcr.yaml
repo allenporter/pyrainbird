@@ -9,6 +9,11 @@ data:
   - A000020F247E90909090037F0301
   # Zone 3: 5 minutes, a single start at 08:00, odd days.
   - A000030530909090909001000000
+  # Hardware-verified ESP-RZXe (0x0003, protocol 2.9, Discussion #611):
+  # Zone 1 before edit: 40 minutes, start at 04:00, custom (Mon+Thu), retained period=2, synchro=0.
+  - A000012818909090909000120200
+  # Zone 1 after edit: 39 minutes, start at 04:00, custom (Mon+Thu), retained period=2, synchro=0.
+  - A000012718909090909000120200
 decoded_data:
   - type: RetrieveScheduleResponse
     zoneInfo:
@@ -39,4 +44,24 @@ decoded_data:
         frequency: 2  # ODD
         daysOfWeekMask: 0
         period: 0
+        synchro: 0
+  - type: RetrieveScheduleResponse
+    zoneInfo:
+      1:
+        zone: 1
+        duration: 40
+        startTime: [240]  # 04:00
+        frequency: 0  # CUSTOM
+        daysOfWeekMask: 18  # Monday (0x02) + Thursday (0x10)
+        period: 2
+        synchro: 0
+  - type: RetrieveScheduleResponse
+    zoneInfo:
+      1:
+        zone: 1
+        duration: 39
+        startTime: [240]  # 04:00
+        frequency: 0  # CUSTOM
+        daysOfWeekMask: 18  # Monday (0x02) + Thursday (0x10)
+        period: 2
         synchro: 0

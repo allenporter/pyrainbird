@@ -20,6 +20,7 @@ from pyrainbird.async_client import (
     CreateController,
 )
 from pyrainbird.const import DayOfWeek, ProgramFrequency
+from pyrainbird.data import WaterBudget
 from pyrainbird.encryption import ErrorCode, PayloadCoder, encrypt
 from pyrainbird.exceptions import (
     RainbirdApiException,
@@ -240,6 +241,76 @@ async def test_lcr_zone_schedule_roundtrip(model_name: str) -> None:
             DayOfWeek.MONDAY,
             DayOfWeek.WEDNESDAY,
         }
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("model_name", ["ESP_RZXe", "ESP_RZXe2", "ST8X_WF", "ST8X_WF2"])
+async def test_lcr_water_budget_roundtrip(model_name: str) -> None:
+    """Verify LCR controllers use selector 0xFF for water budget and NAK program 0."""
+    async with (
+        RainbirdFakeServer(password=PASSWORD, model=model_name) as server,
+        aiohttp.ClientSession() as session,
+    ):
+        ctrl = await async_client.create_controller(session, server.host_port, PASSWORD)
+        with pytest.raises(RainbirdDeviceNackError):
+            await ctrl.water_budget(0)
+
+        assert await ctrl.water_budget(0xFF) == WaterBudget(0xFF, 100)
+        await ctrl.set_water_budget(0xFF, 90)
+        assert await ctrl.water_budget(0xFF) == WaterBudget(0xFF, 90)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("model_name", ["ESP_RZXe", "ST8X_WF2"])
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "Issue: decode_schedule ignores 8-hex-char LCR Page 0 (A0 00 00 SS), and "
+        "Schedule.__pre_deserialize__ does not propagate controllerInfo to zone_schedules"
+    ),
+)
+async def test_lcr_schedule_page_0_controller_info(model_name: str) -> None:
+    """Verify get_schedule decodes LCR Page 0 rain sensor state and attaches controller_info to zones."""
+    async with (
+        RainbirdFakeServer(password=PASSWORD, model=model_name) as server,
+        aiohttp.ClientSession() as session,
+    ):
+        server.device.device.rain_sensor_bypassed = True
+        ctrl = await async_client.create_controller(session, server.host_port, PASSWORD)
+        sched = await ctrl.get_schedule()
+        assert sched.controller_info is not None
+        assert sched.controller_info.rain_sensor is True
+        assert sched.zone_schedules[1].controller_info == sched.controller_info
+
+
+@pytest.mark.asyncio
+@pytest.mark.xfail(
+    strict=True,
+    reason="Issue: set_zone_schedule rejects duration=0, which LCR uses to disable a zone",
+)
+async def test_lcr_set_zone_schedule_disabled_zone() -> None:
+    """Verify set_zone_schedule allows disabling an LCR zone with duration=0."""
+    async with (
+        RainbirdFakeServer(password=PASSWORD, model="ESP_RZXe") as server,
+        aiohttp.ClientSession() as session,
+    ):
+        ctrl = await async_client.create_controller(session, server.host_port, PASSWORD)
+        await ctrl.set_zone_schedule(
+            zone=1,
+            duration=datetime.timedelta(minutes=15),
+            starts=[datetime.time(6, 0)],
+            frequency=ProgramFrequency.CUSTOM,
+            days_of_week={DayOfWeek.MONDAY},
+        )
+        await ctrl.set_zone_schedule(
+            zone=1,
+            duration=datetime.timedelta(0),
+            starts=[],
+            frequency=ProgramFrequency.CUSTOM,
+        )
+        sched = await ctrl.get_schedule()
+        assert sched.zone_schedules[1].duration == datetime.timedelta(0)
+        assert sched.zone_schedules[1].starts == []
 
 
 @pytest.mark.asyncio

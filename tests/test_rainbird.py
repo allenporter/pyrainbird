@@ -70,13 +70,25 @@ class TestSequence(unittest.TestCase):
             ["37000F", "RainDelaySet", 15],
             ["4208", "AdvanceStation", 8],
             ["48", "CurrentIrrigationState"],
+            ["30FF", "WaterBudget", 0xFF],
+            ["3000", "WaterBudget", 0],
             ["31FF0096", "WaterBudgetSet", 0xFF, 150],
+            ["3900010A", "ManuallyRunStation", 1, 10],
+            ["39000106", "ManuallyRunStation", 1, 6],
+            ["4B000101", "StackManuallyRunStation", 0, 1, 1],
             [
                 "2100010A189090909090027F0300",
                 "SetSchedule",
                 0,
                 1,
                 "0A189090909090027F0300",
+            ],
+            [
+                "2100012718909090909000120200",
+                "SetSchedule",
+                0,
+                1,
+                "2718909090909000120200",
             ],
         ],
         name_func=encode_name_func,
@@ -120,6 +132,20 @@ def test_encode_zone_schedule() -> None:
             ),
         )
         == "0530909090909000120000"
+    )
+    # Hardware-verified ESP-RZXe Zone 1 write (39 min, 04:00, Custom Mon+Thu, retained period=2)
+    assert (
+        encode_zone_schedule(
+            duration=39,
+            starts=[4 * 60],
+            frequency=ProgramFrequency.CUSTOM,
+            days_of_week_mask=sum(
+                1 << day for day in (DayOfWeek.MONDAY, DayOfWeek.THURSDAY)
+            ),
+            period=2,
+            synchro=0,
+        )
+        == "2718909090909000120200"
     )
 
 
@@ -338,3 +364,168 @@ def test_decode_schedule_program_frequency_codes(
     """Test program-based SIP 0xA0 subpage 0x10 frequency codes decode cleanly."""
     decoded = decode(f"A000107F03010064{raw_code:02X}")
     assert decoded["programInfo"]["frequency"] == expected_frequency
+
+
+def test_decode_esp_rzxe_responses() -> None:
+    """Test decoding hardware-verified responses from ESP-RZXe (Discussion #611)."""
+    # Water budget on ESP-RZXe (program FF = controller-wide)
+    assert decode("B0FF0064") == {
+        "type": "WaterBudgetResponse",
+        "programCode": 0xFF,
+        "seasonalAdjust": 100,
+    }
+    assert decode("B0FF0096") == {
+        "type": "WaterBudgetResponse",
+        "programCode": 0xFF,
+        "seasonalAdjust": 150,
+    }
+
+    # NAK 04 (Incompatible Data) when querying program 0 water budget (30 00) on ESP-RZXe
+    assert decode("003004") == {
+        "type": "NotAcknowledgeResponse",
+        "commandEcho": 0x30,
+        "NAKCode": 4,
+    }
+
+    # NAK 01 (Command Not Supported) for 0x0C, 0x4A, 0x4B, 0x4C on ESP-RZXe
+    assert decode("000C01") == {
+        "type": "NotAcknowledgeResponse",
+        "commandEcho": 0x0C,
+        "NAKCode": 1,
+    }
+    assert decode("004C01") == {
+        "type": "NotAcknowledgeResponse",
+        "commandEcho": 0x4C,
+        "NAKCode": 1,
+    }
+
+    # ACK responses for SetSchedule (21), WaterBudgetSet (31), ManuallyRunStation (39),
+    # StopIrrigation (40)
+    for cmd_hex in ("21", "31", "39", "40"):
+        assert decode(f"01{cmd_hex}") == {
+            "type": "AcknowledgeResponse",
+            "commandEcho": int(cmd_hex, 16),
+        }
+
+
+def test_decode_esp_tm2_responses() -> None:
+    """Test decoding hardware-verified responses from ESP-TM2 (Discussion #611)."""
+    # Water budget on ESP-TM2 (program 00 = Program A)
+    assert decode("B0000064") == {
+        "type": "WaterBudgetResponse",
+        "programCode": 0,
+        "seasonalAdjust": 100,
+    }
+
+    # ACK response for StackManuallyRunStation (4B)
+    assert decode("014B") == {
+        "type": "AcknowledgeResponse",
+        "commandEcho": 0x4B,
+    }
+
+    # ESP-TM2 24-char CurrentQueueResponse (BB) with 359s (0x0167) remaining on Zone 1
+    assert decode("BB0001000167000001000001") == {
+        "type": "CurrentQueueResponse",
+        "program": {
+            "program": 0,
+            "zone": 1,
+            "seconds": 359,
+            "active": True,
+        },
+    }
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "Issue: ESP-RZXe/ST8 global schedule page 0 (20 00 00) returns 4 bytes / 8 hex chars "
+        "(A0000000 or A0000080), but decode_schedule checks len(rest) == 4 (expecting 10 hex chars)"
+    ),
+)
+def test_decode_esp_rzxe_schedule_page_0() -> None:
+    """Test decoding hardware-verified ESP-RZXe global schedule page 0 (20 00 00 -> A0 00 00 SS)."""
+    # Global rain-sensor page 0 responses (A0000000 and A0000080) on physical ESP-RZXe (Discussion #611)
+    assert decode("A0000000") == {
+        "type": "RetrieveScheduleResponse",
+        "controllerInfo": {"rainSensor": 0},
+    }
+    assert decode("A0000080") == {
+        "type": "RetrieveScheduleResponse",
+        "controllerInfo": {"rainSensor": 0x80},
+    }
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "Issue: ESP-RZXe/ST8 20-hex-char CurrentQueueResponse (BB 00 QQ AA 00 00 ZZ TT SSSS) "
+        "is not handled by decode_queue, which only checks len(data) == 24 or 14"
+    ),
+)
+def test_decode_esp_rzxe_current_queue_page_0() -> None:
+    """Test decoding hardware-verified ESP-RZXe CurrentQueueResponse (3B 00 -> BB 00 ...)."""
+    # Zone 1 manual run (10 min): 596 seconds (0x0254) remaining, then 475 seconds (0x01DB)
+    assert decode("BB000001000001020254") == {
+        "type": "CurrentQueueResponse",
+        "program": {
+            "program": 0,
+            "zone": 1,
+            "seconds": 596,
+            "active": True,
+        },
+    }
+    assert decode("BB0000010000010201DB") == {
+        "type": "CurrentQueueResponse",
+        "program": {
+            "program": 0,
+            "zone": 1,
+            "seconds": 475,
+            "active": True,
+        },
+    }
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="Issue: encode_zone_schedule rejects duration=0, which LCR uses to disable a zone",
+)
+def test_encode_esp_rzxe_zone_schedule_disabled() -> None:
+    """Test encoding an ESP-RZXe zone schedule with duration=0 (disabled zone)."""
+    assert (
+        encode_zone_schedule(
+            duration=0,
+            starts=[],
+            frequency=ProgramFrequency.CUSTOM,
+        )
+        == "0090909090909000000000"
+    )
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "Issue: decode_schedule masks bit 7 (0x80) out of the LCR SS byte "
+        "(int(rest[20:22], 16) & 0x7F) instead of exposing the per-zone rain sensor flag"
+    ),
+)
+def test_decode_esp_rzxe_zone_schedule_sensor_flag() -> None:
+    """Test decoding ESP-RZXe zone schedule SS byte bit 7 (per-zone rain sensor enable flag)."""
+    decoded = decode("A000012818909090909000120280")
+    assert decoded["zoneInfo"][1]["rainSensor"] is True
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "Issue: CurrentStationErrorRequest (0x3D) / CurrentStationErrorResponse (0xBD) "
+        "polled by LNK2 on ESP-TM2 is not defined in sipcommands.yaml"
+    ),
+)
+def test_decode_esp_tm2_station_error() -> None:
+    """Test encoding 3D 00 and decoding BD 00 00000000 (CurrentStationError on ESP-TM2)."""
+    assert encode("CurrentStationErrorRequest", 0) == "3D00"
+    assert decode("BD0000000000") == {
+        "type": "CurrentStationErrorResponse",
+        "pageNumber": 0,
+        "stationErrors": 0,
+    }

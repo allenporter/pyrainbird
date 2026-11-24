@@ -2,6 +2,8 @@ data:
   - "02"
   - "820006090C"
   - "850000000000008963"
+  - "8200030209"
+  - "850000000000000000"
 decoded_data:
   - type: ModelAndVersionRequest
   - type: ModelAndVersionResponse
@@ -10,3 +12,9 @@ decoded_data:
     protocolRevisionMinor: 12
   - type: SerialNumberResponse
     serialNumber: 0x8963
+  - type: ModelAndVersionResponse
+    modelID: 3
+    protocolRevisionMajor: 2
+    protocolRevisionMinor: 9
+  - type: SerialNumberResponse
+    serialNumber: 0
